@@ -1,0 +1,9 @@
+Hi,
+
+<%= @invitation.invited_by&.name || "An administrator" %> invited you to join the <%= @invitation.account.name %> account on x-identity with the <%= @invitation.role %> role.
+
+To accept, open:
+
+<%= @url %>
+
+This invitation expires on <%= @invitation.expires_at.utc.strftime("%-d %B %Y") %> (UTC).

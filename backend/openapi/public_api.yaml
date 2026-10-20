@@ -1,0 +1,1967 @@
+---
+openapi: 3.1.0
+info:
+  title: x-identity API
+  version: v1
+paths:
+  "/v1/account-lookup/{slug}":
+    parameters:
+    - name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Find an account by its alias
+      tags:
+      - Sign in
+      responses:
+        '200':
+          description: account found
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - uid
+                - name
+                - slug
+                properties:
+                  uid:
+                    type: string
+                  name:
+                    type: string
+                  slug:
+                    type: string
+        '404':
+          description: no account with this alias
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/.well-known/jwks.json":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Public keys for verifying the account's access tokens
+      tags:
+      - Sign in
+      responses:
+        '200':
+          description: JSON Web Key Set
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - keys
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/audit-events":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the account's audit events, newest first
+      tags:
+      - Audit log
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            action_eq:
+              type: string
+            action_start:
+              type: string
+              description: Action prefix, e.g. `user.`
+            actor_uid_eq:
+              type: string
+            target_uid_eq:
+              type: string
+            project_uid_eq:
+              type: string
+            occurred_at_gteq:
+              type: string
+              format: date-time
+            occurred_at_lteq:
+              type: string
+              format: date-time
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/AuditEvent"
+        '403':
+          description: only account owners and admins can read the audit log
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth-configuration":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: The account's authentication settings
+      tags:
+      - Auth configuration
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: current settings
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AuthConfiguration"
+        '403':
+          description: only account owners and admins can see settings
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    put:
+      summary: Update the account's authentication settings
+      tags:
+      - Auth configuration
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                access_token_ttl_minutes:
+                  type: integer
+                lockout_duration_minutes:
+                  type: integer
+                lockout_threshold:
+                  type: integer
+                lockout_window_minutes:
+                  type: integer
+                mfa_requirement:
+                  enum:
+                  - 'off'
+                  - optional
+                  - required
+                password_max_age_days:
+                  anyOf:
+                  - type: 'null'
+                  - type: integer
+                password_min_length:
+                  type: integer
+                password_require_lowercase:
+                  anyOf:
+                  - type: boolean
+                password_require_number:
+                  anyOf:
+                  - type: boolean
+                password_require_symbol:
+                  anyOf:
+                  - type: boolean
+                password_require_uppercase:
+                  anyOf:
+                  - type: boolean
+                refresh_token_ttl_days:
+                  type: integer
+                require_email_verification:
+                  anyOf:
+                  - type: boolean
+                session_idle_timeout_minutes:
+                  anyOf:
+                  - type: 'null'
+                  - type: integer
+                signing_algorithm:
+                  enum:
+                  - ES256
+                  - RS256
+                  - PS256
+                signing_key_rotation_days:
+                  type: integer
+              type: object
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AuthConfiguration"
+        '422':
+          description: a setting is out of range
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/accept-invitation":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Accept an invitation and create your user
+      tags:
+      - Invitations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                password:
+                  type: string
+                token:
+                  type: string
+              type: object
+              required:
+              - name
+              - password
+              - token
+      responses:
+        '201':
+          description: user created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/User"
+        '401':
+          description: invalid, expired or revoked invitation
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid name or password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/confirm-email":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Confirm an email address
+      tags:
+      - Email verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                token:
+                  type: string
+              type: object
+              required:
+              - token
+      responses:
+        '204':
+          description: email verified
+        '401':
+          description: invalid or expired token
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/confirm-email-change":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Confirm a new email address
+      tags:
+      - Me
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                token:
+                  type: string
+              type: object
+              required:
+              - token
+      responses:
+        '204':
+          description: email changed; all sessions signed out
+        '401':
+          description: invalid or expired token
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: email taken since the change was requested
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/forgot-password":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Email a password reset link
+      tags:
+      - Password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                email:
+                  type: string
+              type: object
+              required:
+              - email
+      responses:
+        '202':
+          description: accepted, whether or not the email exists
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/mfa-setup":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Get a TOTP secret while answering an mfa_setup challenge
+      tags:
+      - Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                session:
+                  type: string
+              type: object
+              required:
+              - session
+      responses:
+        '200':
+          description: secret and QR code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MfaEnrollment"
+        '401':
+          description: invalid session
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/refresh":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Exchange a refresh token for new tokens
+      tags:
+      - Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                refresh_token:
+                  type: string
+              type: object
+              required:
+              - refresh_token
+      responses:
+        '200':
+          description: new tokens
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/TokenSet"
+        '401':
+          description: invalid, reused or expired refresh token
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/resend-confirmation":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Resend the verification email
+      tags:
+      - Email verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                email:
+                  type: string
+              type: object
+              required:
+              - email
+      responses:
+        '202':
+          description: accepted, whether or not the email exists
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/reset-password":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Set a new password with a reset token
+      tags:
+      - Password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                password:
+                  type: string
+                token:
+                  type: string
+              type: object
+              required:
+              - password
+              - token
+      responses:
+        '204':
+          description: password changed
+        '401':
+          description: invalid or expired token
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: password breaks the account's rules
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/respond-to-challenge":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Answer a sign-in challenge
+      tags:
+      - Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                challenge:
+                  enum:
+                  - totp
+                  - new_password
+                  - mfa_setup
+                code:
+                  type: string
+                new_password:
+                  type: string
+                session:
+                  type: string
+              type: object
+              required:
+              - challenge
+              - session
+      responses:
+        '200':
+          description: tokens, or the next challenge
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignInResult"
+        '401':
+          description: wrong code or invalid session
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid new password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '429':
+          description: locked out after too many failures
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/sign-in":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Sign in with email and password
+      tags:
+      - Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              type: object
+              required:
+              - email
+              - password
+      responses:
+        '200':
+          description: tokens, or a challenge to answer
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignInResult"
+        '401':
+          description: wrong email or password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '403':
+          description: email not verified
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '404':
+          description: unknown account
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '429':
+          description: locked out after too many failures
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/sign-out":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Revoke the session behind a refresh token
+      tags:
+      - Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                refresh_token:
+                  type: string
+              type: object
+              required:
+              - refresh_token
+      responses:
+        '204':
+          description: signed out
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/invitations":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List pending invitations
+      tags:
+      - Invitations
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: pending invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Invitation"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Invite someone to the account
+      tags:
+      - Invitations
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                email:
+                  type: string
+                role:
+                  enum:
+                  - owner
+                  - admin
+                  - member
+              type: object
+              required:
+              - email
+              - role
+      responses:
+        '201':
+          description: invitation sent
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Invitation"
+        '403':
+          description: not allowed to invite with this role
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: a user with this email already exists
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: The signed-in user and their account
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the signed-in user
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Me"
+        '401':
+          description: missing, invalid or revoked access token
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    patch:
+      summary: Update your profile
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+              type: object
+              required:
+              - name
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Me"
+        '422':
+          description: invalid name
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/email":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Request an email change
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                current_password:
+                  type: string
+                new_email:
+                  type: string
+                otp_code:
+                  type: string
+              type: object
+              required:
+              - current_password
+              - new_email
+      responses:
+        '202':
+          description: accepted; a confirmation is sent to the new address if it is
+            available
+        '401':
+          description: wrong OTP code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: wrong password or invalid email
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/password":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    put:
+      summary: Change your password
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                current_password:
+                  type: string
+                new_password:
+                  type: string
+              type: object
+              required:
+              - current_password
+              - new_password
+      responses:
+        '204':
+          description: password changed; other sessions signed out
+        '422':
+          description: wrong current password or invalid new password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/totp":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Start setting up an authenticator app
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: secret and QR code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MfaEnrollment"
+        '409':
+          description: MFA is already turned on
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Turn off MFA
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+                current_password:
+                  type: string
+              type: object
+              required:
+              - code
+              - current_password
+      responses:
+        '204':
+          description: MFA turned off
+        '403':
+          description: the account requires MFA
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/totp/confirm":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Confirm the authenticator app with a code
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+              type: object
+              required:
+              - code
+      responses:
+        '200':
+          description: MFA turned on
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RecoveryCodes"
+        '401':
+          description: wrong code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List projects you can see
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Project"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Create a project
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+              type: object
+              required:
+              - name
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Project"
+        '403':
+          description: only account owners and admins can create projects
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/members":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List project members
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/ProjectMember"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Add a user to the project
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                role:
+                  enum:
+                  - admin
+                  - developer
+                  - viewer
+                user_uid:
+                  type: string
+              type: object
+              required:
+              - role
+              - user_uid
+      responses:
+        '201':
+          description: added
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ProjectMember"
+        '409':
+          description: already a member
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: unknown user or invalid role
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/members/{user_uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: user_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Change a member's project role
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                role:
+                  enum:
+                  - admin
+                  - developer
+                  - viewer
+              type: object
+              required:
+              - role
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ProjectMember"
+        '403':
+          description: not a project or account admin
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Remove a member from the project
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Show a project
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Project"
+        '401':
+          description: token issued by another account
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '404':
+          description: no such project, or you can't see it
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    patch:
+      summary: Rename a project
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+              type: object
+              required:
+              - name
+      responses:
+        '200':
+          description: renamed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Project"
+        '403':
+          description: not a project or account admin
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Delete a project
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: deleted
+        '403':
+          description: only account owners and admins can delete projects
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/users":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the account's users
+      tags:
+      - Users
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: users, paginated with Total, Per-Page and Link headers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/User"
+          headers:
+            Total:
+              schema:
+                type: integer
+            Per-Page:
+              schema:
+                type: integer
+            Link:
+              schema:
+                type: string
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/users/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Change a user's role or status
+      tags:
+      - Users
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                role:
+                  enum:
+                  - owner
+                  - admin
+                  - member
+                status:
+                  enum:
+                  - active
+                  - disabled
+              type: object
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/User"
+        '403':
+          description: not allowed to manage this user
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '404':
+          description: no such user in this account
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: would leave the account without an active owner
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Delete a user
+      tags:
+      - Users
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: deleted
+        '403':
+          description: not allowed to manage this user
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/sign-up":
+    post:
+      summary: Create an account and its first owner
+      tags:
+      - Sign up
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                account_name:
+                  type: string
+                email:
+                  type: string
+                name:
+                  type: string
+                password:
+                  type: string
+                slug:
+                  type: string
+              type: object
+              required:
+              - account_name
+              - email
+              - name
+              - password
+              - slug
+      responses:
+        '201':
+          description: account created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - account
+                - user
+                properties:
+                  account:
+                    "$ref": "#/components/schemas/Account"
+                  user:
+                    "$ref": "#/components/schemas/User"
+        '422':
+          description: invalid input
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+servers:
+- url: "/"
+components:
+  schemas:
+    Account:
+      type: object
+      required:
+      - uid
+      - name
+      - slug
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: acct_7Hq2Xf9kLmN3pR8sT4vW6yZa
+        name:
+          type: string
+        slug:
+          type: string
+          description: Account alias used in sign-in URLs.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: Account
+    AuditEvent:
+      type: object
+      required:
+      - uid
+      - action
+      - actor
+      - metadata
+      - occurred_at
+      properties:
+        uid:
+          type: string
+        action:
+          type: string
+          example: user.signed_in
+        actor:
+          type: object
+          required:
+          - type
+          properties:
+            type:
+              type: string
+            uid:
+              type:
+              - string
+              - 'null'
+            label:
+              type:
+              - string
+              - 'null'
+        target:
+          type:
+          - object
+          - 'null'
+          required:
+          - type
+          properties:
+            type:
+              type: string
+            uid:
+              type:
+              - string
+              - 'null'
+            label:
+              type:
+              - string
+              - 'null'
+        project_uid:
+          type:
+          - string
+          - 'null'
+        ip:
+          type:
+          - string
+          - 'null'
+        user_agent:
+          type:
+          - string
+          - 'null'
+        metadata:
+          type: object
+        occurred_at:
+          type: string
+          format: date-time
+      title: AuditEvent
+    AuthConfiguration:
+      type: object
+      required:
+      - mfa_requirement
+      - require_email_verification
+      - password_min_length
+      - password_require_uppercase
+      - password_require_lowercase
+      - password_require_number
+      - password_require_symbol
+      - lockout_threshold
+      - lockout_window_minutes
+      - lockout_duration_minutes
+      - access_token_ttl_minutes
+      - refresh_token_ttl_days
+      - signing_algorithm
+      - signing_key_rotation_days
+      properties:
+        mfa_requirement:
+          type: string
+          enum:
+          - 'off'
+          - optional
+          - required
+        require_email_verification:
+          type: boolean
+        password_min_length:
+          type: integer
+          minimum: 8
+          maximum: 128
+        password_require_uppercase:
+          type: boolean
+        password_require_lowercase:
+          type: boolean
+        password_require_number:
+          type: boolean
+        password_require_symbol:
+          type: boolean
+        password_max_age_days:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 365
+        lockout_threshold:
+          type: integer
+          minimum: 3
+          maximum: 100
+        lockout_window_minutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+        lockout_duration_minutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+        access_token_ttl_minutes:
+          type: integer
+          minimum: 5
+          maximum: 60
+        refresh_token_ttl_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+        session_idle_timeout_minutes:
+          type:
+          - integer
+          - 'null'
+          minimum: 5
+          maximum: 43200
+        signing_algorithm:
+          type: string
+          enum:
+          - ES256
+          - RS256
+          - PS256
+        signing_key_rotation_days:
+          type: integer
+          minimum: 30
+          maximum: 365
+        updated_at:
+          type: string
+          format: date-time
+      title: AuthConfiguration
+    Error:
+      type: object
+      description: |-
+        Standard error response. Codes and their HTTP statuses:
+
+        - `bad_request` (400): The request could not be understood.
+        - `unauthorized` (401): Authentication is required.
+        - `invalid_credentials` (401): The email or password is incorrect.
+        - `invalid_token` (401): The token is invalid or has expired.
+        - `session_expired` (401): Your session has expired. Sign in again.
+        - `mfa_required` (401): Multi-factor authentication is required. Sign in again to continue.
+        - `invalid_challenge` (401): The sign-in session is invalid or has expired. Start signing in again.
+        - `invalid_otp` (401): The verification code is incorrect.
+        - `forbidden` (403): You do not have permission to perform this action.
+        - `email_not_verified` (403): Verify your email address before signing in.
+        - `mfa_required_by_policy` (403): Multi-factor authentication is required by your account's policy and can't be turned off.
+        - `not_found` (404): The requested resource could not be found.
+        - `method_not_allowed` (405): The request method is not supported for this resource.
+        - `not_acceptable` (406): The requested response format is not supported.
+        - `conflict` (409): The request conflicts with the current state of the resource.
+        - `email_taken` (409): A user with this email address already exists in this account.
+        - `mfa_already_enabled` (409): Multi-factor authentication is already turned on.
+        - `last_owner` (409): An account must keep at least one active owner.
+        - `validation_failed` (422): One or more fields are invalid.
+        - `too_many_attempts` (429): Too many failed attempts. Try again later.
+        - `rate_limited` (429): Too many requests. Try again later.
+        - `internal_error` (500): An unexpected error occurred.
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          - details
+          properties:
+            code:
+              type: string
+              enum:
+              - bad_request
+              - unauthorized
+              - invalid_credentials
+              - invalid_token
+              - session_expired
+              - mfa_required
+              - invalid_challenge
+              - invalid_otp
+              - forbidden
+              - email_not_verified
+              - mfa_required_by_policy
+              - not_found
+              - method_not_allowed
+              - not_acceptable
+              - conflict
+              - email_taken
+              - mfa_already_enabled
+              - last_owner
+              - validation_failed
+              - too_many_attempts
+              - rate_limited
+              - internal_error
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                required:
+                - field
+                - message
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+      title: Error
+    Invitation:
+      type: object
+      required:
+      - uid
+      - email
+      - role
+      - expires_at
+      - created_at
+      properties:
+        uid:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - owner
+          - admin
+          - member
+        invited_by_uid:
+          type:
+          - string
+          - 'null'
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+      title: Invitation
+    Me:
+      type: object
+      required:
+      - uid
+      - name
+      - email
+      - role
+      - status
+      - email_verified
+      - mfa_enabled
+      - created_at
+      - updated_at
+      - password_changed_at
+      - account
+      properties:
+        uid:
+          type: string
+          example: usr_3Kd9Wq2LmP7xR5tN8vB4cZ6h
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - owner
+          - admin
+          - member
+        status:
+          type: string
+          enum:
+          - active
+          - disabled
+        email_verified:
+          type: boolean
+        mfa_enabled:
+          type: boolean
+        last_sign_in_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        password_changed_at:
+          type: string
+          format: date-time
+        account:
+          "$ref": "#/components/schemas/Account"
+      title: Me
+    MfaEnrollment:
+      type: object
+      required:
+      - secret
+      - provisioning_uri
+      - qr_code_svg
+      properties:
+        secret:
+          type: string
+          description: Base32 TOTP secret for manual entry.
+        provisioning_uri:
+          type: string
+          description: otpauth:// URI.
+        qr_code_svg:
+          type: string
+          description: The provisioning URI as an SVG QR code.
+      title: MfaEnrollment
+    Project:
+      type: object
+      required:
+      - uid
+      - name
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: proj_9Fk2Lm8Qw3Rt7Yx5Vb1Nc4D
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: Project
+    ProjectMember:
+      type: object
+      required:
+      - user_uid
+      - name
+      - email
+      - role
+      - created_at
+      properties:
+        user_uid:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - admin
+          - developer
+          - viewer
+        created_at:
+          type: string
+          format: date-time
+      title: ProjectMember
+    RecoveryCodes:
+      type: object
+      required:
+      - recovery_codes
+      properties:
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          minItems: 10
+          maxItems: 10
+      title: RecoveryCodes
+    SignInChallenge:
+      type: object
+      required:
+      - challenge
+      - session
+      properties:
+        challenge:
+          type: string
+          enum:
+          - totp
+          - new_password
+          - mfa_setup
+        session:
+          type: string
+          description: Pass to respond-to-challenge. Expires after 5 minutes.
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          description: Only after completing MFA setup.
+      title: SignInChallenge
+    SignInResult:
+      oneOf:
+      - "$ref": "#/components/schemas/TokenSet"
+      - "$ref": "#/components/schemas/SignInChallenge"
+      title: SignInResult
+    TokenSet:
+      type: object
+      required:
+      - access_token
+      - refresh_token
+      - token_type
+      - expires_in
+      properties:
+        access_token:
+          type: string
+          description: JWT. Verify with the account's JWKS.
+        refresh_token:
+          type: string
+          description: Single use. Every refresh returns a new one.
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds.
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          description: Only after completing MFA setup.
+      title: TokenSet
+    User:
+      type: object
+      required:
+      - uid
+      - name
+      - email
+      - role
+      - status
+      - email_verified
+      - mfa_enabled
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: usr_3Kd9Wq2LmP7xR5tN8vB4cZ6h
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - owner
+          - admin
+          - member
+        status:
+          type: string
+          enum:
+          - active
+          - disabled
+        email_verified:
+          type: boolean
+        mfa_enabled:
+          type: boolean
+        last_sign_in_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: User
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    SchemaValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: array
+                items:
+                  type: string
+            required:
+            - error
+            - details
+security: []

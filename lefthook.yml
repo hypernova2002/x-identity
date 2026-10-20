@@ -1,0 +1,18 @@
+pre-commit:
+  commands:
+    backend-rubocop:
+      root: "backend/"
+      glob: "*.rb"
+      run: docker compose run --rm --no-deps backend bundle exec rubocop --force-exclusion {staged_files}
+    backend-rspec:
+      glob: "backend/*"
+      run: docker compose run --rm backend bundle exec rspec
+    web-lint:
+      glob: "web/*.{ts,vue}"
+      run: docker compose run --rm --no-deps web npm run check-lint
+    web-type-check:
+      glob: "web/*.{ts,vue}"
+      run: docker compose run --rm --no-deps web npm run type-check
+    web-test:
+      glob: "web/*"
+      run: docker compose run --rm --no-deps web npm run test
