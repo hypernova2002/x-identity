@@ -31,6 +31,7 @@ export interface NewAppClient {
   client_type: AppClientType
   allowed_origins: string[]
   redirect_uris: string[]
+  post_logout_redirect_uris: string[]
 }
 
 /** Settings for an identity provider. Secrets are write-only: leave them out to keep the current ones. */

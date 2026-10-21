@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import OtpSetup from '@/components/auth/OtpSetup.vue'
 import RecoveryCodesList from '@/components/auth/RecoveryCodesList.vue'
@@ -12,13 +12,18 @@ import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { SelectOption } from '@/components/base/types'
 import DecodedToken from '@/components/project/DecodedToken.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useHostedLoginTest } from '@/composables/useHostedLoginTest'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { useTestSignIn } from '@/composables/useTestSignIn'
+import { oidcService } from '@/services/oidc'
 import { projectAdminService } from '@/services/project'
 import type { AppClient } from '@/types/api'
 
+const route = useRoute()
+const router = useRouter()
 const { accountUid, project } = useProjectContext()
 const flow = useTestSignIn()
+const hostedLogin = useHostedLoginTest()
 const { challenge, enrollment, tokens, recoveryCodes, refreshedAt, signedOut } = flow
 
 const clients = ref<AppClient[]>([])
@@ -33,6 +38,11 @@ const clientOptions = computed<SelectOption[]>(() =>
   clients.value.map((client) => ({ label: `${client.name} (${client.client_type})`, value: client.uid })),
 )
 const selectedClient = computed(() => clients.value.find((client) => client.uid === clientUid.value))
+
+const hostedRedirectUri = computed(() => (project.value ? `${window.location.origin}/console/projects/${project.value.uid}/test-sign-in` : ''))
+const hostedLoginReady = computed(
+  () => selectedClient.value?.client_type === 'public' && selectedClient.value.redirect_uris.includes(hostedRedirectUri.value),
+)
 
 const challengeTitle = computed(() => `Challenge: ${challenge.value?.challenge ?? ''}`)
 
@@ -60,6 +70,29 @@ function signIn() {
   )
 }
 
+function startHostedLogin() {
+  if (!project.value || !selectedClient.value) return
+  hostedLogin.start.run(project.value.token_issuer, selectedClient.value.uid, hostedRedirectUri.value)
+}
+
+function endHostedSession() {
+  if (project.value) window.location.assign(oidcService.logoutUrl(project.value.token_issuer))
+}
+
+async function finishHostedLogin() {
+  const text = (key: string) => (typeof route.query[key] === 'string' ? (route.query[key] as string) : undefined)
+  if (!project.value || (!text('code') && !text('error'))) return
+
+  const result = await hostedLogin.complete.run({
+    code: text('code'),
+    state: text('state'),
+    error: text('error'),
+    errorDescription: text('error_description'),
+  })
+  await router.replace({ query: {} })
+  if (result) flow.adopt({ accountUid: accountUid.value, projectUid: project.value.uid }, { client_id: result.clientId }, result.tokens)
+}
+
 function startOver() {
   flow.reset()
   password.value = ''
@@ -67,9 +100,13 @@ function startOver() {
   flow.answer.error.value = null
   flow.refresh.error.value = null
   flow.signOut.error.value = null
+  hostedLogin.complete.error.value = null
 }
 
-onMounted(() => loadClients.run())
+onMounted(() => {
+  loadClients.run()
+  finishHostedLogin()
+})
 </script>
 
 <template>
@@ -125,6 +162,38 @@ onMounted(() => loadClients.run())
         />
         <BaseButton type="submit" label="Sign in" :loading="flow.signIn.loading.value" class="self-start" />
       </form>
+
+      <section class="flex flex-col gap-4 border-t border-border pt-4" aria-labelledby="hosted-login-heading">
+        <h3 id="hosted-login-heading" class="text-sm font-semibold">Or use hosted login (OpenID Connect)</h3>
+        <p class="text-sm text-text-muted">
+          Runs the authorization code flow with PKCE, with this page as the app: you sign in on the project's hosted login page and
+          come back here with tokens. A hosted login session also signs you in to the project's other apps until you end it.
+        </p>
+        <BaseAlert v-if="hostedLogin.complete.error.value" variant="danger">
+          {{ hostedLogin.complete.error.value.message }}
+          <code class="font-mono text-xs">{{ hostedLogin.complete.error.value.code }}</code>
+        </BaseAlert>
+        <p v-if="hostedLogin.complete.loading.value" class="text-sm text-text-muted" role="status">Finishing hosted sign-in…</p>
+        <BaseAlert v-if="selectedClient?.client_type === 'confidential'" variant="info">
+          Choose a public app client: this page can't keep a client secret.
+        </BaseAlert>
+        <BaseAlert v-else-if="!hostedLoginReady" variant="warning" title="Add this page as a redirect URI">
+          Add <code class="font-mono text-xs break-all">{{ hostedRedirectUri }}</code> to the redirect URIs of
+          {{ selectedClient?.name ?? 'the app client' }} on the
+          <RouterLink :to="{ name: 'project-app-clients' }" class="font-medium text-primary underline hover:text-primary-hover">App clients</RouterLink>
+          page.
+        </BaseAlert>
+        <div class="flex flex-wrap gap-2">
+          <BaseButton
+            label="Sign in with hosted login"
+            variant="secondary"
+            :disabled="!hostedLoginReady"
+            :loading="hostedLogin.start.loading.value"
+            @click="startHostedLogin"
+          />
+          <BaseButton label="End hosted login session" variant="ghost" @click="endHostedSession" />
+        </div>
+      </section>
     </BaseCard>
 
     <BaseCard v-else-if="challenge" :title="challengeTitle" description="The API asked for another step before issuing tokens.">

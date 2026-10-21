@@ -7,8 +7,12 @@ module IdentityProviders
   #    the app's redirect URI with a short-lived code (or an error) and the app's state.
   # 3. {#redeem}: the app exchanges the code and its code verifier for tokens or a challenge, like
   #    password sign-in.
+  #
+  # Hosted login starts with {#authorize_for_interaction} instead; the callback then continues the
+  # hosted sign-in, sending the browser back to the hosted page for any challenge.
   class BrowserSignIn
     CODE_CHALLENGE_FORMAT = /\A[A-Za-z0-9_-]{43}\z/
+    DISABLED_MESSAGE = "This user has been disabled. Ask an administrator to re-enable it.".freeze
 
     # @param project [Project]
     # @param ip [String, nil] the caller's IP address, for the audit log
@@ -34,64 +38,32 @@ module IdentityProviders
       raise ApiError.new(:invalid_redirect_uri) unless app_client.redirect_uri_allowed?(redirect_uri)
       raise ApiError.validation(code_challenge: "must be the base64url SHA-256 of the code verifier") unless code_challenge.match?(CODE_CHALLENGE_FORMAT)
 
-      nonce = SecureRandom.base58(32)
-      provider_verifier = SecureRandom.base58(64) if provider.supports_pkce?
-      _record, provider_state = OneTimeToken.issue!(
-        subject: provider,
-        purpose: :provider_authorization,
-        replace: false,
-        data: {
-          "app_client_id" => app_client.id, "redirect_uri" => redirect_uri, "state" => state,
-          "code_challenge" => code_challenge, "nonce" => nonce, "provider_verifier" => provider_verifier
-        }
-      )
+      provider_url(provider, "app_client_id" => app_client.id, "redirect_uri" => redirect_uri, "state" => state, "code_challenge" => code_challenge)
+    end
 
-      query = {
-        response_type: "code", client_id: provider.client_id, redirect_uri: provider.callback_url,
-        scope: provider.requested_scopes, state: provider_state, nonce: nonce
-      }
-      query.merge!(code_challenge: s256(provider_verifier), code_challenge_method: "S256") if provider_verifier
-      query[:response_mode] = "form_post" if provider.kind_apple?
-
-      "#{provider.endpoints['authorization_endpoint']}?#{query.to_query}"
+    # @param provider [IdentityProvider]
+    # @param interaction [OneTimeToken] the hosted login interaction
+    # @param interaction_token [String] its plaintext, to send the browser back to the hosted page
+    # @return [String] the provider URL to send the user to
+    def authorize_for_interaction(provider:, interaction:, interaction_token:)
+      provider_url(provider, "interaction_id" => interaction.id, "interaction_token" => interaction_token)
     end
 
     # @param state [String, nil] the state x-identity sent to the provider
     # @param code [String, nil]
     # @param error [String, nil] set by the provider when the user cancelled or it failed
     # @param apple_user [String, nil] Apple's `user` JSON, sent with the first sign-in only
-    # @return [String] the app's redirect URI with `code` and `state`, or `error`, `error_description` and `state`
-    # @raise [ApiError] `invalid_state` when there's no app to send the user back to
+    # @return [String] where to send the browser: the app's redirect URI with `code` and `state` (or
+    #   `error`, `error_description` and `state`), or a hosted login page
+    # @raise [ApiError] `invalid_state` when there's nowhere to send the user back to
     def callback(state:, code:, error: nil, apple_user: nil)
       record = state.present? && OneTimeToken.find_usable(state, purpose: :provider_authorization)
       raise ApiError.new(:invalid_state) unless record&.consume! && record.subject.project_id == @project.id
 
       provider = record.subject
       data = record.data
-      app_client = @project.app_clients.enabled.find_by(id: data["app_client_id"])
-      raise ApiError.new(:invalid_state) unless app_client
-
-      begin
-        raise ApiError.new(:identity_provider_error, message: "Signing in with #{provider.name} was cancelled or failed.") if error.present? || code.blank?
-        raise ApiError.new(:invalid_state) unless provider.enabled?
-
-        id_token = CodeRedemption.new(provider: provider, http_client: @http_client).call(code: code, code_verifier: data["provider_verifier"])
-        claims = IdTokenVerifier.new(provider: provider, key_set: @key_set).verify(id_token, nonce: data["nonce"])
-        end_user = resolver(provider, app_client).resolve(claims, name: apple_name(apple_user)).end_user
-
-        _code_record, app_code = OneTimeToken.issue!(
-          subject: end_user,
-          purpose: :provider_code,
-          replace: false,
-          data: {
-            "app_client_id" => app_client.id, "redirect_uri" => data["redirect_uri"], "code_challenge" => data["code_challenge"],
-            "identity_provider_id" => provider.id, "authenticated_at" => Time.current.utc.iso8601(6)
-          }
-        )
-        append_query(data["redirect_uri"], code: app_code, state: data["state"])
-      rescue ApiError => failure
-        append_query(data["redirect_uri"], error: failure.code, error_description: failure.message, state: data["state"])
-      end
+      callback = { provider: provider, code: code, error: error, apple_user: apple_user }
+      data["interaction_id"] ? hosted_callback(data, **callback) : app_callback(data, **callback)
     end
 
     # @param app_client [AppClient]
@@ -108,7 +80,7 @@ module IdentityProviders
       raise ApiError.new(:invalid_code) unless valid && record.consume!
 
       end_user = record.subject
-      raise ApiError.new(:user_disabled, message: "This user has been disabled. Ask an administrator to re-enable it.") unless end_user.active?
+      raise ApiError.new(:user_disabled, message: DISABLED_MESSAGE) unless end_user.active?
 
       Auth::SignInFlow.new(realm: @project.realm, app_client: app_client, ip: @ip, user_agent: @user_agent)
         .continue(user: end_user, amr: [ "fed" ], authenticated_at: Time.zone.parse(data["authenticated_at"]))
@@ -116,8 +88,72 @@ module IdentityProviders
 
     private
 
-    def resolver(provider, app_client)
+    def provider_url(provider, data)
+      nonce = SecureRandom.base58(32)
+      provider_verifier = SecureRandom.base58(64) if provider.supports_pkce?
+      _record, provider_state = OneTimeToken.issue!(
+        subject: provider, purpose: :provider_authorization, replace: false,
+        data: data.merge("nonce" => nonce, "provider_verifier" => provider_verifier)
+      )
+
+      query = {
+        response_type: "code", client_id: provider.client_id, redirect_uri: provider.callback_url,
+        scope: provider.requested_scopes, state: provider_state, nonce: nonce
+      }
+      query.merge!(code_challenge: s256(provider_verifier), code_challenge_method: "S256") if provider_verifier
+      query[:response_mode] = "form_post" if provider.kind_apple?
+
+      "#{provider.endpoints['authorization_endpoint']}?#{query.to_query}"
+    end
+
+    def app_callback(data, provider:, code:, error:, apple_user:)
+      app_client = @project.app_clients.enabled.find_by(id: data["app_client_id"])
+      raise ApiError.new(:invalid_state) unless app_client
+
+      end_user = provider_user(provider, app_client, data, code: code, error: error, apple_user: apple_user)
+      _code_record, app_code = OneTimeToken.issue!(
+        subject: end_user,
+        purpose: :provider_code,
+        replace: false,
+        data: {
+          "app_client_id" => app_client.id, "redirect_uri" => data["redirect_uri"], "code_challenge" => data["code_challenge"],
+          "identity_provider_id" => provider.id, "authenticated_at" => Time.current.utc.iso8601(6)
+        }
+      )
+      Oidc::Urls.append_query(data["redirect_uri"], code: app_code, state: data["state"])
+    rescue ApiError => failure
+      raise if failure.code == :invalid_state && app_client.nil?
+
+      Oidc::Urls.append_query(data["redirect_uri"], error: failure.code, error_description: failure.message, state: data["state"])
+    end
+
+    def hosted_callback(data, provider:, code:, error:, apple_user:)
+      interaction = OneTimeToken.usable.find_by(id: data["interaction_id"], purpose: "oidc_interaction")
+      app_client = interaction&.subject
+      unless app_client&.enabled?
+        return Oidc::Urls.hosted_page(@project, "error", error: "invalid_request", error_description: Oidc::Authorization::EXPIRED)
+      end
+
+      begin
+        end_user = provider_user(provider, app_client, data, code: code, error: error, apple_user: apple_user)
+        result = Auth::SignInFlow.new(realm: @project.realm, app_client: app_client, ip: @ip, user_agent: @user_agent, interaction: interaction)
+          .continue(user: end_user, amr: [ "fed" ], authenticated_at: Time.current)
+        return Oidc::Authorization.new(project: @project, ip: @ip, user_agent: @user_agent).complete(interaction, result.completion) if result.completed?
+
+        Oidc::Urls.hosted_page(@project, "login", interaction: data["interaction_token"], challenge: result.challenge, session: result.session)
+      rescue ApiError => failure
+        Oidc::Urls.hosted_page(@project, "login", interaction: data["interaction_token"], error: failure.code, error_description: failure.message)
+      end
+    end
+
+    def provider_user(provider, app_client, data, code:, error:, apple_user:)
+      raise ApiError.new(:identity_provider_error, message: "Signing in with #{provider.name} was cancelled or failed.") if error.present? || code.blank?
+      raise ApiError.new(:invalid_state) unless provider.enabled?
+
+      id_token = CodeRedemption.new(provider: provider, http_client: @http_client).call(code: code, code_verifier: data["provider_verifier"])
+      claims = IdTokenVerifier.new(provider: provider, key_set: @key_set).verify(id_token, nonce: data["nonce"])
       UserResolver.new(provider: provider, app_client: app_client, ip: @ip, user_agent: @user_agent)
+        .resolve(claims, name: apple_name(apple_user)).end_user
     end
 
     def s256(verifier)
@@ -129,12 +165,6 @@ module IdentityProviders
       name.is_a?(Hash) ? [ name["firstName"], name["lastName"] ].select { |part| part.is_a?(String) }.join(" ").presence : nil
     rescue JSON::ParserError
       nil
-    end
-
-    def append_query(uri, params)
-      parsed = URI.parse(uri)
-      parsed.query = [ parsed.query.presence, params.compact.to_query ].compact.join("&")
-      parsed.to_s
     end
   end
 end

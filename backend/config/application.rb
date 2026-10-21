@@ -40,6 +40,8 @@ module XIdentity
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+    # The hosted login's single sign-on session is a cookie on the OAuth endpoints.
+    config.middleware.use ActionDispatch::Cookies
 
     config.x.app_base_url = ENV.fetch("APP_BASE_URL", "http://localhost:3000")
     config.x.console_base_url = ENV.fetch("CONSOLE_BASE_URL", "http://localhost:5173")

@@ -38,6 +38,20 @@ Rack::Attack.throttle("project-auth-codes/ip", limit: 20, period: 1.minute) do |
   request.ip if request.post? && request.path.match?(%r{#{PROJECT_AUTH_PATH}(confirm-sign-up|confirm-forgot-password|accept-invitation)\z})
 end
 
+OAUTH_PATH = %r{\A/v1/accounts/[^/]+/projects/[^/]+/oauth2/}
+
+Rack::Attack.throttle("oauth2/ip", limit: 60, period: 1.minute) do |request|
+  request.ip if request.path.match?(OAUTH_PATH)
+end
+
+Rack::Attack.throttle("oauth2-email/ip", limit: 10, period: 1.minute) do |request|
+  request.ip if request.post? && request.path.match?(%r{#{OAUTH_PATH}interactions/[^/]+/(sign-up|resend-confirmation|forgot-password)\z})
+end
+
+Rack::Attack.throttle("oauth2-codes/ip", limit: 20, period: 1.minute) do |request|
+  request.ip if request.post? && request.path.match?(%r{#{OAUTH_PATH}interactions/[^/]+/(confirm-sign-up|confirm-forgot-password)\z})
+end
+
 Rack::Attack.throttled_responder = lambda do |request|
   match_data = request.env["rack.attack.match_data"]
   retry_after = match_data[:period] - (match_data[:epoch_time] % match_data[:period])

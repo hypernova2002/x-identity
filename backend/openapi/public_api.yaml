@@ -268,6 +268,10 @@ paths:
                   type: integer
                   minimum: 2592000
                   maximum: 31536000
+                sso_session_ttl_seconds:
+                  type: integer
+                  minimum: 300
+                  maximum: 2592000
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -1220,6 +1224,36 @@ paths:
                       type: object
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/.well-known/openid-configuration":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: OpenID Connect discovery document
+      tags:
+      - OpenID Connect
+      responses:
+        '200':
+          description: the provider's endpoints and capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - issuer
+                - authorization_endpoint
+                - token_endpoint
+                - jwks_uri
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients":
     parameters:
     - name: account_uid
@@ -1275,6 +1309,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                post_logout_redirect_uris:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 2048
+                  maxItems: 20
                 redirect_uris:
                   type: array
                   items:
@@ -3092,6 +3132,35 @@ paths:
           description: removed
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/userinfo":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Claims about the signed-in end user
+      tags:
+      - OpenID Connect
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the user's claims
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - sub
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{uid}":
     parameters:
     - name: account_uid
@@ -3428,6 +3497,7 @@ components:
       - client_type
       - allowed_origins
       - redirect_uris
+      - post_logout_redirect_uris
       - enabled
       - created_at
       - updated_at
@@ -3448,6 +3518,10 @@ components:
           items:
             type: string
         redirect_uris:
+          type: array
+          items:
+            type: string
+        post_logout_redirect_uris:
           type: array
           items:
             type: string
@@ -3468,6 +3542,7 @@ components:
       - client_type
       - allowed_origins
       - redirect_uris
+      - post_logout_redirect_uris
       - enabled
       - created_at
       - updated_at
@@ -3488,6 +3563,10 @@ components:
           items:
             type: string
         redirect_uris:
+          type: array
+          items:
+            type: string
+        post_logout_redirect_uris:
           type: array
           items:
             type: string
@@ -3634,6 +3713,7 @@ components:
       - lockout_duration_seconds
       - access_token_ttl_seconds
       - refresh_token_ttl_seconds
+      - sso_session_ttl_seconds
       - signing_algorithm
       - signing_key_rotation_seconds
       - mfa_max_failed_attempts
@@ -3760,6 +3840,11 @@ components:
           minimum: 300
           maximum: 86400
           description: Seconds.
+        sso_session_ttl_seconds:
+          type: integer
+          minimum: 300
+          maximum: 2592000
+          description: Seconds.
         updated_at:
           type: string
           format: date-time
@@ -3875,6 +3960,7 @@ components:
         - `invalid_code` (400): The code is incorrect or has expired. Request a new one.
         - `invalid_redirect_uri` (400): The redirect URI isn't registered for this app client.
         - `invalid_state` (400): The sign-in request is unknown or has expired. Start signing in again.
+        - `invalid_interaction` (400): This sign-in has expired. Go back to the app and try again.
         - `invalid_id_token` (401): The identity provider's token is invalid or has expired.
         - `forbidden` (403): You do not have permission to perform this action.
         - `email_not_verified` (403): Verify your email address before signing in.
@@ -3921,6 +4007,7 @@ components:
               - invalid_code
               - invalid_redirect_uri
               - invalid_state
+              - invalid_interaction
               - invalid_id_token
               - forbidden
               - email_not_verified

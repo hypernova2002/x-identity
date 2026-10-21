@@ -23,16 +23,19 @@ const name = ref('')
 const clientType = ref<AppClientType>('public')
 const origins = ref('')
 const redirectUris = ref('')
+const postLogoutUris = ref('')
 const editing = ref<AppClient | null>(null)
 const editName = ref('')
 const editOrigins = ref('')
 const editRedirectUris = ref('')
+const editPostLogoutUris = ref('')
 const revealed = ref<AppClientWithSecret | null>(null)
 const pendingDelete = ref<AppClient | null>(null)
 
 const redirectUrisHint =
-  'Where users return after signing in with a sign-in provider, matched exactly. https URLs, http://localhost URLs, ' +
-  'or app schemes like com.example.shop:/callback. Separate several with commas.'
+  'Where users return after signing in through hosted login or a sign-in provider, matched exactly. https URLs, ' +
+  'http://localhost URLs, or app schemes like com.example.shop:/callback. Separate several with commas.'
+const postLogoutUrisHint = 'Where your app may send users after logging out of hosted login, matched exactly. Separate several with commas.'
 
 const columns = [
   { key: 'name', label: 'Name' },
@@ -55,12 +58,14 @@ const create = useAsyncAction(async () => {
     client_type: clientType.value,
     allowed_origins: parseList(origins.value),
     redirect_uris: parseList(redirectUris.value),
+    post_logout_redirect_uris: parseList(postLogoutUris.value),
   })
   clients.value = [...clients.value, created]
   createOpen.value = false
   name.value = ''
   origins.value = ''
   redirectUris.value = ''
+  postLogoutUris.value = ''
   revealed.value = created
 })
 
@@ -69,6 +74,7 @@ function startEditing(client: AppClient) {
   editName.value = client.name
   editOrigins.value = client.allowed_origins.join(', ')
   editRedirectUris.value = client.redirect_uris.join(', ')
+  editPostLogoutUris.value = client.post_logout_redirect_uris.join(', ')
   update.error.value = null
 }
 
@@ -78,6 +84,7 @@ const update = useAsyncAction(async () => {
     name: editName.value,
     allowed_origins: parseList(editOrigins.value),
     redirect_uris: parseList(editRedirectUris.value),
+    post_logout_redirect_uris: parseList(editPostLogoutUris.value),
   })
   clients.value = clients.value.map((existing) => (existing.uid === updated.uid ? updated : existing))
   editing.value = null
@@ -187,6 +194,12 @@ onMounted(() => load.run())
         :hint="redirectUrisHint"
         :error="create.error.value?.fieldError('redirect_uris')"
       />
+      <BaseInput
+        v-model="postLogoutUris"
+        label="Post-logout redirect URIs"
+        :hint="postLogoutUrisHint"
+        :error="create.error.value?.fieldError('post_logout_redirect_uris')"
+      />
     </form>
     <template #footer>
       <BaseButton label="Cancel" variant="secondary" @click="createOpen = false" />
@@ -209,6 +222,12 @@ onMounted(() => load.run())
         label="Redirect URIs"
         :hint="redirectUrisHint"
         :error="update.error.value?.fieldError('redirect_uris')"
+      />
+      <BaseInput
+        v-model="editPostLogoutUris"
+        label="Post-logout redirect URIs"
+        :hint="postLogoutUrisHint"
+        :error="update.error.value?.fieldError('post_logout_redirect_uris')"
       />
     </form>
     <template #footer>

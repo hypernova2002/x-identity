@@ -21,6 +21,7 @@ type NumberField =
   | 'access_token_ttl_seconds'
   | 'refresh_token_ttl_seconds'
   | 'session_idle_timeout_seconds'
+  | 'sso_session_ttl_seconds'
   | 'signing_key_rotation_seconds'
   | 'mfa_max_failed_attempts'
   | 'email_code_max_attempts'
@@ -40,6 +41,7 @@ const props = defineProps<{
   readonly?: boolean
   emailVerificationHint: string
   showEmailCodeLimits?: boolean
+  showSsoSession?: boolean
 }>()
 
 const mfaRequirement = ref<MfaRequirement>('optional')
@@ -60,6 +62,7 @@ const numbers = ref<Record<NumberField, string>>({
   access_token_ttl_seconds: '',
   refresh_token_ttl_seconds: '',
   session_idle_timeout_seconds: '',
+  sso_session_ttl_seconds: '',
   signing_key_rotation_seconds: '',
   mfa_max_failed_attempts: '',
   email_code_max_attempts: '',
@@ -318,6 +321,14 @@ onMounted(() => load.run())
           type="number"
           :hint="durationHint('session_idle_timeout_seconds', '5 minutes to 30 days.', 'Leave empty for no idle timeout.')"
           :error="save.error.value?.fieldError('session_idle_timeout_seconds')"
+        />
+        <BaseInput
+          v-if="showSsoSession"
+          v-model="numbers.sso_session_ttl_seconds"
+          label="Hosted login session (seconds)"
+          type="number"
+          :hint="durationHint('sso_session_ttl_seconds', '5 minutes to 30 days.', 'How long signing in on the hosted login page also signs users in to the project\'s other apps.')"
+          :error="save.error.value?.fieldError('sso_session_ttl_seconds')"
         />
       </div>
     </BaseCard>

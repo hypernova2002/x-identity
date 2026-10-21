@@ -6,9 +6,11 @@ module Auth
     # @param app_client [AppClient, nil] must be the client the sign-in started with
     # @param ip [String, nil] the caller's IP address, for the audit log
     # @param user_agent [String, nil]
-    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil)
+    # @param interaction [OneTimeToken, nil] must be the hosted login interaction the sign-in started in
+    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil, interaction: nil)
       @realm = realm
       @app_client = app_client
+      @interaction = interaction
       @ip = ip
       @user_agent = user_agent
       @configuration = realm.auth_configuration
@@ -38,7 +40,7 @@ module Auth
 
       raise ApiError.new(:invalid_challenge) unless record.consume!
 
-      SignInFlow.new(realm: @realm, app_client: @app_client, ip: @ip, user_agent: @user_agent).continue(
+      SignInFlow.new(realm: @realm, app_client: @app_client, ip: @ip, user_agent: @user_agent, interaction: @interaction).continue(
         user: user,
         amr: amr,
         authenticated_at: Time.iso8601(record.data["authenticated_at"]),
@@ -63,7 +65,8 @@ module Auth
         @realm.owns?(user) &&
         user.active? &&
         record.data["challenge"] == challenge &&
-        record.data["app_client_id"] == @app_client&.id
+        record.data["app_client_id"] == @app_client&.id &&
+        record.data["interaction_id"] == @interaction&.id
 
       raise ApiError.new(:invalid_challenge) unless valid
 

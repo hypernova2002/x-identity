@@ -53,6 +53,29 @@ Rails.application.routes.draw do
       # so the rest of the project's routes are scoped explicitly.
       scope "projects/:project_uid", module: :projects, as: :project do
         get ".well-known/jwks.json", to: "jwks#show", format: false, as: :jwks
+        get ".well-known/openid-configuration", to: "openid_configurations#show", format: false, as: :openid_configuration
+
+        scope "oauth2", module: :oauth2, as: :oauth2 do
+          get "authorize", to: "authorizations#new"
+          get "authorize/resume", to: "authorizations#resume", as: :authorize_resume
+          post "token", to: "tokens#create"
+          match "userinfo", to: "userinfo#show", via: %i[get post]
+          post "revoke", to: "revocations#create"
+          match "logout", to: "logouts#create", via: %i[get post]
+
+          scope "interactions/:interaction", as: :interaction do
+            get "/", to: "interactions#show"
+            post "sign-in", to: "interactions#sign_in"
+            post "respond-to-challenge", to: "interactions#respond_to_challenge"
+            post "mfa-setup", to: "interactions#mfa_setup"
+            post "sign-up", to: "interactions#sign_up"
+            post "confirm-sign-up", to: "interactions#confirm_sign_up"
+            post "resend-confirmation", to: "interactions#resend_confirmation"
+            post "forgot-password", to: "interactions#forgot_password"
+            post "confirm-forgot-password", to: "interactions#confirm_forgot_password"
+            get "providers/:uid", to: "interactions#provider", as: :provider
+          end
+        end
 
         scope "auth", module: :auth, as: :auth do
           post "sign-up", to: "sign_ups#create"

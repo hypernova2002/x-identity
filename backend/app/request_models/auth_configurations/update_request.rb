@@ -24,6 +24,7 @@ module AuthConfigurations
     attribute? :access_token_ttl_seconds, seconds(:access_token_ttl_seconds, "Access token lifetime.")
     attribute? :refresh_token_ttl_seconds, seconds(:refresh_token_ttl_seconds, "Session lifetime from sign-in.")
     attribute? :session_idle_timeout_seconds, seconds(:session_idle_timeout_seconds, "Unused sessions end after this; null means never.")
+    attribute? :sso_session_ttl_seconds, seconds(:sso_session_ttl_seconds, "Projects only: how long a hosted login session signs users in to other apps.")
     attribute? :signing_algorithm, T::String.enum(*SigningKey::ALGORITHMS)
     attribute? :signing_key_rotation_seconds, seconds(:signing_key_rotation_seconds, "How often signing keys are replaced.")
     attribute? :mfa_max_failed_attempts, T::Integer.constrained(gteq: 3, lteq: 20)

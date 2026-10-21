@@ -14,20 +14,24 @@ module Auth
     # @param amr [Array<String>] authentication methods used, e.g. `["pwd", "otp"]`
     # @param family_id [String] the refresh token family; a new sign-in starts a new family
     # @param refresh_expires_at [Time, nil] keeps a family's absolute lifetime fixed across rotations
+    # @param nonce [String, nil] echoed in the ID token, for OpenID Connect clients
+    # @param refresh [Boolean] false issues no refresh token (OpenID Connect without offline_access)
     # @return [TokenSet]
-    def issue(user:, authenticated_at:, amr:, family_id: SecureRandom.uuid, refresh_expires_at: nil)
+    def issue(user:, authenticated_at:, amr:, family_id: SecureRandom.uuid, refresh_expires_at: nil, nonce: nil, refresh: true)
       now = Time.current
-      refresh_token = SecureRandom.base58(43)
+      refresh_token = SecureRandom.base58(43) if refresh
 
-      RefreshToken.create!(
-        subject: user,
-        app_client_id: @app_client&.id,
-        token_digest: RefreshToken.digest(refresh_token),
-        family_id: family_id,
-        authenticated_at: authenticated_at,
-        amr: amr,
-        expires_at: refresh_expires_at || now + @configuration.refresh_token_ttl
-      )
+      if refresh
+        RefreshToken.create!(
+          subject: user,
+          app_client_id: @app_client&.id,
+          token_digest: RefreshToken.digest(refresh_token),
+          family_id: family_id,
+          authenticated_at: authenticated_at,
+          amr: amr,
+          expires_at: refresh_expires_at || now + @configuration.refresh_token_ttl
+        )
+      end
 
       key = SigningKeys::Rotator.new(owner: @realm.owner, configuration: @configuration).current
       base = base_claims(user, authenticated_at, now)
@@ -36,7 +40,7 @@ module Auth
         access_token: sign(key, base.merge(token_use: "access", amr: amr, sid: family_id, jti: SecureRandom.uuid).merge(client_claims)),
         refresh_token: refresh_token,
         expires_in: @configuration.access_token_ttl.to_i,
-        id_token: @app_client ? sign(key, base.merge(id_claims(user))) : nil
+        id_token: @app_client ? sign(key, base.merge(id_claims(user)).merge({ nonce: nonce }.compact)) : nil
       )
     end
 

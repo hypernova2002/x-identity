@@ -90,6 +90,7 @@ export interface AppClient {
   client_type: AppClientType
   allowed_origins: string[]
   redirect_uris: string[]
+  post_logout_redirect_uris: string[]
   enabled: boolean
   created_at: string
   updated_at: string
@@ -119,6 +120,27 @@ export interface IdentityProvider {
   created_at: string
   updated_at: string
 }
+
+export interface IdentityProviderSummary {
+  uid: string
+  kind: IdentityProviderKind
+  name: string
+}
+
+/** What the hosted login page shows for one sign-in. */
+export interface HostedLoginDetails {
+  account_name: string
+  project_name: string
+  app_name: string
+  allow_self_sign_up: boolean
+  login_hint: string | null
+  identity_providers: IdentityProviderSummary[]
+}
+
+/** The hosted page never receives tokens: a finished sign-in only says where to send the browser. */
+export type HostedSignInResult =
+  | { challenge: SignInChallengeName; session: string; recovery_codes?: string[] }
+  | { redirect_to: string; recovery_codes?: string[] }
 
 export interface EndUserIdentity {
   uid: string
@@ -196,6 +218,7 @@ export interface AuthConfiguration {
   access_token_ttl_seconds: number
   refresh_token_ttl_seconds: number
   session_idle_timeout_seconds: number | null
+  sso_session_ttl_seconds: number
   signing_algorithm: SigningAlgorithm
   signing_key_rotation_seconds: number
   mfa_max_failed_attempts: number

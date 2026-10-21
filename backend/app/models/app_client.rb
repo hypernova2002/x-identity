@@ -18,6 +18,7 @@ class AppClient < ApplicationRecord
   validates :name, presence: true, length: { maximum: 100 }
   validate :allowed_origins_are_origins
   validate :redirect_uris_are_valid
+  validate :post_logout_redirect_uris_are_valid
 
   scope :enabled, -> { where(enabled: true) }
 
@@ -39,6 +40,12 @@ class AppClient < ApplicationRecord
   # @return [Boolean] whether the uri is registered, compared exactly
   def redirect_uri_allowed?(uri)
     uri.present? && redirect_uris.include?(uri)
+  end
+
+  # @param uri [String, nil]
+  # @return [Boolean] whether the uri is a registered post-logout redirect URI, compared exactly
+  def post_logout_redirect_uri_allowed?(uri)
+    uri.present? && post_logout_redirect_uris.include?(uri)
   end
 
   # Public clients need no secret; confidential clients must present theirs.
@@ -63,14 +70,21 @@ class AppClient < ApplicationRecord
   end
 
   def redirect_uris_are_valid
-    unless redirect_uris.is_a?(Array) && redirect_uris.size <= MAX_REDIRECT_URIS
-      return errors.add(:redirect_uris, "must be a list of at most #{MAX_REDIRECT_URIS} URIs")
-    end
+    validate_uri_list(:redirect_uris)
+  end
 
-    invalid = redirect_uris.reject { |uri| uri.is_a?(String) && valid_redirect_uri?(uri) }
+  def post_logout_redirect_uris_are_valid
+    validate_uri_list(:post_logout_redirect_uris)
+  end
+
+  def validate_uri_list(attribute)
+    uris = public_send(attribute)
+    return errors.add(attribute, "must be a list of at most #{MAX_REDIRECT_URIS} URIs") unless uris.is_a?(Array) && uris.size <= MAX_REDIRECT_URIS
+
+    invalid = uris.reject { |uri| uri.is_a?(String) && valid_redirect_uri?(uri) }
     return if invalid.empty?
 
-    errors.add(:redirect_uris, "must be https URLs, http://localhost URLs or app schemes like com.example.app:/callback, " \
+    errors.add(attribute, "must be https URLs, http://localhost URLs or app schemes like com.example.app:/callback, " \
       "without a fragment: #{invalid.join(', ')}")
   end
 

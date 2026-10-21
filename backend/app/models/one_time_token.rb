@@ -11,7 +11,10 @@ class OneTimeToken < ApplicationRecord
     "invitation" => 7.days,
     "sign_in_challenge" => 5.minutes,
     "provider_authorization" => 10.minutes,
-    "provider_code" => 1.minute
+    "provider_code" => 1.minute,
+    "oidc_interaction" => 30.minutes,
+    "oidc_login_ticket" => 2.minutes,
+    "oidc_code" => 1.minute
   }.freeze
   CODE_GENERATION_TRIES = 10
 

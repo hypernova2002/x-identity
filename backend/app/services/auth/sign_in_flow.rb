@@ -1,6 +1,8 @@
 module Auth
   # Decides what a user who has proven some factors must do next: answer another challenge,
-  # or receive tokens. Shared by password sign-in and every challenge response.
+  # or receive tokens. Shared by password sign-in and every challenge response. Sign-ins through
+  # hosted login carry their interaction, end with a {SignInCompletion} instead of tokens, and their
+  # challenges can only be answered through that interaction.
   class SignInFlow
     CHALLENGES = %w[otp new_password mfa_setup].freeze
 
@@ -8,9 +10,11 @@ module Auth
     # @param app_client [AppClient, nil]
     # @param ip [String, nil] the caller's IP address, for the audit log
     # @param user_agent [String, nil]
-    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil)
+    # @param interaction [OneTimeToken, nil] the hosted login interaction the sign-in belongs to
+    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil, interaction: nil)
       @realm = realm
       @app_client = app_client
+      @interaction = interaction
       @ip = ip
       @user_agent = user_agent
       @configuration = realm.auth_configuration
@@ -32,7 +36,8 @@ module Auth
             "challenge" => challenge,
             "amr" => amr,
             "authenticated_at" => authenticated_at.utc.iso8601(6),
-            "app_client_id" => @app_client&.id
+            "app_client_id" => @app_client&.id,
+            "interaction_id" => @interaction&.id
           }
         )
         return SignInResult.challenged(challenge, session, recovery_codes: recovery_codes)
@@ -41,6 +46,10 @@ module Auth
       user.record_sign_in!
       @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
         .record(action: "#{@realm.event_prefix}.signed_in", actor: user, target: user, metadata: { amr: amr })
+      if @interaction
+        return SignInResult.completed(SignInCompletion.new(user: user, amr: amr, authenticated_at: authenticated_at), recovery_codes: recovery_codes)
+      end
+
       tokens = TokenIssuer.new(realm: @realm, app_client: @app_client).issue(user: user, authenticated_at: authenticated_at, amr: amr)
       SignInResult.authenticated(tokens, recovery_codes: recovery_codes)
     end

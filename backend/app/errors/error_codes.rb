@@ -13,6 +13,7 @@ module ErrorCodes
     invalid_code: { status: 400, default_message: "The code is incorrect or has expired. Request a new one." },
     invalid_redirect_uri: { status: 400, default_message: "The redirect URI isn't registered for this app client." },
     invalid_state: { status: 400, default_message: "The sign-in request is unknown or has expired. Start signing in again." },
+    invalid_interaction: { status: 400, default_message: "This sign-in has expired. Go back to the app and try again." },
     invalid_id_token: { status: 401, default_message: "The identity provider's token is invalid or has expired." },
     forbidden: { status: 403, default_message: "You do not have permission to perform this action." },
     email_not_verified: { status: 403, default_message: "Verify your email address before signing in." },

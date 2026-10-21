@@ -45,6 +45,13 @@ export function useTestSignIn() {
     signedOut.value = false
   }
 
+  /** Shows tokens obtained another way, e.g. through hosted login, so they can be refreshed and revoked here. */
+  function adopt(project: ProjectRef, client: ClientCredentials, issued: TokenSet) {
+    reset()
+    target.value = { project, client }
+    tokens.value = issued
+  }
+
   const signIn = useAsyncAction(async (project: ProjectRef, client: ClientCredentials, email: string, password: string) => {
     reset()
     target.value = { project, client }
@@ -77,5 +84,5 @@ export function useTestSignIn() {
     signedOut.value = true
   })
 
-  return { challenge, enrollment, tokens, recoveryCodes, refreshedAt, signedOut, signIn, answer, refresh, signOut, reset }
+  return { challenge, enrollment, tokens, recoveryCodes, refreshedAt, signedOut, signIn, answer, refresh, signOut, reset, adopt }
 }

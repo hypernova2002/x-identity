@@ -8,6 +8,7 @@ class EndUser < ApplicationRecord
 
   belongs_to :project
   has_many :identities, class_name: "EndUserIdentity", dependent: :delete_all
+  has_many :browser_sessions, dependent: :delete_all
 
   validates :email,
     presence: true,

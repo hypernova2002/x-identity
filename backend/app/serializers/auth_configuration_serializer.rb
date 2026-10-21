@@ -16,6 +16,7 @@ class AuthConfigurationSerializer
     access_token_ttl_seconds
     refresh_token_ttl_seconds
     session_idle_timeout_seconds
+    sso_session_ttl_seconds
     signing_algorithm
     signing_key_rotation_seconds
     mfa_max_failed_attempts

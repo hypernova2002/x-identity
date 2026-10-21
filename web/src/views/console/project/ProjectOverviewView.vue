@@ -67,9 +67,15 @@ const destroy = useAsyncAction(async () => {
       <dl class="grid gap-4 text-sm sm:grid-cols-[max-content_1fr]">
         <dt class="font-medium">API base URL and token issuer (iss)</dt>
         <dd class="font-mono text-xs break-all">{{ project.token_issuer }}</dd>
+        <dt class="font-medium">OpenID Connect discovery</dt>
+        <dd class="font-mono text-xs break-all">{{ project.token_issuer }}/.well-known/openid-configuration</dd>
         <dt class="font-medium">JWKS</dt>
         <dd class="font-mono text-xs break-all">{{ project.token_issuer }}/.well-known/jwks.json</dd>
       </dl>
+      <p class="text-sm text-text-muted">
+        Any OpenID Connect library can sign users in with hosted login: point it at the issuer, and use an app client's ID with one
+        of its redirect URIs. The authorization code flow with PKCE is required.
+      </p>
     </BaseCard>
 
     <BaseCard title="Settings">

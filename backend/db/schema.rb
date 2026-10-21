@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_230002) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_22_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -35,6 +35,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_230002) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.jsonb "redirect_uris", default: [], null: false
+    t.jsonb "post_logout_redirect_uris", default: [], null: false
     t.index ["allowed_origins"], name: "index_app_clients_on_allowed_origins", using: :gin
     t.index ["project_id"], name: "index_app_clients_on_project_id"
     t.index ["uid"], name: "index_app_clients_on_uid", unique: true
@@ -96,7 +97,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_230002) do
     t.integer "otp_drift_steps", default: 1, null: false
     t.integer "otp_hotp_look_ahead", default: 10, null: false
     t.string "otp_method", default: "totp", null: false
+    t.integer "sso_session_ttl_seconds", default: 28800, null: false
     t.index ["owner_type", "owner_id"], name: "index_auth_configurations_on_owner_type_and_owner_id", unique: true
+  end
+
+  create_table "browser_sessions", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.bigint "end_user_id", null: false
+    t.string "token_digest", null: false
+    t.jsonb "amr", default: [], null: false
+    t.datetime "authenticated_at", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "revoked_at"
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["end_user_id"], name: "index_browser_sessions_on_end_user_id"
+    t.index ["project_id"], name: "index_browser_sessions_on_project_id"
+    t.index ["token_digest"], name: "index_browser_sessions_on_token_digest", unique: true
   end
 
   create_table "end_user_attribute_definitions", force: :cascade do |t|

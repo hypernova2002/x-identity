@@ -16,7 +16,8 @@ class AuthConfiguration < ApplicationRecord
     refresh_token_ttl_seconds: 1.day.to_i..365.days.to_i,
     session_idle_timeout_seconds: 5.minutes.to_i..30.days.to_i,
     signing_key_rotation_seconds: 30.days.to_i..365.days.to_i,
-    email_code_failure_window_seconds: 5.minutes.to_i..1.day.to_i
+    email_code_failure_window_seconds: 5.minutes.to_i..1.day.to_i,
+    sso_session_ttl_seconds: 5.minutes.to_i..30.days.to_i
   }.freeze
   OPTIONAL_DURATIONS = %i[password_max_age_seconds session_idle_timeout_seconds].freeze
 

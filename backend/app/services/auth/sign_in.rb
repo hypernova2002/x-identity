@@ -5,9 +5,11 @@ module Auth
     # @param app_client [AppClient, nil] required for end users
     # @param ip [String, nil] the caller's IP address, for the audit log
     # @param user_agent [String, nil]
-    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil)
+    # @param interaction [OneTimeToken, nil] set for sign-ins through hosted login
+    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil, interaction: nil)
       @realm = realm
       @app_client = app_client
+      @interaction = interaction
       @ip = ip
       @user_agent = user_agent
       @configuration = realm.auth_configuration
@@ -32,7 +34,7 @@ module Auth
       lockout.reset(email)
       raise ApiError.new(:email_not_verified) if @configuration.require_email_verification && !user.email_verified?
 
-      SignInFlow.new(realm: @realm, app_client: @app_client, ip: @ip, user_agent: @user_agent)
+      SignInFlow.new(realm: @realm, app_client: @app_client, ip: @ip, user_agent: @user_agent, interaction: @interaction)
         .continue(user: user, amr: [ "pwd" ], authenticated_at: Time.current)
     end
 

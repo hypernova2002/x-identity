@@ -37,6 +37,15 @@ const router = createRouter({
       ],
     },
     {
+      path: '/auth/:slug/:projectUid',
+      component: () => import('../layouts/HostedLayout.vue'),
+      children: [
+        { path: 'login', name: 'hosted-login', component: () => import('../views/hosted/HostedLoginView.vue') },
+        { path: 'error', name: 'hosted-error', component: () => import('../views/hosted/HostedErrorView.vue') },
+        { path: 'signed-out', name: 'hosted-signed-out', component: () => import('../views/hosted/HostedSignedOutView.vue') },
+      ],
+    },
+    {
       path: '/console',
       component: () => import('../layouts/ConsoleLayout.vue'),
       meta: { requiresAuth: true },
