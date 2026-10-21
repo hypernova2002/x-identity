@@ -39,5 +39,15 @@ RSpec.describe AuthConfiguration do
 
       expect(configuration).not_to be_valid
     end
+
+    it "uses exactly one OTP method" do
+      configuration.otp_method = "hotp"
+      expect(configuration).to be_valid
+
+      [ "both", "", nil ].each do |method|
+        configuration.otp_method = method
+        expect(configuration).not_to be_valid
+      end
+    end
   end
 end

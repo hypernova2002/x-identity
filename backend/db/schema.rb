@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_220001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_230002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -34,6 +34,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_220001) do
     t.boolean "enabled", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "redirect_uris", default: [], null: false
     t.index ["allowed_origins"], name: "index_app_clients_on_allowed_origins", using: :gin
     t.index ["project_id"], name: "index_app_clients_on_project_id"
     t.index ["uid"], name: "index_app_clients_on_uid", unique: true
@@ -90,11 +91,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_220001) do
     t.integer "email_code_max_failures_per_email", default: 10, null: false
     t.integer "email_code_max_failures_per_code", default: 5, null: false
     t.integer "email_code_failure_window_seconds", default: 3600, null: false
-    t.jsonb "otp_methods", default: ["totp"], null: false
     t.integer "otp_digits", default: 6, null: false
     t.integer "otp_step_seconds", default: 30, null: false
     t.integer "otp_drift_steps", default: 1, null: false
     t.integer "otp_hotp_look_ahead", default: 10, null: false
+    t.string "otp_method", default: "totp", null: false
     t.index ["owner_type", "owner_id"], name: "index_auth_configurations_on_owner_type_and_owner_id", unique: true
   end
 
@@ -114,6 +115,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_220001) do
     t.index ["uid"], name: "index_end_user_attribute_definitions_on_uid", unique: true
   end
 
+  create_table "end_user_identities", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "end_user_id", null: false
+    t.bigint "identity_provider_id", null: false
+    t.string "subject", null: false
+    t.string "email"
+    t.datetime "last_sign_in_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["end_user_id", "identity_provider_id"], name: "idx_on_end_user_id_identity_provider_id_2bf08fa548", unique: true
+    t.index ["end_user_id"], name: "index_end_user_identities_on_end_user_id"
+    t.index ["identity_provider_id", "subject"], name: "index_end_user_identities_on_identity_provider_id_and_subject", unique: true
+    t.index ["identity_provider_id"], name: "index_end_user_identities_on_identity_provider_id"
+    t.index ["uid"], name: "index_end_user_identities_on_uid", unique: true
+  end
+
   create_table "end_users", force: :cascade do |t|
     t.string "uid", null: false
     t.bigint "project_id", null: false
@@ -131,6 +148,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_220001) do
     t.integer "failed_mfa_attempts", default: 0, null: false
     t.index ["project_id", "email"], name: "index_end_users_on_project_id_and_email", unique: true
     t.index ["uid"], name: "index_end_users_on_uid", unique: true
+  end
+
+  create_table "identity_providers", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.string "kind", null: false
+    t.string "name", null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "client_id", null: false
+    t.text "client_secret"
+    t.jsonb "additional_audiences", default: [], null: false
+    t.string "scopes", default: "openid email profile", null: false
+    t.string "discovery_url"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "apple_team_id"
+    t.string "apple_key_id"
+    t.text "apple_private_key"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id"], name: "index_identity_providers_on_project_id"
+    t.index ["uid"], name: "index_identity_providers_on_uid", unique: true
   end
 
   create_table "invitations", force: :cascade do |t|

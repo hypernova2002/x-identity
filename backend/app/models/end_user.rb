@@ -7,6 +7,7 @@ class EndUser < ApplicationRecord
   self.uid_prefix = "eu"
 
   belongs_to :project
+  has_many :identities, class_name: "EndUserIdentity", dependent: :delete_all
 
   validates :email,
     presence: true,

@@ -48,11 +48,10 @@ module Auth
 
     # Starts OTP enrolment for a user answering the `mfa_setup` challenge.
     # @param session [String]
-    # @param otp_type [String, nil] "totp" or "hotp"
     # @return [Mfa::Enrollment]
-    def start_mfa_setup(session:, otp_type: nil)
+    def start_mfa_setup(session:)
       record = find_session!(session, "mfa_setup")
-      Mfa::OtpEnrollment.new(user: record.subject, ip: @ip, user_agent: @user_agent).start(otp_type: otp_type)
+      Mfa::OtpEnrollment.new(user: record.subject, ip: @ip, user_agent: @user_agent).start
     end
 
     private

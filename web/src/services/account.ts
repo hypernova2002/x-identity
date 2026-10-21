@@ -7,7 +7,6 @@ import type {
   Invitation,
   Me,
   MfaEnrollment,
-  OtpType,
   Project,
   ProjectMember,
   ProjectRole,
@@ -47,8 +46,7 @@ export const meService = {
       body: { new_email: newEmail, current_password: currentPassword, otp_code: otpCode },
     }),
 
-  startOtp: (accountUid: string, otpType: OtpType) =>
-    apiRequest<MfaEnrollment>(`${base(accountUid)}/me/otp`, { ...authenticated, method: 'POST', body: { otp_type: otpType } }),
+  startOtp: (accountUid: string) => apiRequest<MfaEnrollment>(`${base(accountUid)}/me/otp`, { ...authenticated, method: 'POST' }),
 
   confirmOtp: (accountUid: string, code: string) =>
     apiRequest<{ recovery_codes: string[] }>(`${base(accountUid)}/me/otp/confirm`, { ...authenticated, method: 'POST', body: { code } }),

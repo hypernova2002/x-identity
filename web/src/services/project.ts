@@ -10,7 +10,10 @@ import type {
   AuthConfiguration,
   CustomAttributes,
   EndUser,
+  EndUserIdentity,
   EndUserStatus,
+  IdentityProvider,
+  IdentityProviderKind,
 } from '@/types/api'
 
 const authenticated = { authenticated: true } as const
@@ -27,6 +30,21 @@ export interface NewAppClient {
   name: string
   client_type: AppClientType
   allowed_origins: string[]
+  redirect_uris: string[]
+}
+
+/** Settings for an identity provider. Secrets are write-only: leave them out to keep the current ones. */
+export interface IdentityProviderInput {
+  name: string
+  client_id: string
+  client_secret?: string
+  additional_audiences: string[]
+  scopes?: string
+  discovery_url?: string
+  apple_team_id?: string
+  apple_key_id?: string
+  apple_private_key?: string
+  enabled?: boolean
 }
 
 /** Attribute values to send; `null` clears a value. */
@@ -89,6 +107,35 @@ export const projectAdminService = {
 
   deleteAppClient: (accountUid: string, projectUid: string, clientUid: string) =>
     apiRequest<null>(`${base(accountUid, projectUid)}/app-clients/${clientUid}`, { ...authenticated, method: 'DELETE' }),
+
+  listIdentityProviders: (accountUid: string, projectUid: string) =>
+    apiPage<IdentityProvider>(`${base(accountUid, projectUid)}/identity-providers`, { ...authenticated, query: { per_page: 100 } }),
+
+  createIdentityProvider: (accountUid: string, projectUid: string, kind: IdentityProviderKind, input: IdentityProviderInput) =>
+    apiRequest<IdentityProvider>(`${base(accountUid, projectUid)}/identity-providers`, {
+      ...authenticated,
+      method: 'POST',
+      body: { kind, ...input },
+    }),
+
+  updateIdentityProvider: (accountUid: string, projectUid: string, providerUid: string, changes: Partial<IdentityProviderInput>) =>
+    apiRequest<IdentityProvider>(`${base(accountUid, projectUid)}/identity-providers/${providerUid}`, {
+      ...authenticated,
+      method: 'PATCH',
+      body: changes,
+    }),
+
+  deleteIdentityProvider: (accountUid: string, projectUid: string, providerUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/identity-providers/${providerUid}`, { ...authenticated, method: 'DELETE' }),
+
+  listEndUserIdentities: (accountUid: string, projectUid: string, endUserUid: string) =>
+    apiRequest<EndUserIdentity[]>(`${base(accountUid, projectUid)}/end-users/${endUserUid}/identities`, authenticated),
+
+  unlinkEndUserIdentity: (accountUid: string, projectUid: string, endUserUid: string, identityUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/end-users/${endUserUid}/identities/${identityUid}`, {
+      ...authenticated,
+      method: 'DELETE',
+    }),
 
   listEndUsers: (accountUid: string, projectUid: string, page: number, filters: EndUserFilters) =>
     apiPage<EndUser>(`${base(accountUid, projectUid)}/end-users`, {

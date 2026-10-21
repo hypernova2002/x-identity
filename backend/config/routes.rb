@@ -66,6 +66,12 @@ Rails.application.routes.draw do
           post "forgot-password", to: "password_resets#create"
           post "confirm-forgot-password", to: "password_resets#update"
           post "accept-invitation", to: "invitation_acceptances#create"
+
+          get "providers", to: "providers#index"
+          match "providers/callback", to: "providers#callback", via: %i[get post], as: :provider_callback
+          post "providers/token", to: "providers#token", as: :provider_token
+          get "providers/:uid/authorize", to: "providers#authorize", as: :provider_authorize
+          post "providers/:uid/id-token", to: "providers#id_token", as: :provider_id_token
         end
 
         get "me", to: "me#show"
@@ -78,11 +84,14 @@ Rails.application.routes.draw do
           post "otp/confirm", to: "otps#confirm"
           delete "otp", to: "otps#destroy"
           post "recovery-codes", to: "recovery_codes#create"
+          get "identities", to: "identities#index"
+          delete "identities/:uid", to: "identities#destroy", as: :identity
         end
 
         get "auth-configuration", to: "auth_configurations#show"
         put "auth-configuration", to: "auth_configurations#update"
 
+        resources :identity_providers, path: "identity-providers", param: :uid, only: %i[index show create update destroy]
         resources :app_clients, path: "app-clients", param: :uid, only: %i[index show create update destroy] do
           post "rotate-secret", on: :member, action: :rotate_secret
         end
@@ -91,6 +100,8 @@ Rails.application.routes.draw do
             delete "mfa", action: :reset_mfa
             post "sign-out", action: :sign_out
             post "invitation", action: :resend_invitation
+            get "identities", action: :identities
+            delete "identities/:identity_uid", action: :unlink_identity
           end
         end
         resources :attribute_definitions, path: "attributes", param: :uid, only: %i[index create update destroy]

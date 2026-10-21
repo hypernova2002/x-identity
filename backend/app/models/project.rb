@@ -10,6 +10,7 @@ class Project < ApplicationRecord
   has_many :members, through: :project_memberships, source: :user
   has_many :end_users
   has_many :app_clients
+  has_many :identity_providers
   has_many :end_user_attribute_definitions
   has_many :signing_keys, as: :owner
   has_one :auth_configuration, as: :owner

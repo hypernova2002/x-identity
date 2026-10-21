@@ -216,14 +216,10 @@ paths:
                   type: integer
                   minimum: 1
                   maximum: 20
-                otp_methods:
-                  type: array
-                  items:
-                    enum:
-                    - totp
-                    - hotp
-                  minItems: 1
-                  maxItems: 2
+                otp_method:
+                  enum:
+                  - totp
+                  - hotp
                 otp_step_seconds:
                   type: integer
                   minimum: 30
@@ -475,10 +471,6 @@ paths:
           application/json:
             schema:
               properties:
-                otp_type:
-                  enum:
-                  - totp
-                  - hotp
                 session:
                   type: string
                   minLength: 1
@@ -991,19 +983,6 @@ paths:
       - Me
       security:
       - BearerAuth: []
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              properties:
-                otp_type:
-                  enum:
-                  - totp
-                  - hotp
-              type: object
-              unevaluatedProperties: false
-              additionalProperties: false
       responses:
         '201':
           description: secret and QR code
@@ -1012,7 +991,7 @@ paths:
               schema:
                 "$ref": "#/components/schemas/MfaEnrollment"
         '422':
-          description: the account doesn't allow this method
+          description: unknown fields, such as choosing a method
           content:
             application/json:
               schema:
@@ -1296,6 +1275,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                redirect_uris:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 2048
+                  maxItems: 20
               type: object
               unevaluatedProperties: false
               required:
@@ -1757,6 +1742,282 @@ paths:
           description: accepted, whether or not the email exists
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the identity providers end users can sign in with
+      tags:
+      - End-user auth
+      responses:
+        '200':
+          description: enabled providers, for sign-in buttons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/IdentityProviderSummary"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers/callback":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Return from an identity provider
+      tags:
+      - End-user auth
+      description: Register this URL with the provider. Apple returns here with a
+        form POST instead.
+      parameters:
+      - name: state
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: code
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: error
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '303':
+          description: redirect to the app with a code, or with an error
+        '400':
+          description: unknown or expired sign-in request
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers/token":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Exchange the code from an identity provider sign-in
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                code_verifier:
+                  type: string
+                  minLength: 43
+                  maxLength: 128
+                redirect_uri:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - code
+              - code_verifier
+              - redirect_uri
+              additionalProperties: false
+      responses:
+        '200':
+          description: tokens, or a challenge to answer
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignInResult"
+        '400':
+          description: the code is wrong, used or expired, or the code verifier doesn't
+            match
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers/{uid}/authorize":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Start signing in with an identity provider
+      tags:
+      - End-user auth
+      description: Send the user's browser here. They're redirected to the provider,
+        then back to `redirect_uri` with `code` and `state`, or with `error`, `error_description`
+        and `state`.
+      parameters:
+      - name: client_id
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: redirect_uri
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: state
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: code_challenge
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: code_challenge_method
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: redirect to the provider
+        '400':
+          description: the redirect URI isn't registered for the app client
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '401':
+          description: unknown or disabled app client
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers/{uid}/id-token":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Sign in with an ID token from a provider's SDK
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                id_token:
+                  type: string
+                  minLength: 1
+                  maxLength: 16384
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                nonce:
+                  type: string
+                  minLength: 16
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - id_token
+              - nonce
+              additionalProperties: false
+      responses:
+        '200':
+          description: tokens, or a challenge to answer
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignInResult"
+        '401':
+          description: the ID token is invalid, expired, for another app, or has the
+            wrong nonce
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '403':
+          description: the provider hasn't verified the email, or the user can't be
+            signed in or created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/auth/refresh":
     parameters:
     - name: account_uid
@@ -2209,6 +2470,299 @@ paths:
           description: deleted
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/identities":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List an end user's linked identity providers
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: linked identities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/EndUserIdentity"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/identities/{identity_uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: identity_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Unlink an identity provider from an end user
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: unlinked
+        '403':
+          description: viewers can't change end users
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: it's the user's only way to sign in
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/identity-providers":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the project's identity providers
+      tags:
+      - Identity providers
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: identity providers, without their secrets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/IdentityProvider"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Add an identity provider
+      tags:
+      - Identity providers
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                additional_audiences:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                  maxItems: 10
+                apple_key_id:
+                  type: string
+                  minLength: 10
+                  maxLength: 10
+                apple_private_key:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+                apple_team_id:
+                  type: string
+                  minLength: 10
+                  maxLength: 10
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+                discovery_url:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
+                enabled:
+                  anyOf:
+                  - type: boolean
+                kind:
+                  enum:
+                  - google
+                  - apple
+                  - oidc
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                scopes:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - kind
+              - name
+              additionalProperties: false
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/IdentityProvider"
+        '403':
+          description: only project admins can manage identity providers
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid settings, or the discovery document couldn't be loaded
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/identity-providers/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Change an identity provider
+      tags:
+      - Identity providers
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                additional_audiences:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                  maxItems: 10
+                apple_key_id:
+                  type: string
+                  minLength: 10
+                  maxLength: 10
+                apple_private_key:
+                  type: string
+                  maxLength: 4000
+                apple_team_id:
+                  type: string
+                  minLength: 10
+                  maxLength: 10
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                client_secret:
+                  type: string
+                  maxLength: 1000
+                discovery_url:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
+                enabled:
+                  anyOf:
+                  - type: boolean
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                scopes:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated; blank secrets keep the current ones
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/IdentityProvider"
+        '422':
+          description: invalid settings
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Remove an identity provider and unlink its users
+      tags:
+      - Identity providers
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/me":
     parameters:
     - name: account_uid
@@ -2327,6 +2881,75 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/identities":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List my linked identity providers
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: linked identities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/EndUserIdentity"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/identities/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Unlink one of my identity providers
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: unlinked
+        '404':
+          description: not one of my identities
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: it's my only way to sign in
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/members":
     parameters:
     - name: account_uid
@@ -2804,6 +3427,7 @@ components:
       - name
       - client_type
       - allowed_origins
+      - redirect_uris
       - enabled
       - created_at
       - updated_at
@@ -2823,6 +3447,10 @@ components:
           type: array
           items:
             type: string
+        redirect_uris:
+          type: array
+          items:
+            type: string
         enabled:
           type: boolean
         created_at:
@@ -2839,6 +3467,7 @@ components:
       - name
       - client_type
       - allowed_origins
+      - redirect_uris
       - enabled
       - created_at
       - updated_at
@@ -2855,6 +3484,10 @@ components:
           - public
           - confidential
         allowed_origins:
+          type: array
+          items:
+            type: string
+        redirect_uris:
           type: array
           items:
             type: string
@@ -3008,7 +3641,7 @@ components:
       - email_code_max_failures_per_email
       - email_code_max_failures_per_code
       - email_code_failure_window_seconds
-      - otp_methods
+      - otp_method
       - otp_digits
       - otp_step_seconds
       - otp_drift_steps
@@ -3060,14 +3693,13 @@ components:
           type: integer
           minimum: 2
           maximum: 100
-        otp_methods:
-          type: array
-          items:
-            type: string
-            enum:
-            - totp
-            - hotp
-          minItems: 1
+        otp_method:
+          type: string
+          enum:
+          - totp
+          - hotp
+          description: The one method everyone in the account or project uses for
+            MFA.
         otp_digits:
           type: integer
           minimum: 6
@@ -3184,6 +3816,48 @@ components:
           type: string
           format: date-time
       title: EndUser
+    EndUserIdentity:
+      type: object
+      required:
+      - uid
+      - identity_provider_uid
+      - identity_provider_kind
+      - identity_provider_name
+      - subject
+      - email
+      - last_sign_in_at
+      - created_at
+      properties:
+        uid:
+          type: string
+          example: eui_3Fh8Kq2Wm7Xn4Bv9Lc6Tz5Rp
+        identity_provider_uid:
+          type: string
+        identity_provider_kind:
+          type: string
+          enum:
+          - google
+          - apple
+          - oidc
+        identity_provider_name:
+          type: string
+        subject:
+          type: string
+          description: The user's id at the provider (`sub`).
+        email:
+          type:
+          - string
+          - 'null'
+          description: The email the provider gave at the last sign-in.
+        last_sign_in_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+      title: EndUserIdentity
     Error:
       type: object
       description: |-
@@ -3199,11 +3873,15 @@ components:
         - `invalid_otp` (401): The verification code is incorrect.
         - `invalid_client` (401): The app client is unknown, disabled, or its secret is wrong.
         - `invalid_code` (400): The code is incorrect or has expired. Request a new one.
+        - `invalid_redirect_uri` (400): The redirect URI isn't registered for this app client.
+        - `invalid_state` (400): The sign-in request is unknown or has expired. Start signing in again.
+        - `invalid_id_token` (401): The identity provider's token is invalid or has expired.
         - `forbidden` (403): You do not have permission to perform this action.
         - `email_not_verified` (403): Verify your email address before signing in.
         - `mfa_required_by_policy` (403): Multi-factor authentication is required by your account's policy and can't be turned off.
         - `user_disabled` (403): Too many failed verification attempts. This account has been disabled; ask an administrator to re-enable it.
         - `sign_up_disabled` (403): Self sign-up is turned off for this project.
+        - `provider_email_unverified` (403): Your email address isn't verified with this identity provider.
         - `not_found` (404): The requested resource could not be found.
         - `method_not_allowed` (405): The request method is not supported for this resource.
         - `not_acceptable` (406): The requested response format is not supported.
@@ -3211,10 +3889,13 @@ components:
         - `email_taken` (409): A user with this email address already exists in this account.
         - `mfa_already_enabled` (409): Multi-factor authentication is already turned on.
         - `last_owner` (409): An account must keep at least one active owner.
+        - `identity_conflict` (409): This user is already linked to a different account at this identity provider.
+        - `last_sign_in_method` (409): This is the user's only way to sign in, so it can't be removed.
         - `validation_failed` (422): One or more fields are invalid.
         - `too_many_attempts` (429): Too many failed attempts. Try again later.
         - `rate_limited` (429): Too many requests. Try again later.
         - `internal_error` (500): An unexpected error occurred.
+        - `identity_provider_error` (502): The identity provider couldn't complete the sign-in. Try again.
       required:
       - error
       properties:
@@ -3238,11 +3919,15 @@ components:
               - invalid_otp
               - invalid_client
               - invalid_code
+              - invalid_redirect_uri
+              - invalid_state
+              - invalid_id_token
               - forbidden
               - email_not_verified
               - mfa_required_by_policy
               - user_disabled
               - sign_up_disabled
+              - provider_email_unverified
               - not_found
               - method_not_allowed
               - not_acceptable
@@ -3250,10 +3935,13 @@ components:
               - email_taken
               - mfa_already_enabled
               - last_owner
+              - identity_conflict
+              - last_sign_in_method
               - validation_failed
               - too_many_attempts
               - rate_limited
               - internal_error
+              - identity_provider_error
             message:
               type: string
             details:
@@ -3269,6 +3957,99 @@ components:
                   message:
                     type: string
       title: Error
+    IdentityProvider:
+      type: object
+      required:
+      - uid
+      - kind
+      - name
+      - enabled
+      - client_id
+      - client_secret_set
+      - additional_audiences
+      - scopes
+      - discovery_url
+      - issuer
+      - apple_team_id
+      - apple_key_id
+      - apple_private_key_set
+      - callback_url
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: idp_7Gq2Lm9Xc4Vb8Nz3Rt6Wk5Jh
+        kind:
+          type: string
+          enum:
+          - google
+          - apple
+          - oidc
+        name:
+          type: string
+        enabled:
+          type: boolean
+        client_id:
+          type: string
+        client_secret_set:
+          type: boolean
+          description: Secrets are write-only.
+        additional_audiences:
+          type: array
+          items:
+            type: string
+        scopes:
+          type: string
+          description: Not used for Apple, which always asks for name and email.
+        discovery_url:
+          type:
+          - string
+          - 'null'
+        issuer:
+          type:
+          - string
+          - 'null'
+          description: The `iss` the provider's ID tokens carry.
+        apple_team_id:
+          type:
+          - string
+          - 'null'
+        apple_key_id:
+          type:
+          - string
+          - 'null'
+        apple_private_key_set:
+          type: boolean
+        callback_url:
+          type: string
+          description: Register this as the redirect URI with the provider.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: IdentityProvider
+    IdentityProviderSummary:
+      type: object
+      required:
+      - uid
+      - kind
+      - name
+      properties:
+        uid:
+          type: string
+          example: idp_7Gq2Lm9Xc4Vb8Nz3Rt6Wk5Jh
+        kind:
+          type: string
+          enum:
+          - google
+          - apple
+          - oidc
+        name:
+          type: string
+      title: IdentityProviderSummary
     Invitation:
       type: object
       required:
@@ -3313,7 +4094,7 @@ components:
       - created_at
       - updated_at
       - password_changed_at
-      - otp_methods
+      - otp_method
       - account
       properties:
         uid:
@@ -3353,14 +4134,12 @@ components:
         password_changed_at:
           type: string
           format: date-time
-        otp_methods:
-          type: array
-          items:
-            type: string
-            enum:
-            - totp
-            - hotp
-          description: Methods allowed when setting up MFA.
+        otp_method:
+          type: string
+          enum:
+          - totp
+          - hotp
+          description: The method used when setting up MFA.
         account:
           "$ref": "#/components/schemas/Account"
       title: Me

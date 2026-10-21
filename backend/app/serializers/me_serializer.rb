@@ -1,7 +1,7 @@
 class MeSerializer < UserSerializer
   attributes :password_changed_at
 
-  attribute(:otp_methods) { |user| user.account.auth_configuration!.otp_methods }
+  attribute(:otp_method) { |user| user.account.auth_configuration!.otp_method }
 
   one :account, resource: AccountSerializer
 end

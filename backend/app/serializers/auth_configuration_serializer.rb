@@ -23,7 +23,7 @@ class AuthConfigurationSerializer
     email_code_max_failures_per_email
     email_code_max_failures_per_code
     email_code_failure_window_seconds
-    otp_methods
+    otp_method
     otp_digits
     otp_step_seconds
     otp_drift_steps

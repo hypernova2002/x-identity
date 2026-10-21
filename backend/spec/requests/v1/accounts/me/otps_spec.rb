@@ -16,14 +16,12 @@ RSpec.describe "OTP enrolment", type: :openapi do
       post "Start setting up an authenticator app or hardware token" do
         tags "Me"
         security [ { BearerAuth: [] } ]
-        consumes "application/json"
-        request_body required: false, content: { "application/json" => { schema: Me::StartOtpRequest.as_schema } }
 
         response 201, "secret and QR code" do
           schema Schemas::MfaEnrollment
         end
 
-        response 422, "the account doesn't allow this method" do
+        response 422, "unknown fields, such as choosing a method" do
           schema Schemas::Error
         end
 
@@ -58,16 +56,18 @@ RSpec.describe "OTP enrolment", type: :openapi do
       end
     end
 
-    it "sets up a hardware token when the account allows HOTP" do
-      account.auth_configuration!.update!(otp_methods: %w[totp hotp])
+    it "sets up a hardware token when the account uses HOTP" do
+      account.auth_configuration!.update!(otp_method: "hotp")
 
-      assert_api_response(:post, 201, headers: headers, body: { otp_type: "hotp" }, path_params: path_params) do
+      assert_api_response(:post, 201, headers: headers, path_params: path_params) do
         expect(parsed_body["provisioning_uri"]).to start_with("otpauth://hotp/")
       end
     end
 
-    it "refuses a method the account doesn't allow" do
-      assert_api_response :post, 422, headers: headers, body: { otp_type: "hotp" }, path_params: path_params
+    it "doesn't let users choose a different method" do
+      assert_api_response :post, 422, headers: headers, body: { otp_type: "hotp" }, path_params: path_params do
+        expect(parsed_body.dig("error", "details")).to include({ "field" => "otp_type", "message" => "is not allowed" })
+      end
     end
 
     it "refuses when MFA is already on" do

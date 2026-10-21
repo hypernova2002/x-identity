@@ -26,6 +26,10 @@ Rack::Attack.throttle("project-auth/ip", limit: 60, period: 1.minute) do |reques
   request.ip if request.post? && request.path.match?(PROJECT_AUTH_PATH)
 end
 
+Rack::Attack.throttle("project-auth-providers/ip", limit: 30, period: 1.minute) do |request|
+  request.ip if request.get? && request.path.match?(%r{#{PROJECT_AUTH_PATH}providers/})
+end
+
 Rack::Attack.throttle("project-auth-email/ip", limit: 10, period: 1.minute) do |request|
   request.ip if request.post? && request.path.match?(%r{#{PROJECT_AUTH_PATH}(sign-up|resend-confirmation|forgot-password)\z})
 end

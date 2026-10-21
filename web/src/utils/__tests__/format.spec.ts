@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatDuration } from '../format'
+import { formatDuration, parseList } from '../format'
 
 describe('formatDuration', () => {
   it('names a single unit', () => {
@@ -17,5 +17,15 @@ describe('formatDuration', () => {
 
   it('drops the smallest units beyond two', () => {
     expect(formatDuration(90_061)).toBe('1 day 1 hour')
+  })
+})
+
+describe('parseList', () => {
+  it('splits on commas and new lines, dropping blanks', () => {
+    expect(parseList('https://a.test, https://b.test\n\n com.example.app:/cb ,')).toEqual([
+      'https://a.test',
+      'https://b.test',
+      'com.example.app:/cb',
+    ])
   })
 })

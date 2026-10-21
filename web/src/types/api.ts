@@ -35,13 +35,14 @@ export interface User {
 
 export interface Me extends User {
   password_changed_at: string
-  otp_methods: OtpType[]
+  otp_method: OtpType
   account: Account
 }
 
 export interface TokenSet {
   access_token: string
   refresh_token: string
+  id_token?: string
   token_type: 'Bearer'
   expires_in: number
   recovery_codes?: string[]
@@ -88,6 +89,7 @@ export interface AppClient {
   name: string
   client_type: AppClientType
   allowed_origins: string[]
+  redirect_uris: string[]
   enabled: boolean
   created_at: string
   updated_at: string
@@ -95,6 +97,38 @@ export interface AppClient {
 
 export interface AppClientWithSecret extends AppClient {
   client_secret: string | null
+}
+
+export type IdentityProviderKind = 'google' | 'apple' | 'oidc'
+
+export interface IdentityProvider {
+  uid: string
+  kind: IdentityProviderKind
+  name: string
+  enabled: boolean
+  client_id: string
+  client_secret_set: boolean
+  additional_audiences: string[]
+  scopes: string
+  discovery_url: string | null
+  issuer: string | null
+  apple_team_id: string | null
+  apple_key_id: string | null
+  apple_private_key_set: boolean
+  callback_url: string
+  created_at: string
+  updated_at: string
+}
+
+export interface EndUserIdentity {
+  uid: string
+  identity_provider_uid: string
+  identity_provider_kind: IdentityProviderKind
+  identity_provider_name: string
+  subject: string
+  email: string | null
+  last_sign_in_at: string | null
+  created_at: string
 }
 
 export type EndUserStatus = 'active' | 'disabled'
@@ -169,7 +203,7 @@ export interface AuthConfiguration {
   email_code_max_failures_per_email: number
   email_code_max_failures_per_code: number
   email_code_failure_window_seconds: number
-  otp_methods: OtpType[]
+  otp_method: OtpType
   otp_digits: number
   otp_step_seconds: number
   otp_drift_steps: number

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import RecoveryCodesList from '@/components/auth/RecoveryCodesList.vue'
@@ -8,13 +8,11 @@ import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
-import BaseSelect from '@/components/base/BaseSelect.vue'
 import PageHeader from '@/components/console/PageHeader.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { meService } from '@/services/account'
 import { useSessionStore } from '@/stores/session'
-import type { MfaEnrollment, OtpType } from '@/types/api'
-import { otpMethodOptions } from '@/utils/options'
+import type { MfaEnrollment } from '@/types/api'
 
 const session = useSessionStore()
 const { account, me } = storeToRefs(session)
@@ -63,13 +61,10 @@ const requestEmailChange = useAsyncAction(async () => {
   emailOtp.value = ''
 })
 
-const otpType = ref<OtpType>('totp')
-const otpTypeOptions = computed(() => otpMethodOptions.filter((option) => me.value?.otp_methods.includes(option.value)))
-
 const startOtp = useAsyncAction(async () => {
   if (!account.value) return
   recoveryCodes.value = []
-  enrollment.value = await meService.startOtp(account.value.uid, otpTypeOptions.value.length > 1 ? otpType.value : (me.value?.otp_methods[0] ?? 'totp'))
+  enrollment.value = await meService.startOtp(account.value.uid)
 })
 
 const confirmOtp = useAsyncAction(async () => {
@@ -180,12 +175,6 @@ const regenerateCodes = useAsyncAction(async () => {
 
     <template v-if="!me?.mfa_enabled">
       <BaseAlert v-if="startOtp.error.value" variant="danger">{{ startOtp.error.value.message }}</BaseAlert>
-      <BaseSelect
-        v-if="!enrollment && otpTypeOptions.length > 1"
-        v-model="otpType"
-        label="Method"
-        :options="otpTypeOptions"
-      />
       <BaseButton
         v-if="!enrollment"
         label="Set up multi-factor authentication"

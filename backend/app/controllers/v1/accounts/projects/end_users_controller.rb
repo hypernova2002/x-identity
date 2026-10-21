@@ -4,7 +4,7 @@ module V1
       class EndUsersController < ManagementController
         FILTERS = %i[email_cont name_cont status_eq].freeze
 
-        before_action :set_end_user, only: %i[show update destroy reset_mfa sign_out resend_invitation]
+        before_action :set_end_user, only: %i[show update destroy reset_mfa sign_out resend_invitation identities unlink_identity]
 
         def index
           end_users = current_project.end_users.ransack(params.fetch(:q, {}).permit(*FILTERS)).result
@@ -44,6 +44,17 @@ module V1
         def resend_invitation
           management.resend_invitation(@end_user)
           head :accepted
+        end
+
+        def identities
+          render json: EndUserIdentitySerializer.new(@end_user.identities.includes(:identity_provider).order(:created_at, :id)).serializable_hash
+        end
+
+        def unlink_identity
+          authorize_project!(:manage_end_users?)
+          identity = @end_user.identities.find_by_uid!(params[:identity_uid])
+          ::EndUsers::Identities.new(end_user: @end_user, actor: current_user, **client_info).unlink(identity)
+          head :no_content
         end
 
         private

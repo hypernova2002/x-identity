@@ -11,22 +11,19 @@ module Mfa
       @user_agent = user_agent
     end
 
-    # Creates a new unconfirmed credential with the realm's current OTP settings, replacing any
+    # Creates a new unconfirmed credential with the realm's OTP method and settings, replacing any
     # earlier unconfirmed one.
-    # @param otp_type [String, nil] "totp" or "hotp"; defaults to the first method the realm allows
     # @return [Enrollment]
-    # @raise [ApiError] `mfa_already_enabled` or `validation_failed` when the method isn't allowed
-    def start(otp_type: nil)
+    # @raise [ApiError] `mfa_already_enabled`
+    def start
       raise ApiError.new(:mfa_already_enabled) if @user.mfa_enabled?
 
       configuration = @realm.auth_configuration
-      otp_type ||= configuration.otp_methods.first
-      raise ApiError.validation(otp_type: "must be one of #{configuration.otp_methods.join(', ')}") unless configuration.otp_methods.include?(otp_type)
 
       credential = OtpCredential.transaction do
         OtpCredential.where(subject: @user).delete_all
         OtpCredential.generate(
-          subject: @user, otp_type: otp_type, digits: configuration.otp_digits, step_seconds: configuration.otp_step_seconds
+          subject: @user, otp_type: configuration.otp_method, digits: configuration.otp_digits, step_seconds: configuration.otp_step_seconds
         ).tap(&:save!)
       end
       @user.association(:otp_credential).reset

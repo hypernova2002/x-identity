@@ -7,6 +7,9 @@ class AppClient < ApplicationRecord
 
   ORIGIN_FORMAT = %r{\Ahttps?://[a-z0-9.-]+(:\d{1,5})?\z}
   MAX_ORIGINS = 20
+  MAX_REDIRECT_URIS = 20
+  LOOPBACK_HOSTS = %w[localhost 127.0.0.1 ::1].freeze
+  UNSAFE_SCHEMES = %w[javascript data file vbscript about blob].freeze
 
   belongs_to :project
 
@@ -14,6 +17,7 @@ class AppClient < ApplicationRecord
 
   validates :name, presence: true, length: { maximum: 100 }
   validate :allowed_origins_are_origins
+  validate :redirect_uris_are_valid
 
   scope :enabled, -> { where(enabled: true) }
 
@@ -29,6 +33,12 @@ class AppClient < ApplicationRecord
     secret = SecureRandom.base58(48)
     self.client_secret_digest = OpenSSL::Digest::SHA256.hexdigest(secret)
     secret
+  end
+
+  # @param uri [String, nil]
+  # @return [Boolean] whether the uri is registered, compared exactly
+  def redirect_uri_allowed?(uri)
+    uri.present? && redirect_uris.include?(uri)
   end
 
   # Public clients need no secret; confidential clients must present theirs.
@@ -50,5 +60,31 @@ class AppClient < ApplicationRecord
 
     invalid = allowed_origins.reject { |origin| origin.is_a?(String) && origin.match?(ORIGIN_FORMAT) }
     errors.add(:allowed_origins, "must look like https://app.example.com, without a path: #{invalid.join(', ')}") if invalid.any?
+  end
+
+  def redirect_uris_are_valid
+    unless redirect_uris.is_a?(Array) && redirect_uris.size <= MAX_REDIRECT_URIS
+      return errors.add(:redirect_uris, "must be a list of at most #{MAX_REDIRECT_URIS} URIs")
+    end
+
+    invalid = redirect_uris.reject { |uri| uri.is_a?(String) && valid_redirect_uri?(uri) }
+    return if invalid.empty?
+
+    errors.add(:redirect_uris, "must be https URLs, http://localhost URLs or app schemes like com.example.app:/callback, " \
+      "without a fragment: #{invalid.join(', ')}")
+  end
+
+  # Native apps use their own scheme (RFC 8252); browsers need https, except on the loopback interface.
+  def valid_redirect_uri?(value)
+    return false if value.length > 2048
+
+    uri = URI.parse(value)
+    return false if uri.scheme.blank? || uri.fragment
+    return uri.host.present? if uri.scheme == "https"
+    return LOOPBACK_HOSTS.include?(uri.hostname) if uri.scheme == "http"
+
+    !UNSAFE_SCHEMES.include?(uri.scheme.downcase)
+  rescue URI::InvalidURIError
+    false
   end
 end

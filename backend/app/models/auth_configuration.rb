@@ -43,7 +43,7 @@ class AuthConfiguration < ApplicationRecord
   attribute :email_code_max_failures_per_email, default: 10
   attribute :email_code_max_failures_per_code, default: 5
   attribute :email_code_failure_window_seconds, default: 1.hour.to_i
-  attribute :otp_methods, default: -> { %w[totp] }
+  attribute :otp_method, default: "totp"
   attribute :otp_digits, default: 6
   attribute :otp_step_seconds, default: 30
   attribute :otp_drift_steps, default: 1
@@ -64,7 +64,7 @@ class AuthConfiguration < ApplicationRecord
   validates :otp_step_seconds, numericality: { only_integer: true, in: OTP_STEP_SECONDS }
   validates :otp_drift_steps, numericality: { only_integer: true, in: 0..2 }
   validates :otp_hotp_look_ahead, numericality: { only_integer: true, in: 1..20 }
-  validate :otp_methods_are_known
+  validates :otp_method, inclusion: { in: OTP_METHODS, message: "must be totp or hotp" }
   DURATION_RANGES.each do |attribute, range|
     validates attribute, numericality: { only_integer: true, in: range }, allow_nil: OPTIONAL_DURATIONS.include?(attribute)
   end
@@ -122,12 +122,5 @@ class AuthConfiguration < ApplicationRecord
     violations << "must include a number" if password_require_number && !password.match?(/\d/)
     violations << "must include a symbol" if password_require_symbol && !password.match?(/[^[:alnum:]]/)
     violations
-  end
-
-  private
-
-  def otp_methods_are_known
-    valid = otp_methods.is_a?(Array) && otp_methods.any? && otp_methods.uniq.size == otp_methods.size && (otp_methods - OTP_METHODS).empty?
-    errors.add(:otp_methods, "must be one or both of #{OTP_METHODS.join(', ')}") unless valid
   end
 end

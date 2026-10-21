@@ -9,7 +9,9 @@ class OneTimeToken < ApplicationRecord
     "password_reset" => 1.hour,
     "email_change" => 1.hour,
     "invitation" => 7.days,
-    "sign_in_challenge" => 5.minutes
+    "sign_in_challenge" => 5.minutes,
+    "provider_authorization" => 10.minutes,
+    "provider_code" => 1.minute
   }.freeze
   CODE_GENERATION_TRIES = 10
 
@@ -36,13 +38,14 @@ class OneTimeToken < ApplicationRecord
     OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, code.to_s)
   end
 
-  # Issues a token, invalidating the subject's earlier unused tokens with the same purpose.
+  # Issues a token, by default invalidating the subject's earlier unused tokens with the same purpose.
   # @param subject [ApplicationRecord]
   # @param purpose [String, Symbol]
   # @param data [Hash]
+  # @param replace [Boolean] false keeps earlier tokens usable, e.g. for concurrent sign-ins
   # @return [Array(OneTimeToken, String)] the record and its plaintext token
-  def self.issue!(subject:, purpose:, data: {})
-    issued = issue_with_code!(subject: subject, purpose: purpose, data: data, with_code: false)
+  def self.issue!(subject:, purpose:, data: {}, replace: true)
+    issued = issue_with_code!(subject: subject, purpose: purpose, data: data, with_code: false, replace: replace)
     [ issued.record, issued.token ]
   end
 
@@ -50,13 +53,13 @@ class OneTimeToken < ApplicationRecord
   # @param reject_code [#call, nil] returns true for codes that mustn't be sent (e.g. ones currently
   #   blocked for too many wrong guesses); another random code is tried instead
   # @return [Issued]
-  def self.issue_with_code!(subject:, purpose:, data: {}, with_code: true, reject_code: nil)
+  def self.issue_with_code!(subject:, purpose:, data: {}, with_code: true, reject_code: nil, replace: true)
     purpose = purpose.to_s
     token = SecureRandom.base58(32)
     code = generate_code(reject_code) if with_code
 
     record = transaction do
-      usable.where(subject: subject, purpose: purpose).update_all(consumed_at: Time.current)
+      usable.where(subject: subject, purpose: purpose).update_all(consumed_at: Time.current) if replace
       create!(
         subject: subject,
         purpose: purpose,

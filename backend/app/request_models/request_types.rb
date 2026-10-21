@@ -18,13 +18,25 @@ module RequestTypes
   Token = T::String.constrained(min_size: 1, max_size: 256)
   OtpCode = T::String.constrained(min_size: 1, max_size: 32).meta(description: "A TOTP code or an unused recovery code.")
   EmailCode = T::String.constrained(min_size: 6, max_size: 6, format: /^\d{6}$/).meta(description: "The 6-digit code from the email.")
-  OtpType = T::String.enum(*AuthConfiguration::OTP_METHODS)
-    .meta(description: "totp for authenticator apps, hotp for hardware tokens. Defaults to the first method allowed.")
   AccountRole = T::String.enum(*User.roles.keys)
   ProjectRole = T::String.enum(*ProjectMembership.roles.keys)
 
   Origins = T::Array.of(T::String.constrained(max_size: 255)).constrained(max_size: AppClient::MAX_ORIGINS)
     .meta(description: "Browser origins allowed to call the API, e.g. https://shop.example.com.")
+  RedirectUris = T::Array.of(T::String.constrained(max_size: 2048)).constrained(max_size: AppClient::MAX_REDIRECT_URIS)
+    .meta(description: "Where users may be sent back after signing in with an identity provider, compared exactly: " \
+      "https URLs, http://localhost URLs, or app schemes like com.example.app:/callback.")
+  Jwt = T::String.constrained(min_size: 1, max_size: 16_384)
+
+  ProviderClientId = T::String.constrained(min_size: 1, max_size: 255)
+    .meta(description: "The client id registered with the provider. For Apple, the Services ID.")
+  ProviderAudiences = T::Array.of(T::String.constrained(min_size: 1, max_size: 255)).constrained(max_size: IdentityProvider::MAX_AUDIENCES)
+    .meta(description: "Client ids of native apps that send the provider's ID tokens directly, e.g. iOS and Android client ids or an app's bundle id.")
+  ProviderScopes = T::String.constrained(min_size: 1, max_size: 500)
+    .meta(description: "Space-separated; must include openid. Ignored for Apple, which always asks for name and email.")
+  ProviderDiscoveryUrl = T::String.constrained(min_size: 1, max_size: 2048)
+    .meta(description: "OIDC only: the issuer URL, or its /.well-known/openid-configuration URL.")
+  AppleId = T::String.constrained(min_size: 10, max_size: 10).meta(description: "Apple only.")
   AttributeMaxLength = T::Integer.constrained(gteq: 1, lteq: EndUserAttributeDefinition::MAX_STRING_LENGTH).optional
     .meta(description: "String attributes only.")
 

@@ -12,7 +12,7 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectAdminService } from '@/services/project'
 import type { AppClient, AppClientType, AppClientWithSecret } from '@/types/api'
-import { formatDateTime } from '@/utils/format'
+import { formatDateTime, parseList } from '@/utils/format'
 import { appClientTypeOptions } from '@/utils/options'
 
 const { accountUid, project, access } = useProjectContext()
@@ -22,23 +22,26 @@ const createOpen = ref(false)
 const name = ref('')
 const clientType = ref<AppClientType>('public')
 const origins = ref('')
+const redirectUris = ref('')
+const editing = ref<AppClient | null>(null)
+const editName = ref('')
+const editOrigins = ref('')
+const editRedirectUris = ref('')
 const revealed = ref<AppClientWithSecret | null>(null)
 const pendingDelete = ref<AppClient | null>(null)
+
+const redirectUrisHint =
+  'Where users return after signing in with a sign-in provider, matched exactly. https URLs, http://localhost URLs, ' +
+  'or app schemes like com.example.shop:/callback. Separate several with commas.'
 
 const columns = [
   { key: 'name', label: 'Name' },
   { key: 'client_type', label: 'Type' },
   { key: 'allowed_origins', label: 'Allowed origins' },
+  { key: 'redirect_uris', label: 'Redirect URIs' },
   { key: 'enabled', label: 'Status' },
   { key: 'actions', label: 'Actions', srOnly: true },
 ]
-
-function parseOrigins(value: string): string[] {
-  return value
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter((origin) => origin !== '')
-}
 
 const load = useAsyncAction(async () => {
   if (!project.value) return
@@ -50,13 +53,34 @@ const create = useAsyncAction(async () => {
   const created = await projectAdminService.createAppClient(accountUid.value, project.value.uid, {
     name: name.value,
     client_type: clientType.value,
-    allowed_origins: parseOrigins(origins.value),
+    allowed_origins: parseList(origins.value),
+    redirect_uris: parseList(redirectUris.value),
   })
   clients.value = [...clients.value, created]
   createOpen.value = false
   name.value = ''
   origins.value = ''
+  redirectUris.value = ''
   revealed.value = created
+})
+
+function startEditing(client: AppClient) {
+  editing.value = client
+  editName.value = client.name
+  editOrigins.value = client.allowed_origins.join(', ')
+  editRedirectUris.value = client.redirect_uris.join(', ')
+  update.error.value = null
+}
+
+const update = useAsyncAction(async () => {
+  if (!project.value || !editing.value) return
+  const updated = await projectAdminService.updateAppClient(accountUid.value, project.value.uid, editing.value.uid, {
+    name: editName.value,
+    allowed_origins: parseList(editOrigins.value),
+    redirect_uris: parseList(editRedirectUris.value),
+  })
+  clients.value = clients.value.map((existing) => (existing.uid === updated.uid ? updated : existing))
+  editing.value = null
 })
 
 const clientAction = useAsyncAction(async (client: AppClient, action: 'toggle' | 'rotate' | 'delete') => {
@@ -110,6 +134,12 @@ onMounted(() => load.run())
           <li v-for="origin in row.allowed_origins" :key="origin">{{ origin }}</li>
         </ul>
       </template>
+      <template #cell-redirect_uris="{ row }">
+        <span v-if="row.redirect_uris.length === 0" class="text-text-muted">None</span>
+        <ul v-else class="font-mono text-xs break-all">
+          <li v-for="uri in row.redirect_uris" :key="uri">{{ uri }}</li>
+        </ul>
+      </template>
       <template #cell-enabled="{ row }">
         <span :class="row.enabled ? 'text-success' : 'text-text-muted'" class="font-medium">
           {{ row.enabled ? '● Enabled' : '○ Disabled' }}
@@ -118,6 +148,7 @@ onMounted(() => load.run())
       </template>
       <template #cell-actions="{ row }">
         <div v-if="access.developer" class="flex flex-wrap justify-end gap-2">
+          <BaseButton label="Edit" variant="secondary" size="sm" :disabled="clientAction.loading.value" @click="startEditing(row)" />
           <BaseButton
             :label="row.enabled ? 'Disable' : 'Enable'"
             variant="secondary"
@@ -150,10 +181,39 @@ onMounted(() => load.run())
         hint="Browser apps only. Separate several with commas, e.g. https://shop.example.com, https://www.shop.example.com"
         :error="create.error.value?.fieldError('allowed_origins')"
       />
+      <BaseInput
+        v-model="redirectUris"
+        label="Redirect URIs"
+        :hint="redirectUrisHint"
+        :error="create.error.value?.fieldError('redirect_uris')"
+      />
     </form>
     <template #footer>
       <BaseButton label="Cancel" variant="secondary" @click="createOpen = false" />
       <BaseButton label="Create" type="submit" form="create-app-client" :loading="create.loading.value" />
+    </template>
+  </BaseDialog>
+
+  <BaseDialog :visible="editing !== null" title="Edit app client" @update:visible="(open: boolean) => !open && (editing = null)">
+    <form id="edit-app-client" class="flex flex-col gap-4" novalidate @submit.prevent="update.run()">
+      <BaseAlert v-if="update.error.value && update.error.value.details.length === 0" variant="danger">{{ update.error.value.message }}</BaseAlert>
+      <BaseInput v-model="editName" label="Name" required :error="update.error.value?.fieldError('name')" />
+      <BaseInput
+        v-model="editOrigins"
+        label="Allowed origins"
+        hint="Browser apps only. Separate several with commas."
+        :error="update.error.value?.fieldError('allowed_origins')"
+      />
+      <BaseInput
+        v-model="editRedirectUris"
+        label="Redirect URIs"
+        :hint="redirectUrisHint"
+        :error="update.error.value?.fieldError('redirect_uris')"
+      />
+    </form>
+    <template #footer>
+      <BaseButton label="Cancel" variant="secondary" @click="editing = null" />
+      <BaseButton label="Save" type="submit" form="edit-app-client" :loading="update.loading.value" />
     </template>
   </BaseDialog>
 

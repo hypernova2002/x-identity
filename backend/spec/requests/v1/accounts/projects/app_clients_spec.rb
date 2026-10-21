@@ -69,6 +69,18 @@ RSpec.describe "App clients", type: :openapi do
       create_client(admin, 422, { name: "Web", client_type: "public", allowed_origins: [ "https://shop.example.com/app" ] })
     end
 
+    it "registers redirect URIs for identity provider sign-in" do
+      body = { name: "Web", client_type: "public", redirect_uris: [ "https://shop.example.com/callback", "com.example.shop:/oauth" ] }
+
+      create_client(admin, 201, body) { expect(parsed_body["redirect_uris"]).to eq(body[:redirect_uris]) }
+    end
+
+    it "rejects plain http redirect URIs outside localhost" do
+      create_client(admin, 422, { name: "Web", client_type: "public", redirect_uris: [ "http://shop.example.com/callback" ] }) do
+        expect(parsed_body.dig("error", "details", 0, "field")).to eq("redirect_uris")
+      end
+    end
+
     it "lists the project's clients" do
       create(:app_client, project: project)
       create(:app_client)

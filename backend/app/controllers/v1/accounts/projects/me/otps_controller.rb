@@ -4,7 +4,8 @@ module V1
       module Me
         class OtpsController < EndUserController
           def create
-            render json: MfaEnrollmentSerializer.new(enrollment.start(**parse_request(::Me::StartOtpRequest).to_h)).serializable_hash, status: :created
+            parse_request(::Me::StartOtpRequest)
+            render json: MfaEnrollmentSerializer.new(enrollment.start).serializable_hash, status: :created
           end
 
           def confirm

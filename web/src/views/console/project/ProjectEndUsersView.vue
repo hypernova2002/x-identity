@@ -14,7 +14,7 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import type { Page } from '@/services/http'
 import { projectAdminService } from '@/services/project'
-import type { AttributeDefinition, EndUser } from '@/types/api'
+import type { AttributeDefinition, EndUser, EndUserIdentity } from '@/types/api'
 import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttributes'
 import { formatDateTime } from '@/utils/format'
 
@@ -35,6 +35,8 @@ const newName = ref('')
 const sendInvitation = ref(true)
 const newAttributes = ref<AttributeDraft>({})
 const pendingDelete = ref<EndUser | null>(null)
+const identitiesFor = ref<EndUser | null>(null)
+const identities = ref<EndUserIdentity[]>([])
 
 const columns = [
   { key: 'email', label: 'End user' },
@@ -108,6 +110,20 @@ const endUserAction = useAsyncAction(async (endUser: EndUser, action: EndUserAct
   }
 })
 
+const loadIdentities = useAsyncAction(async (endUser: EndUser) => {
+  if (!project.value) return
+  identitiesFor.value = endUser
+  identities.value = []
+  unlink.error.value = null
+  identities.value = await projectAdminService.listEndUserIdentities(accountUid.value, project.value.uid, endUser.uid)
+})
+
+const unlink = useAsyncAction(async (identity: EndUserIdentity) => {
+  if (!project.value || !identitiesFor.value) return
+  await projectAdminService.unlinkEndUserIdentity(accountUid.value, project.value.uid, identitiesFor.value.uid, identity.uid)
+  identities.value = identities.value.filter((existing) => existing.uid !== identity.uid)
+})
+
 function applySearch() {
   appliedSearch.value = search.value.trim()
   if (page.value === 1) load.run()
@@ -159,7 +175,9 @@ onMounted(() => load.run())
       <template #cell-mfa_enabled="{ row }">{{ row.mfa_enabled ? 'On' : 'Off' }}</template>
       <template #cell-last_sign_in_at="{ row }">{{ formatDateTime(row.last_sign_in_at) }}</template>
       <template #cell-actions="{ row }">
-        <div v-if="access.developer" class="flex flex-wrap justify-end gap-2">
+        <div class="flex flex-wrap justify-end gap-2">
+          <BaseButton label="Sign-in providers" variant="secondary" size="sm" @click="loadIdentities.run(row)" />
+          <template v-if="access.developer">
           <BaseButton
             :label="row.status === 'active' ? 'Disable' : 'Enable'"
             variant="secondary"
@@ -191,6 +209,7 @@ onMounted(() => load.run())
             @click="endUserAction.run(row, 'sign_out')"
           />
           <BaseButton label="Delete" variant="ghost" size="sm" :disabled="endUserAction.loading.value" @click="pendingDelete = row" />
+          </template>
         </div>
       </template>
     </BaseTable>
@@ -213,6 +232,41 @@ onMounted(() => load.run())
     <template #footer>
       <BaseButton label="Cancel" variant="secondary" @click="createOpen = false" />
       <BaseButton label="Create" type="submit" form="create-end-user" :loading="create.loading.value" />
+    </template>
+  </BaseDialog>
+
+  <BaseDialog
+    :visible="identitiesFor !== null"
+    :title="`Sign-in providers for ${identitiesFor?.email ?? ''}`"
+    @update:visible="(open: boolean) => !open && (identitiesFor = null)"
+  >
+    <BaseAlert v-if="loadIdentities.error.value" variant="danger">{{ loadIdentities.error.value.message }}</BaseAlert>
+    <BaseAlert v-if="unlink.error.value" variant="danger">{{ unlink.error.value.message }}</BaseAlert>
+    <p v-if="loadIdentities.loading.value" class="text-sm text-text-muted" role="status">Loading…</p>
+    <p v-else-if="identities.length === 0" class="text-sm text-text-muted">
+      Not linked to any sign-in provider. This user signs in with email and password.
+    </p>
+    <ul v-else class="flex flex-col divide-y divide-border">
+      <li v-for="identity in identities" :key="identity.uid" class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+        <div class="flex flex-col">
+          <span class="font-medium">{{ identity.identity_provider_name }}</span>
+          <span class="text-text-muted">{{ identity.email ?? 'No email shared' }}</span>
+          <span class="text-xs text-text-muted">
+            ID <code class="font-mono">{{ identity.subject }}</code> · last sign-in {{ formatDateTime(identity.last_sign_in_at) }}
+          </span>
+        </div>
+        <BaseButton
+          v-if="access.developer"
+          label="Unlink"
+          variant="ghost"
+          size="sm"
+          :loading="unlink.loading.value"
+          @click="unlink.run(identity)"
+        />
+      </li>
+    </ul>
+    <template #footer>
+      <BaseButton label="Done" @click="identitiesFor = null" />
     </template>
   </BaseDialog>
 

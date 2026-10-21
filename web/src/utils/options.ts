@@ -3,11 +3,18 @@ import type {
   AccountRole,
   AppClientType,
   AttributeDataType,
+  IdentityProviderKind,
   MfaRequirement,
   OtpType,
   ProjectRole,
   SigningAlgorithm,
 } from '@/types/api'
+
+export const identityProviderKindOptions: SelectOption<IdentityProviderKind>[] = [
+  { label: 'Google', value: 'google' },
+  { label: 'Apple', value: 'apple' },
+  { label: 'Other OpenID Connect provider', value: 'oidc' },
+]
 
 export const accountRoleOptions: SelectOption<AccountRole>[] = [
   { label: 'Owner', value: 'owner' },

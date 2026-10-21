@@ -11,8 +11,10 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectService } from '@/services/account'
+import { useProjectStore } from '@/stores/project'
 
 const router = useRouter()
+const projectStore = useProjectStore()
 const { accountUid, project, access } = useProjectContext()
 
 const name = ref('')
@@ -39,20 +41,23 @@ watch(
 const save = useAsyncAction(async () => {
   if (!project.value) return
   saved.value = false
-  project.value = await projectService.update(accountUid.value, project.value.uid, {
+  const updated = await projectService.update(accountUid.value, project.value.uid, {
     name: name.value,
     allow_self_sign_up: allowSelfSignUp.value,
     confirm_sign_up_url: confirmSignUpUrl.value.trim() || null,
     reset_password_url: resetPasswordUrl.value.trim() || null,
     accept_invitation_url: acceptInvitationUrl.value.trim() || null,
   })
+  projectStore.upsert(updated)
   saved.value = true
 })
 
 const destroy = useAsyncAction(async () => {
   if (!project.value) return
-  await projectService.remove(accountUid.value, project.value.uid)
-  await router.push({ name: 'projects' })
+  const projectUid = project.value.uid
+  await projectService.remove(accountUid.value, projectUid)
+  projectStore.remove(projectUid)
+  await router.push({ name: 'console-home' })
 })
 </script>
 

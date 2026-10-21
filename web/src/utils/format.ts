@@ -4,6 +4,14 @@ export function formatDateTime(value: string | null): string {
   return value ? dateTimeFormat.format(new Date(value)) : '—'
 }
 
+/** Splits a comma- or newline-separated list, dropping blanks. */
+export function parseList(value: string): string[] {
+  return value
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter((item) => item !== '')
+}
+
 export function slugify(value: string): string {
   return value
     .toLowerCase()

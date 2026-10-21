@@ -10,7 +10,7 @@ import BaseSelect from '@/components/base/BaseSelect.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import type { AuthConfiguration, MfaRequirement, OtpType, SigningAlgorithm } from '@/types/api'
 import { formatDuration } from '@/utils/format'
-import { mfaRequirementOptions, signingAlgorithmOptions } from '@/utils/options'
+import { mfaRequirementOptions, otpMethodOptions, signingAlgorithmOptions } from '@/utils/options'
 
 type NumberField =
   | 'password_min_length'
@@ -71,17 +71,13 @@ const numbers = ref<Record<NumberField, string>>({
   otp_drift_steps: '',
   otp_hotp_look_ahead: '',
 })
-const otpMethods = ref<OtpType[]>(['totp'])
+const otpMethod = ref<OtpType>('totp')
 const unusualOtpFormat = computed(() => numbers.value.otp_digits.trim() !== '6' || numbers.value.otp_step_seconds.trim() !== '30')
-
-function setOtpMethod(method: OtpType, allowed: boolean) {
-  otpMethods.value = allowed ? [...new Set([...otpMethods.value, method])] : otpMethods.value.filter((existing) => existing !== method)
-}
 const saved = ref(false)
 
 function apply(configuration: AuthConfiguration) {
   mfaRequirement.value = configuration.mfa_requirement
-  otpMethods.value = [...configuration.otp_methods]
+  otpMethod.value = configuration.otp_method
   signingAlgorithm.value = configuration.signing_algorithm
   flags.value = {
     require_email_verification: configuration.require_email_verification,
@@ -117,7 +113,7 @@ const save = useAsyncAction(async () => {
 
   const changes: Partial<AuthConfiguration> = {
     mfa_requirement: mfaRequirement.value,
-    otp_methods: otpMethods.value,
+    otp_method: otpMethod.value,
     signing_algorithm: signingAlgorithm.value,
     ...flags.value,
   }
@@ -160,22 +156,13 @@ onMounted(() => load.run())
         :error="save.error.value?.fieldError('mfa_max_failed_attempts')"
       />
 
-      <fieldset class="flex flex-col gap-3">
-        <legend class="mb-1 text-sm font-semibold">Methods</legend>
-        <BaseCheckbox
-          :model-value="otpMethods.includes('totp')"
-          label="Authenticator apps (time-based codes, TOTP)"
-          @update:model-value="(allowed: boolean) => setOtpMethod('totp', allowed)"
-        />
-        <BaseCheckbox
-          :model-value="otpMethods.includes('hotp')"
-          label="Hardware tokens (counter-based codes, HOTP)"
-          @update:model-value="(allowed: boolean) => setOtpMethod('hotp', allowed)"
-        />
-        <p v-if="save.error.value?.fieldError('otp_methods')" class="text-xs font-medium text-danger">
-          Error: {{ save.error.value?.fieldError('otp_methods') }}
-        </p>
-      </fieldset>
+      <BaseSelect
+        v-model="otpMethod"
+        label="Method"
+        :options="otpMethodOptions"
+        hint="Everyone sets up this method. Users who already set up the other one keep using it."
+        :error="save.error.value?.fieldError('otp_method')"
+      />
 
       <div class="grid gap-4 sm:grid-cols-2">
         <BaseInput

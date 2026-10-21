@@ -11,11 +11,15 @@ module ErrorCodes
     invalid_otp: { status: 401, default_message: "The verification code is incorrect." },
     invalid_client: { status: 401, default_message: "The app client is unknown, disabled, or its secret is wrong." },
     invalid_code: { status: 400, default_message: "The code is incorrect or has expired. Request a new one." },
+    invalid_redirect_uri: { status: 400, default_message: "The redirect URI isn't registered for this app client." },
+    invalid_state: { status: 400, default_message: "The sign-in request is unknown or has expired. Start signing in again." },
+    invalid_id_token: { status: 401, default_message: "The identity provider's token is invalid or has expired." },
     forbidden: { status: 403, default_message: "You do not have permission to perform this action." },
     email_not_verified: { status: 403, default_message: "Verify your email address before signing in." },
     mfa_required_by_policy: { status: 403, default_message: "Multi-factor authentication is required by your account's policy and can't be turned off." },
     user_disabled: { status: 403, default_message: "Too many failed verification attempts. This account has been disabled; ask an administrator to re-enable it." },
     sign_up_disabled: { status: 403, default_message: "Self sign-up is turned off for this project." },
+    provider_email_unverified: { status: 403, default_message: "Your email address isn't verified with this identity provider." },
     not_found: { status: 404, default_message: "The requested resource could not be found." },
     method_not_allowed: { status: 405, default_message: "The request method is not supported for this resource." },
     not_acceptable: { status: 406, default_message: "The requested response format is not supported." },
@@ -23,10 +27,13 @@ module ErrorCodes
     email_taken: { status: 409, default_message: "A user with this email address already exists in this account." },
     mfa_already_enabled: { status: 409, default_message: "Multi-factor authentication is already turned on." },
     last_owner: { status: 409, default_message: "An account must keep at least one active owner." },
+    identity_conflict: { status: 409, default_message: "This user is already linked to a different account at this identity provider." },
+    last_sign_in_method: { status: 409, default_message: "This is the user's only way to sign in, so it can't be removed." },
     validation_failed: { status: 422, default_message: "One or more fields are invalid." },
     too_many_attempts: { status: 429, default_message: "Too many failed attempts. Try again later." },
     rate_limited: { status: 429, default_message: "Too many requests. Try again later." },
-    internal_error: { status: 500, default_message: "An unexpected error occurred." }
+    internal_error: { status: 500, default_message: "An unexpected error occurred." },
+    identity_provider_error: { status: 502, default_message: "The identity provider couldn't complete the sign-in. Try again." }
   }.freeze
 
   GENERIC_BY_STATUS = {

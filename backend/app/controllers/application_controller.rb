@@ -23,10 +23,10 @@ class ApplicationController < ActionController::API
 
   # Builds a request model from the request body, reporting every invalid, missing or unknown field.
   # @param request_model_class [Class<ApplicationRequestModel>]
+  # @param input [Hash] the body by default; pass `request.query_parameters` for GET requests
   # @return [ApplicationRequestModel]
   # @raise [ApiError] `validation_failed`
-  def parse_request(request_model_class)
-    input = request.request_parameters
+  def parse_request(request_model_class, input = request.request_parameters)
     request_model_class.new(input)
   rescue Dry::Struct::Error
     details = request_model_class.error_details(input).presence || [ { field: "body", message: "is invalid" } ]

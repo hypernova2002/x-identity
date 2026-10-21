@@ -16,11 +16,12 @@ module AppClients
     # @param name [String]
     # @param client_type [String] "public" or "confidential"
     # @param allowed_origins [Array<String>]
+    # @param redirect_uris [Array<String>]
     # @return [Created] the client, and its secret for confidential clients (shown once)
     # @raise [ApiError] `forbidden` or `validation_failed`
-    def create(name:, client_type:, allowed_origins: [])
+    def create(name:, client_type:, allowed_origins: [], redirect_uris: [])
       authorize!
-      app_client = @project.app_clients.new(name: name, client_type: client_type, allowed_origins: allowed_origins)
+      app_client = @project.app_clients.new(name: name, client_type: client_type, allowed_origins: allowed_origins, redirect_uris: redirect_uris)
       secret = app_client.generate_secret if app_client.client_type_confidential?
       raise ApiError.from_record(app_client) unless app_client.save
 
@@ -29,11 +30,11 @@ module AppClients
     end
 
     # @param app_client [AppClient]
-    # @param changes [Hash] any of name, allowed_origins, enabled
+    # @param changes [Hash] any of name, allowed_origins, redirect_uris, enabled
     # @return [AppClient]
     def update(app_client, **changes)
       authorize!
-      app_client.assign_attributes(changes.slice(:name, :allowed_origins, :enabled))
+      app_client.assign_attributes(changes.slice(:name, :allowed_origins, :redirect_uris, :enabled))
       changed = app_client.changes.transform_values { |from, to| { from: from, to: to } }
 
       AppClient.transaction do

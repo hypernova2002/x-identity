@@ -60,6 +60,9 @@ module Projects
         [ RefreshToken, OneTimeToken, RecoveryCode, OtpCredential ].each do |model|
           model.where(subject_type: "EndUser", subject_id: end_user_ids).delete_all
         end
+        EndUserIdentity.where(end_user_id: end_user_ids).delete_all
+        OneTimeToken.where(subject_type: "IdentityProvider", subject_id: project.identity_providers.select(:id)).delete_all
+        project.identity_providers.delete_all
         project.end_users.delete_all
         project.app_clients.delete_all
         project.end_user_attribute_definitions.delete_all

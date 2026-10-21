@@ -5,13 +5,17 @@ import { storeToRefs } from 'pinia'
 import BaseCard from '@/components/base/BaseCard.vue'
 import CreateProjectForm from '@/components/console/CreateProjectForm.vue'
 import PageHeader from '@/components/console/PageHeader.vue'
+import { useProjectStore } from '@/stores/project'
 import { useSessionStore } from '@/stores/session'
 import type { Project } from '@/types/api'
 
 const router = useRouter()
 const { account, me } = storeToRefs(useSessionStore())
 
+const projectStore = useProjectStore()
+
 function openProject(project: Project) {
+  projectStore.upsert(project)
   router.push({ name: 'project', params: { projectUid: project.uid } })
 }
 </script>

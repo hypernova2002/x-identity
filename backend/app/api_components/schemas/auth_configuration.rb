@@ -23,7 +23,7 @@ class Schemas::AuthConfiguration
       email_code_max_attempts: { type: :integer, minimum: 3, maximum: 10 },
       email_code_max_failures_per_email: { type: :integer, minimum: 3, maximum: 100 },
       email_code_max_failures_per_code: { type: :integer, minimum: 2, maximum: 100 },
-      otp_methods: { type: :array, items: { type: :string, enum: AuthConfiguration::OTP_METHODS }, minItems: 1 },
+      otp_method: { type: :string, enum: AuthConfiguration::OTP_METHODS, description: "The one method everyone in the account or project uses for MFA." },
       otp_digits: { type: :integer, minimum: AuthConfiguration::OTP_DIGITS.min, maximum: AuthConfiguration::OTP_DIGITS.max },
       otp_step_seconds: { type: :integer, minimum: AuthConfiguration::OTP_STEP_SECONDS.min, maximum: AuthConfiguration::OTP_STEP_SECONDS.max },
       otp_drift_steps: { type: :integer, minimum: 0, maximum: 2 },

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -13,16 +13,19 @@ import PageHeader from '@/components/console/PageHeader.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { projectService } from '@/services/account'
 import type { Page } from '@/services/http'
+import { useProjectStore } from '@/stores/project'
 import { useSessionStore } from '@/stores/session'
 import type { Project } from '@/types/api'
 import { formatDateTime } from '@/utils/format'
 
+const route = useRoute()
 const router = useRouter()
+const projectStore = useProjectStore()
 const { account, isAccountAdmin } = storeToRefs(useSessionStore())
 
 const page = ref(1)
 const projects = ref<Page<Project>>({ items: [], total: 0, perPage: 25 })
-const createOpen = ref(false)
+const createOpen = ref(route.query.create === '1')
 
 const columns = [
   { key: 'name', label: 'Name' },
@@ -39,12 +42,13 @@ onMounted(() => load())
 
 function openProject(project: Project) {
   createOpen.value = false
+  projectStore.upsert(project)
   router.push({ name: 'project', params: { projectUid: project.uid } })
 }
 </script>
 
 <template>
-  <PageHeader title="Projects" description="Each project has its own users, settings and members.">
+  <PageHeader title="Projects" description="Each project has its own end users, app clients, settings and members.">
     <template v-if="isAccountAdmin" #actions>
       <BaseButton label="Create project" @click="createOpen = true" />
     </template>
