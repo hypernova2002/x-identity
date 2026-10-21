@@ -15,7 +15,7 @@ RSpec.describe "Password reset", type: :openapi do
       post "Email a password reset link" do
         tags "Password reset"
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: EmailRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Auth::ForgotPasswordRequest.as_schema } }
 
         response 202, "accepted, whether or not the email exists"
       end
@@ -39,7 +39,7 @@ RSpec.describe "Password reset", type: :openapi do
       post "Set a new password with a reset token" do
         tags "Password reset"
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: ResetPasswordRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Auth::ResetPasswordRequest.as_schema } }
 
         response 204, "password changed"
 

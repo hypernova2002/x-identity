@@ -1,16 +1,14 @@
 module V1
   module Accounts
+    # The account's own audit log. Events inside a project are in that project's log.
     class AuditEventsController < AuthenticatedController
       include Paginated
-
-      FILTERS = %i[action_eq action_start actor_uid_eq target_uid_eq project_uid_eq occurred_at_gteq occurred_at_lteq].freeze
+      include AuditLogListing
 
       before_action :require_account_admin!
 
       def index
-        events = current_account.audit_events.ransack(params.fetch(:q, {}).permit(*FILTERS)).result
-        events = paginated(events.includes(:project).order(occurred_at: :desc, id: :desc))
-        render json: AuditEventSerializer.new(events).serializable_hash
+        render_audit_events(current_account.audit_events.where(project_id: nil))
       end
     end
   end

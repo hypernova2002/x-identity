@@ -2,10 +2,16 @@ module Auth
   # Exchanges a refresh token for a new token set. Each refresh token works once; presenting a
   # used one is treated as theft and revokes its whole family.
   class Refresh
-    # @param account [Account]
-    def initialize(account:)
-      @account = account
-      @configuration = account.auth_configuration!
+    # @param realm [Realms::AccountRealm, Realms::ProjectRealm]
+    # @param app_client [AppClient, nil] must be the client the token was issued to
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil)
+      @realm = realm
+      @app_client = app_client
+      @ip = ip
+      @user_agent = user_agent
+      @configuration = realm.auth_configuration
     end
 
     # @param refresh_token [String]
@@ -14,7 +20,7 @@ module Auth
     def call(refresh_token:)
       record = RefreshToken.find_by_token(refresh_token)
       user = record&.subject
-      raise ApiError.new(:invalid_token) unless user.is_a?(User) && user.account_id == @account.id
+      raise ApiError.new(:invalid_token) unless @realm.owns?(user) && record.app_client_id == @app_client&.id
 
       outcome = RefreshToken.transaction do
         record.lock!
@@ -22,7 +28,7 @@ module Auth
         next rejection if rejection
 
         record.mark_used!
-        TokenIssuer.new(account: @account).issue(
+        TokenIssuer.new(realm: @realm, app_client: @app_client).issue(
           user: user,
           authenticated_at: record.authenticated_at,
           amr: record.amr,
@@ -41,7 +47,8 @@ module Auth
     def rejection_for(record, user)
       if record.used?
         RefreshToken.revoke_family!(record.family_id)
-        AuditEvents::Recorder.new(account: @account).record(action: "user.refresh_token_reused", actor: user, target: user)
+        @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
+          .record(action: "#{@realm.event_prefix}.refresh_token_reused", actor: user, target: user)
         return :invalid_token
       end
 

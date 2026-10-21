@@ -1,7 +1,24 @@
-# Authentication settings for an owner's users: an Account's console users, and later a Project's end users.
+# Authentication settings for an owner's users: an Account's console users, or a Project's end users.
+# Every duration is stored in seconds.
 class AuthConfiguration < ApplicationRecord
   PASSWORD_MAX_LENGTH = 128
-  MAX_ACCESS_TOKEN_TTL_MINUTES = 60
+  MAX_ACCESS_TOKEN_TTL_SECONDS = 1.hour.to_i
+  OTP_METHODS = %w[totp hotp].freeze
+  # OTP codes come from a 31-bit number (RFC 4226), so digits beyond 10 add no strength.
+  OTP_DIGITS = 6..10
+  OTP_STEP_SECONDS = 30..900
+
+  DURATION_RANGES = {
+    password_max_age_seconds: 1.day.to_i..365.days.to_i,
+    lockout_window_seconds: 1.minute.to_i..1.day.to_i,
+    lockout_duration_seconds: 1.minute.to_i..1.day.to_i,
+    access_token_ttl_seconds: 5.minutes.to_i..MAX_ACCESS_TOKEN_TTL_SECONDS,
+    refresh_token_ttl_seconds: 1.day.to_i..365.days.to_i,
+    session_idle_timeout_seconds: 5.minutes.to_i..30.days.to_i,
+    signing_key_rotation_seconds: 30.days.to_i..365.days.to_i,
+    email_code_failure_window_seconds: 5.minutes.to_i..1.day.to_i
+  }.freeze
+  OPTIONAL_DURATIONS = %i[password_max_age_seconds session_idle_timeout_seconds].freeze
 
   belongs_to :owner, polymorphic: true
 
@@ -15,50 +32,81 @@ class AuthConfiguration < ApplicationRecord
   attribute :password_require_number, default: false
   attribute :password_require_symbol, default: false
   attribute :lockout_threshold, default: 10
-  attribute :lockout_window_minutes, default: 15
-  attribute :lockout_duration_minutes, default: 15
-  attribute :access_token_ttl_minutes, default: 15
-  attribute :refresh_token_ttl_days, default: 30
+  attribute :lockout_window_seconds, default: 15.minutes.to_i
+  attribute :lockout_duration_seconds, default: 15.minutes.to_i
+  attribute :access_token_ttl_seconds, default: 15.minutes.to_i
+  attribute :refresh_token_ttl_seconds, default: 30.days.to_i
   attribute :signing_algorithm, default: "ES256"
-  attribute :signing_key_rotation_days, default: 90
+  attribute :signing_key_rotation_seconds, default: 90.days.to_i
+  attribute :mfa_max_failed_attempts, default: 5
+  attribute :email_code_max_attempts, default: 5
+  attribute :email_code_max_failures_per_email, default: 10
+  attribute :email_code_max_failures_per_code, default: 5
+  attribute :email_code_failure_window_seconds, default: 1.hour.to_i
+  attribute :otp_methods, default: -> { %w[totp] }
+  attribute :otp_digits, default: 6
+  attribute :otp_step_seconds, default: 30
+  attribute :otp_drift_steps, default: 1
+  attribute :otp_hotp_look_ahead, default: 10
 
   validates :owner_id, uniqueness: { scope: :owner_type }
   validates :require_email_verification,
     :password_require_uppercase, :password_require_lowercase, :password_require_number, :password_require_symbol,
     inclusion: { in: [ true, false ] }
   validates :password_min_length, numericality: { only_integer: true, in: 8..PASSWORD_MAX_LENGTH }
-  validates :password_max_age_days, numericality: { only_integer: true, in: 1..365 }, allow_nil: true
   validates :lockout_threshold, numericality: { only_integer: true, in: 3..100 }
-  validates :lockout_window_minutes, :lockout_duration_minutes, numericality: { only_integer: true, in: 1..1440 }
-  validates :access_token_ttl_minutes, numericality: { only_integer: true, in: 5..MAX_ACCESS_TOKEN_TTL_MINUTES }
-  validates :refresh_token_ttl_days, numericality: { only_integer: true, in: 1..365 }
-  validates :session_idle_timeout_minutes, numericality: { only_integer: true, in: 5..43_200 }, allow_nil: true
   validates :signing_algorithm, inclusion: { in: SigningKey::ALGORITHMS }
-  validates :signing_key_rotation_days, numericality: { only_integer: true, in: 30..365 }
+  validates :mfa_max_failed_attempts, numericality: { only_integer: true, in: 3..20 }
+  validates :email_code_max_attempts, numericality: { only_integer: true, in: 3..10 }
+  validates :email_code_max_failures_per_email, numericality: { only_integer: true, in: 3..100 }
+  validates :email_code_max_failures_per_code, numericality: { only_integer: true, in: 2..100 }
+  validates :otp_digits, numericality: { only_integer: true, in: OTP_DIGITS }
+  validates :otp_step_seconds, numericality: { only_integer: true, in: OTP_STEP_SECONDS }
+  validates :otp_drift_steps, numericality: { only_integer: true, in: 0..2 }
+  validates :otp_hotp_look_ahead, numericality: { only_integer: true, in: 1..20 }
+  validate :otp_methods_are_known
+  DURATION_RANGES.each do |attribute, range|
+    validates attribute, numericality: { only_integer: true, in: range }, allow_nil: OPTIONAL_DURATIONS.include?(attribute)
+  end
 
   # @return [ActiveSupport::Duration]
   def access_token_ttl
-    access_token_ttl_minutes.minutes
+    access_token_ttl_seconds.seconds
   end
 
   # @return [ActiveSupport::Duration]
   def refresh_token_ttl
-    refresh_token_ttl_days.days
+    refresh_token_ttl_seconds.seconds
   end
 
   # @return [ActiveSupport::Duration, nil]
   def session_idle_timeout
-    session_idle_timeout_minutes&.minutes
+    session_idle_timeout_seconds&.seconds
   end
 
   # @return [ActiveSupport::Duration]
   def lockout_window
-    lockout_window_minutes.minutes
+    lockout_window_seconds.seconds
   end
 
   # @return [ActiveSupport::Duration]
   def lockout_duration
-    lockout_duration_minutes.minutes
+    lockout_duration_seconds.seconds
+  end
+
+  # @return [ActiveSupport::Duration, nil]
+  def password_max_age
+    password_max_age_seconds&.seconds
+  end
+
+  # @return [ActiveSupport::Duration]
+  def signing_key_rotation
+    signing_key_rotation_seconds.seconds
+  end
+
+  # @return [ActiveSupport::Duration]
+  def email_code_failure_window
+    email_code_failure_window_seconds.seconds
   end
 
   # Checks a candidate password against this configuration's password rules.
@@ -74,5 +122,12 @@ class AuthConfiguration < ApplicationRecord
     violations << "must include a number" if password_require_number && !password.match?(/\d/)
     violations << "must include a symbol" if password_require_symbol && !password.match?(/[^[:alnum:]]/)
     violations
+  end
+
+  private
+
+  def otp_methods_are_known
+    valid = otp_methods.is_a?(Array) && otp_methods.any? && otp_methods.uniq.size == otp_methods.size && (otp_methods - OTP_METHODS).empty?
+    errors.add(:otp_methods, "must be one or both of #{OTP_METHODS.join(', ')}") unless valid
   end
 end

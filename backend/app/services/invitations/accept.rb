@@ -2,8 +2,12 @@ module Invitations
   # Creates the invited user. Their email counts as verified, since the invitation reached it.
   class Accept
     # @param account [Account]
-    def initialize(account:)
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(account:, ip: nil, user_agent: nil)
       @account = account
+      @ip = ip
+      @user_agent = user_agent
     end
 
     # @param token [String]
@@ -33,7 +37,7 @@ module Invitations
         invitation.accept!
       end
 
-      AuditEvents::Recorder.new(account: @account).record(action: "invitation.accepted", actor: user, target: user, metadata: { invitation_uid: invitation.uid })
+      @account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "invitation.accepted", actor: user, target: user, metadata: { invitation_uid: invitation.uid })
       user
     rescue ActiveRecord::RecordNotUnique
       raise ApiError.new(:email_taken)

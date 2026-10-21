@@ -25,7 +25,7 @@ RSpec.describe "Invitations", type: :openapi do
         tags "Invitations"
         security [ { BearerAuth: [] } ]
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: CreateInvitationRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Invitations::CreateRequest.as_schema } }
 
         response 201, "invitation sent" do
           schema Schemas::Invitation
@@ -82,7 +82,7 @@ RSpec.describe "Invitations", type: :openapi do
       post "Accept an invitation and create your user" do
         tags "Invitations"
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: AcceptInvitationRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Auth::AcceptInvitationRequest.as_schema } }
 
         response 201, "user created" do
           schema Schemas::User

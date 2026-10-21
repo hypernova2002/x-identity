@@ -10,7 +10,7 @@ RSpec.describe "Sign in", type: :openapi do
     post "Sign in with email and password" do
       tags "Sign in"
       consumes "application/json"
-      request_body required: true, content: { "application/json" => { schema: SignInRequest.as_schema } }
+      request_body required: true, content: { "application/json" => { schema: Auth::SignInRequest.as_schema } }
 
       response 200, "tokens, or a challenge to answer" do
         schema Schemas::SignInResult
@@ -52,7 +52,7 @@ RSpec.describe "Sign in", type: :openapi do
 
   it "issues an access token whose subject is the user's uid" do
     sign_in 200 do
-      claims = Auth::AccessTokenVerifier.new(account: account).verify(parsed_body["access_token"])
+      claims = Auth::AccessTokenVerifier.new(realm: account.realm).verify(parsed_body["access_token"])
       expect(claims["sub"]).to eq(user.uid)
     end
   end
@@ -120,7 +120,7 @@ RSpec.describe "Sign in", type: :openapi do
     let!(:user) { create(:user, :with_mfa, account: account, email: "dana@acme.test") }
 
     it "asks for a TOTP code" do
-      sign_in(200) { expect(parsed_body["challenge"]).to eq("totp") }
+      sign_in(200) { expect(parsed_body["challenge"]).to eq("otp") }
     end
 
     it "skips the code when the account turned MFA off" do
@@ -137,7 +137,7 @@ RSpec.describe "Sign in", type: :openapi do
   end
 
   it "asks for a new password once the password is older than the maximum age" do
-    configuration.update!(password_max_age_days: 30)
+    configuration.update!(password_max_age_seconds: 30.days.to_i)
     user.update!(password_changed_at: 31.days.ago)
 
     sign_in(200) { expect(parsed_body["challenge"]).to eq("new_password") }

@@ -8,10 +8,4 @@ class TransactionalEmailJob < ApplicationJob
 
   retry_on Net::OpenTimeout, Net::ReadTimeout, Net::SMTPServerBusy, Errno::ECONNREFUSED,
     wait: :polynomially_longer, attempts: 5
-
-  private
-
-  def request_context(ip, user_agent)
-    RequestContext.new(ip: ip, user_agent: user_agent)
-  end
 end

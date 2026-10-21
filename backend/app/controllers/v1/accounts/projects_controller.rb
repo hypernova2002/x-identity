@@ -15,21 +15,25 @@ module V1
       end
 
       def create
-        project = ::Projects::Management.new(actor: current_user).create(**NameRequest.from_params(params).to_h)
+        project = management.create(**parse_request(::Projects::CreateRequest).to_h)
         render json: ProjectSerializer.new(project).serializable_hash, status: :created
       end
 
       def update
-        project = ::Projects::Management.new(actor: current_user).update(@project, **NameRequest.from_params(params).to_h)
+        project = management.update(@project, **parse_request(::Projects::UpdateRequest).to_h)
         render json: ProjectSerializer.new(project).serializable_hash
       end
 
       def destroy
-        ::Projects::Management.new(actor: current_user).destroy(@project)
+        management.destroy(@project)
         head :no_content
       end
 
       private
+
+      def management
+        ::Projects::Management.new(actor: current_user, **client_info)
+      end
 
       # Projects the user can't view are reported as missing, so their existence isn't revealed.
       def set_project

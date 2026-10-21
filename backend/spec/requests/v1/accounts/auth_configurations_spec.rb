@@ -24,7 +24,7 @@ RSpec.describe "Auth configuration", type: :openapi do
       tags "Auth configuration"
       security [ { BearerAuth: [] } ]
       consumes "application/json"
-      request_body required: true, content: { "application/json" => { schema: AuthConfigurationRequest.as_schema } }
+      request_body required: true, content: { "application/json" => { schema: AuthConfigurations::UpdateRequest.as_schema } }
 
       response 200, "updated" do
         schema Schemas::AuthConfiguration
@@ -57,8 +57,8 @@ RSpec.describe "Auth configuration", type: :openapi do
   end
 
   it "rejects out-of-range values" do
-    assert_api_response :put, 422, headers: auth_headers_for(admin), body: { access_token_ttl_minutes: 600 }, path_params: path_params do
-      expect(parsed_body.dig("error", "details", 0, "field")).to eq("access_token_ttl_minutes")
+    assert_api_response :put, 422, headers: auth_headers_for(admin), body: { access_token_ttl_seconds: 2.hours.to_i }, path_params: path_params do
+      expect(parsed_body.dig("error", "details", 0, "field")).to eq("access_token_ttl_seconds")
     end
   end
 

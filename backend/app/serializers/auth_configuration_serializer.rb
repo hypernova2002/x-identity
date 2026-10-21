@@ -9,15 +9,25 @@ class AuthConfigurationSerializer
     password_require_lowercase
     password_require_number
     password_require_symbol
-    password_max_age_days
+    password_max_age_seconds
     lockout_threshold
-    lockout_window_minutes
-    lockout_duration_minutes
-    access_token_ttl_minutes
-    refresh_token_ttl_days
-    session_idle_timeout_minutes
+    lockout_window_seconds
+    lockout_duration_seconds
+    access_token_ttl_seconds
+    refresh_token_ttl_seconds
+    session_idle_timeout_seconds
     signing_algorithm
-    signing_key_rotation_days
+    signing_key_rotation_seconds
+    mfa_max_failed_attempts
+    email_code_max_attempts
+    email_code_max_failures_per_email
+    email_code_max_failures_per_code
+    email_code_failure_window_seconds
+    otp_methods
+    otp_digits
+    otp_step_seconds
+    otp_drift_steps
+    otp_hotp_look_ahead
   ].freeze
 
   attributes(*ATTRIBUTES, :updated_at)

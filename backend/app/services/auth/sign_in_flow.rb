@@ -2,15 +2,21 @@ module Auth
   # Decides what a user who has proven some factors must do next: answer another challenge,
   # or receive tokens. Shared by password sign-in and every challenge response.
   class SignInFlow
-    CHALLENGES = %w[totp new_password mfa_setup].freeze
+    CHALLENGES = %w[otp new_password mfa_setup].freeze
 
-    # @param account [Account]
-    def initialize(account:)
-      @account = account
-      @configuration = account.auth_configuration!
+    # @param realm [Realms::AccountRealm, Realms::ProjectRealm]
+    # @param app_client [AppClient, nil]
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil)
+      @realm = realm
+      @app_client = app_client
+      @ip = ip
+      @user_agent = user_agent
+      @configuration = realm.auth_configuration
     end
 
-    # @param user [User]
+    # @param user [User, EndUser]
     # @param amr [Array<String>] factors proven so far
     # @param authenticated_at [Time]
     # @param recovery_codes [Array<String>, nil] passed through to the client after MFA setup
@@ -22,21 +28,27 @@ module Auth
         _record, session = OneTimeToken.issue!(
           subject: user,
           purpose: :sign_in_challenge,
-          data: { "challenge" => challenge, "amr" => amr, "authenticated_at" => authenticated_at.utc.iso8601(6) }
+          data: {
+            "challenge" => challenge,
+            "amr" => amr,
+            "authenticated_at" => authenticated_at.utc.iso8601(6),
+            "app_client_id" => @app_client&.id
+          }
         )
         return SignInResult.challenged(challenge, session, recovery_codes: recovery_codes)
       end
 
       user.record_sign_in!
-      AuditEvents::Recorder.new(account: @account).record(action: "user.signed_in", actor: user, target: user, metadata: { amr: amr })
-      tokens = TokenIssuer.new(account: @account).issue(user: user, authenticated_at: authenticated_at, amr: amr)
+      @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
+        .record(action: "#{@realm.event_prefix}.signed_in", actor: user, target: user, metadata: { amr: amr })
+      tokens = TokenIssuer.new(realm: @realm, app_client: @app_client).issue(user: user, authenticated_at: authenticated_at, amr: amr)
       SignInResult.authenticated(tokens, recovery_codes: recovery_codes)
     end
 
     private
 
     def next_challenge(user, amr)
-      return "totp" if !@configuration.mfa_off? && user.mfa_enabled? && !amr.include?("otp")
+      return "otp" if !@configuration.mfa_off? && user.mfa_enabled? && !amr.include?("otp")
       return "new_password" if user.password_expired?(@configuration)
       return "mfa_setup" if @configuration.mfa_required? && !user.mfa_enabled?
 

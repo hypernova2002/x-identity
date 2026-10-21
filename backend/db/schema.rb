@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_230012) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_220001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -22,6 +22,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_230012) do
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_accounts_on_slug", unique: true
     t.index ["uid"], name: "index_accounts_on_uid", unique: true
+  end
+
+  create_table "app_clients", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.string "name", null: false
+    t.string "client_type", null: false
+    t.string "client_secret_digest"
+    t.jsonb "allowed_origins", default: [], null: false
+    t.boolean "enabled", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["allowed_origins"], name: "index_app_clients_on_allowed_origins", using: :gin
+    t.index ["project_id"], name: "index_app_clients_on_project_id"
+    t.index ["uid"], name: "index_app_clients_on_uid", unique: true
   end
 
   create_table "audit_events", force: :cascade do |t|
@@ -41,8 +56,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_230012) do
     t.datetime "occurred_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "app_client_uid"
     t.index ["account_id", "occurred_at"], name: "index_audit_events_on_account_id_and_occurred_at"
     t.index ["action"], name: "index_audit_events_on_action"
+    t.index ["project_id", "occurred_at"], name: "index_audit_events_on_project_id_and_occurred_at"
     t.index ["project_id"], name: "index_audit_events_on_project_id"
     t.index ["uid"], name: "index_audit_events_on_uid", unique: true
   end
@@ -57,18 +74,63 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_230012) do
     t.boolean "password_require_lowercase", null: false
     t.boolean "password_require_number", null: false
     t.boolean "password_require_symbol", null: false
-    t.integer "password_max_age_days"
+    t.integer "password_max_age_seconds"
     t.integer "lockout_threshold", null: false
-    t.integer "lockout_window_minutes", null: false
-    t.integer "lockout_duration_minutes", null: false
-    t.integer "access_token_ttl_minutes", null: false
-    t.integer "refresh_token_ttl_days", null: false
-    t.integer "session_idle_timeout_minutes"
+    t.integer "lockout_window_seconds", null: false
+    t.integer "lockout_duration_seconds", null: false
+    t.integer "access_token_ttl_seconds", null: false
+    t.integer "refresh_token_ttl_seconds", null: false
+    t.integer "session_idle_timeout_seconds"
     t.string "signing_algorithm", null: false
-    t.integer "signing_key_rotation_days", null: false
+    t.integer "signing_key_rotation_seconds", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "mfa_max_failed_attempts", default: 5, null: false
+    t.integer "email_code_max_attempts", default: 5, null: false
+    t.integer "email_code_max_failures_per_email", default: 10, null: false
+    t.integer "email_code_max_failures_per_code", default: 5, null: false
+    t.integer "email_code_failure_window_seconds", default: 3600, null: false
+    t.jsonb "otp_methods", default: ["totp"], null: false
+    t.integer "otp_digits", default: 6, null: false
+    t.integer "otp_step_seconds", default: 30, null: false
+    t.integer "otp_drift_steps", default: 1, null: false
+    t.integer "otp_hotp_look_ahead", default: 10, null: false
     t.index ["owner_type", "owner_id"], name: "index_auth_configurations_on_owner_type_and_owner_id", unique: true
+  end
+
+  create_table "end_user_attribute_definitions", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.string "key", null: false
+    t.string "label", null: false
+    t.string "data_type", null: false
+    t.boolean "required", default: false, null: false
+    t.integer "max_length"
+    t.boolean "user_editable", default: true, null: false
+    t.boolean "include_in_token", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id", "key"], name: "index_end_user_attribute_definitions_on_project_id_and_key", unique: true
+    t.index ["uid"], name: "index_end_user_attribute_definitions_on_uid", unique: true
+  end
+
+  create_table "end_users", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.string "email", null: false
+    t.string "name"
+    t.string "password_digest"
+    t.string "status", null: false
+    t.jsonb "custom_attributes", default: {}, null: false
+    t.datetime "email_verified_at"
+    t.datetime "password_changed_at"
+    t.datetime "tokens_valid_after"
+    t.datetime "last_sign_in_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "failed_mfa_attempts", default: 0, null: false
+    t.index ["project_id", "email"], name: "index_end_users_on_project_id_and_email", unique: true
+    t.index ["uid"], name: "index_end_users_on_uid", unique: true
   end
 
   create_table "invitations", force: :cascade do |t|
@@ -99,6 +161,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_230012) do
     t.datetime "consumed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "code_digest"
+    t.integer "failed_attempts", default: 0, null: false
     t.index ["subject_type", "subject_id", "purpose"], name: "idx_on_subject_type_subject_id_purpose_c20527dd28"
     t.index ["token_digest"], name: "index_one_time_tokens_on_token_digest", unique: true
   end
@@ -111,6 +175,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_230012) do
     t.bigint "last_verified_timestamp"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "otp_type", default: "totp", null: false
+    t.integer "digits", default: 6, null: false
+    t.integer "step_seconds", default: 30, null: false
+    t.bigint "counter", default: 0, null: false
     t.index ["subject_type", "subject_id"], name: "index_otp_credentials_on_subject_type_and_subject_id", unique: true
   end
 
@@ -130,6 +198,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_230012) do
     t.string "name", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "allow_self_sign_up", default: true, null: false
+    t.string "confirm_sign_up_url"
+    t.string "reset_password_url"
+    t.string "accept_invitation_url"
     t.index ["account_id"], name: "index_projects_on_account_id"
     t.index ["uid"], name: "index_projects_on_uid", unique: true
   end
@@ -157,6 +229,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_230012) do
     t.datetime "revoked_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "app_client_id"
+    t.index ["app_client_id"], name: "index_refresh_tokens_on_app_client_id"
     t.index ["family_id"], name: "index_refresh_tokens_on_family_id"
     t.index ["subject_type", "subject_id"], name: "index_refresh_tokens_on_subject_type_and_subject_id"
     t.index ["token_digest"], name: "index_refresh_tokens_on_token_digest", unique: true
@@ -192,6 +266,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_230012) do
     t.datetime "last_sign_in_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "failed_mfa_attempts", default: 0, null: false
     t.index ["account_id", "email"], name: "index_users_on_account_id_and_email", unique: true
     t.index ["uid"], name: "index_users_on_uid", unique: true
   end

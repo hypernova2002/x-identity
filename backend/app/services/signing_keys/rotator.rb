@@ -3,7 +3,7 @@ module SigningKeys
   # algorithm changed, or the key is due for rotation. Retired keys stay published long enough for
   # every token they signed to expire.
   class Rotator
-    RETIRED_KEY_PUBLISH_PERIOD = (AuthConfiguration::MAX_ACCESS_TOKEN_TTL_MINUTES + 5).minutes
+    RETIRED_KEY_PUBLISH_PERIOD = AuthConfiguration::MAX_ACCESS_TOKEN_TTL_SECONDS.seconds + 5.minutes
 
     # @param owner [Account]
     # @param configuration [AuthConfiguration]
@@ -35,7 +35,7 @@ module SigningKeys
     def usable?(key)
       key.present? &&
         key.algorithm == @configuration.signing_algorithm &&
-        !key.due_for_rotation?(@configuration.signing_key_rotation_days)
+        !key.due_for_rotation?(@configuration.signing_key_rotation)
     end
   end
 end

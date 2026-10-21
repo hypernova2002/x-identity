@@ -17,6 +17,11 @@ class UserMailer < ApplicationMailer
     mail(to: new_email, subject: "Confirm your new email address")
   end
 
+  def disabled_after_mfa_failures(user)
+    @user = user
+    mail(to: user.email, subject: "Your x-identity user has been disabled")
+  end
+
   def email_change_notice(user, new_email)
     @user = user
     @new_email = new_email

@@ -2,9 +2,13 @@ module Projects
   class MembershipManagement
     # @param actor [User]
     # @param project [Project]
-    def initialize(actor:, project:)
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(actor:, project:, ip: nil, user_agent: nil)
       @actor = actor
       @project = project
+      @ip = ip
+      @user_agent = user_agent
     end
 
     # @param user_uid [String] a user in the project's account
@@ -20,7 +24,7 @@ module Projects
       membership = @project.project_memberships.new(user: user, role: role)
       raise ApiError.from_record(membership) unless membership.save
 
-      recorder.record(action: "project.member_added", actor: @actor, target: user, project: @project, metadata: { role: role })
+      recorder.record(action: "project.member_added", actor: @actor, target: user, metadata: { role: role })
       membership
     end
 
@@ -32,10 +36,7 @@ module Projects
       previous_role = membership.role
       raise ApiError.from_record(membership) unless membership.update(role: role)
 
-      recorder.record(
-        action: "project.member_role_changed", actor: @actor, target: membership.user, project: @project,
-        metadata: { from: previous_role, to: membership.role }
-      )
+      recorder.record(action: "project.member_role_changed", actor: @actor, target: membership.user, metadata: { from: previous_role, to: membership.role })
       membership
     end
 
@@ -43,7 +44,7 @@ module Projects
     def remove(membership)
       authorize!
       membership.destroy!
-      recorder.record(action: "project.member_removed", actor: @actor, target: membership.user, project: @project)
+      recorder.record(action: "project.member_removed", actor: @actor, target: membership.user)
     end
 
     private
@@ -53,7 +54,7 @@ module Projects
     end
 
     def recorder
-      AuditEvents::Recorder.new(account: @project.account)
+      @project.realm.recorder(ip: @ip, user_agent: @user_agent)
     end
   end
 end

@@ -1,0 +1,13 @@
+Hi<%= " #{@end_user.name}" if @end_user.name.present? %>,
+
+Your <%= @project.name %> verification code is:
+
+    <%= @code %>
+
+<% if @link -%>
+Or confirm your email address by opening:
+
+<%= @link %>
+
+<% end -%>
+The code expires in 24 hours. If you didn't sign up for <%= @project.name %>, you can ignore this email.

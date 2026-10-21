@@ -16,6 +16,7 @@ class Schemas::AuditEvent
       actor: reference,
       target: reference.merge(type: [ :object, :null ]),
       project_uid: { type: [ :string, :null ] },
+      app_client_uid: { type: [ :string, :null ], description: "The app client an end user signed in through." },
       ip: { type: [ :string, :null ] },
       user_agent: { type: [ :string, :null ] },
       metadata: { type: :object },

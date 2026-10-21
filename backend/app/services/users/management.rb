@@ -3,9 +3,13 @@ module Users
   # last active owner.
   class Management
     # @param actor [User]
-    def initialize(actor:)
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(actor:, ip: nil, user_agent: nil)
       @actor = actor
       @account = actor.account
+      @ip = ip
+      @user_agent = user_agent
     end
 
     # @param target [User]
@@ -67,7 +71,7 @@ module Users
     end
 
     def recorder
-      AuditEvents::Recorder.new(account: @account)
+      @account.realm.recorder(ip: @ip, user_agent: @user_agent)
     end
   end
 end

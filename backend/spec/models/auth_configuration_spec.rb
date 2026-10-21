@@ -29,7 +29,7 @@ RSpec.describe AuthConfiguration do
     let(:configuration) { build(:account).build_auth_configuration }
 
     it "limits access token lifetimes to the platform maximum" do
-      configuration.access_token_ttl_minutes = AuthConfiguration::MAX_ACCESS_TOKEN_TTL_MINUTES + 1
+      configuration.access_token_ttl_seconds = AuthConfiguration::MAX_ACCESS_TOKEN_TTL_SECONDS + 1
 
       expect(configuration).not_to be_valid
     end

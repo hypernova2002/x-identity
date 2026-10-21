@@ -3,10 +3,12 @@ module Users
   # until then and is notified that a change was requested.
   class EmailChange
     # @param account [Account]
-    # @param request_context [RequestContext] who asked, for the audit log
-    def initialize(account:, request_context: RequestContext.blank)
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(account:, ip: nil, user_agent: nil)
       @account = account
-      @request_context = request_context
+      @ip = ip
+      @user_agent = user_agent
     end
 
     # Checks the user's own credentials, then queues the confirmation email. Whether the new
@@ -17,18 +19,16 @@ module Users
     # @param otp_code [String, nil] required when the user has MFA turned on
     # @raise [ApiError] `validation_failed` or `invalid_otp`
     def request(user:, new_email:, current_password:, otp_code: nil)
-      new_email = normalize(new_email)
-
       raise ApiError.validation(current_password: "is incorrect") unless Passwords::Hasher.new.matches?(current_password, user.password_digest)
-      raise ApiError.new(:invalid_otp) if user.mfa_enabled? && !Mfa::Verifier.new(user: user).verify(otp_code)
+      Mfa::Verifier.new(user: user, ip: @ip, user_agent: @user_agent).verify!(otp_code) if user.mfa_enabled?
       raise ApiError.validation(new_email: "is invalid") unless new_email.match?(URI::MailTo::EMAIL_REGEXP) && new_email.length <= 254
       raise ApiError.validation(new_email: "must be different from your current email") if new_email == user.email
 
       EmailChangeEmailJob.perform_later(
         user_id: user.id,
         new_email: new_email,
-        ip: @request_context.ip,
-        user_agent: @request_context.user_agent
+        ip: @ip,
+        user_agent: @user_agent
       )
     end
 
@@ -37,8 +37,6 @@ module Users
     # @param user [User]
     # @param new_email [String]
     def deliver(user:, new_email:)
-      new_email = normalize(new_email)
-
       if @account.users.exists?(email: new_email)
         recorder.record(action: "user.email_change_blocked", actor: user, target: user, metadata: { new_email: new_email, reason: "email_taken" })
         return
@@ -77,12 +75,8 @@ module Users
 
     private
 
-    def normalize(email)
-      email.to_s.strip.downcase
-    end
-
     def recorder
-      AuditEvents::Recorder.new(account: @account, request_context: @request_context)
+      AuditEvents::Recorder.new(account: @account, ip: @ip, user_agent: @user_agent)
     end
   end
 end

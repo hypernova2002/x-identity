@@ -7,6 +7,6 @@ class PasswordResetEmailJob < TransactionalEmailJob
     account = Account.find_by(id: account_id)
     return if account.nil?
 
-    Auth::PasswordReset.new(account: account, request_context: request_context(ip, user_agent)).deliver(email: email)
+    Auth::PasswordReset.new(account: account, ip: ip, user_agent: user_agent).deliver(email: email)
   end
 end

@@ -10,7 +10,7 @@ class Invitation < ApplicationRecord
 
   enum :role, { owner: "owner", admin: "admin", member: "member" }, validate: true
 
-  normalizes :email, with: ->(email) { email.strip.downcase }
+  normalizes :email, with: ->(email) { EmailAddress.normalize(email) }
 
   validates :email, presence: true, length: { maximum: 254 }, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :token_digest, presence: true, uniqueness: true

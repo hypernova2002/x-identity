@@ -12,12 +12,12 @@ module V1
       end
 
       def create
-        membership = management.add(**AddProjectMemberRequest.from_params(params).to_h)
+        membership = management.add(**parse_request(::ProjectMembers::CreateRequest).to_h)
         render json: ProjectMemberSerializer.new(membership).serializable_hash, status: :created
       end
 
       def update
-        membership = management.update(@membership, **UpdateProjectMemberRequest.from_params(params).to_h)
+        membership = management.update(@membership, **parse_request(::ProjectMembers::UpdateRequest).to_h)
         render json: ProjectMemberSerializer.new(membership).serializable_hash
       end
 
@@ -38,7 +38,7 @@ module V1
       end
 
       def management
-        ::Projects::MembershipManagement.new(actor: current_user, project: @project)
+        ::Projects::MembershipManagement.new(actor: current_user, project: @project, **client_info)
       end
     end
   end

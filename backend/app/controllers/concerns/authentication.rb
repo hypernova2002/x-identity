@@ -1,4 +1,5 @@
-# Requires a valid bearer access token issued by the account in the URL.
+# Requires a valid bearer access token issued by the controller's `token_realm`: the account's
+# console users, or a project's end users.
 module Authentication
   extend ActiveSupport::Concern
 
@@ -12,8 +13,8 @@ module Authentication
     token = request.authorization.to_s[/\ABearer (\S+)\z/, 1]
     raise ApiError.new(:unauthorized) if token.nil?
 
-    claims = Auth::AccessTokenVerifier.new(account: current_account).verify(token)
-    user = current_account.users.active.find_by(uid: claims["sub"])
+    claims = Auth::AccessTokenVerifier.new(realm: token_realm).verify(token)
+    user = token_realm.users.active.find_by(uid: claims["sub"])
     raise ApiError.new(:invalid_token) if user.nil?
     raise ApiError.new(:invalid_token) if user.tokens_valid_after && claims["iat"] < user.tokens_valid_after.to_i
 
@@ -21,6 +22,12 @@ module Authentication
     Current.user = user
   end
 
+  # @return [Realms::AccountRealm, Realms::ProjectRealm]
+  def token_realm
+    current_account.realm
+  end
+
+  # @return [User, EndUser]
   def current_user
     Current.user
   end

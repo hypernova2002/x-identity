@@ -10,7 +10,7 @@ RSpec.describe "Sign out", type: :openapi do
     post "Revoke the session behind a refresh token" do
       tags "Sign in"
       consumes "application/json"
-      request_body required: true, content: { "application/json" => { schema: RefreshTokenRequest.as_schema } }
+      request_body required: true, content: { "application/json" => { schema: Auth::SignOutRequest.as_schema } }
 
       response 204, "signed out"
     end

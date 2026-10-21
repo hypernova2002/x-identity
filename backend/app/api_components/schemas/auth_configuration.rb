@@ -1,9 +1,14 @@
 class Schemas::AuthConfiguration
   include OpenapiRuby::Components::Base
 
+  durations = AuthConfiguration::DURATION_RANGES.to_h do |attribute, range|
+    type = AuthConfiguration::OPTIONAL_DURATIONS.include?(attribute) ? [ :integer, :null ] : :integer
+    [ attribute, { type: type, minimum: range.min, maximum: range.max, description: "Seconds." } ]
+  end
+
   schema(
     type: :object,
-    required: AuthConfigurationSerializer::ATTRIBUTES.map(&:to_s) - %w[password_max_age_days session_idle_timeout_minutes],
+    required: AuthConfigurationSerializer::ATTRIBUTES.map(&:to_s) - AuthConfiguration::OPTIONAL_DURATIONS.map(&:to_s),
     properties: {
       mfa_requirement: { type: :string, enum: AuthConfiguration.mfa_requirements.keys },
       require_email_verification: { type: :boolean },
@@ -12,15 +17,18 @@ class Schemas::AuthConfiguration
       password_require_lowercase: { type: :boolean },
       password_require_number: { type: :boolean },
       password_require_symbol: { type: :boolean },
-      password_max_age_days: { type: [ :integer, :null ], minimum: 1, maximum: 365 },
       lockout_threshold: { type: :integer, minimum: 3, maximum: 100 },
-      lockout_window_minutes: { type: :integer, minimum: 1, maximum: 1440 },
-      lockout_duration_minutes: { type: :integer, minimum: 1, maximum: 1440 },
-      access_token_ttl_minutes: { type: :integer, minimum: 5, maximum: AuthConfiguration::MAX_ACCESS_TOKEN_TTL_MINUTES },
-      refresh_token_ttl_days: { type: :integer, minimum: 1, maximum: 365 },
-      session_idle_timeout_minutes: { type: [ :integer, :null ], minimum: 5, maximum: 43_200 },
       signing_algorithm: { type: :string, enum: SigningKey::ALGORITHMS },
-      signing_key_rotation_days: { type: :integer, minimum: 30, maximum: 365 },
+      mfa_max_failed_attempts: { type: :integer, minimum: 3, maximum: 20 },
+      email_code_max_attempts: { type: :integer, minimum: 3, maximum: 10 },
+      email_code_max_failures_per_email: { type: :integer, minimum: 3, maximum: 100 },
+      email_code_max_failures_per_code: { type: :integer, minimum: 2, maximum: 100 },
+      otp_methods: { type: :array, items: { type: :string, enum: AuthConfiguration::OTP_METHODS }, minItems: 1 },
+      otp_digits: { type: :integer, minimum: AuthConfiguration::OTP_DIGITS.min, maximum: AuthConfiguration::OTP_DIGITS.max },
+      otp_step_seconds: { type: :integer, minimum: AuthConfiguration::OTP_STEP_SECONDS.min, maximum: AuthConfiguration::OTP_STEP_SECONDS.max },
+      otp_drift_steps: { type: :integer, minimum: 0, maximum: 2 },
+      otp_hotp_look_ahead: { type: :integer, minimum: 1, maximum: 20 },
+      **durations,
       updated_at: { type: :string, format: "date-time" }
     }
   )

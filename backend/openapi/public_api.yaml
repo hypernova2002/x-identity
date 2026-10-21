@@ -96,7 +96,7 @@ paths:
               type: string
             target_uid_eq:
               type: string
-            project_uid_eq:
+            app_client_uid_eq:
               type: string
             occurred_at_gteq:
               type: string
@@ -163,25 +163,81 @@ paths:
           application/json:
             schema:
               properties:
-                access_token_ttl_minutes:
+                access_token_ttl_seconds:
                   type: integer
-                lockout_duration_minutes:
+                  minimum: 300
+                  maximum: 3600
+                email_code_failure_window_seconds:
                   type: integer
+                  minimum: 300
+                  maximum: 86400
+                email_code_max_attempts:
+                  type: integer
+                  minimum: 3
+                  maximum: 10
+                email_code_max_failures_per_code:
+                  type: integer
+                  minimum: 2
+                  maximum: 100
+                email_code_max_failures_per_email:
+                  type: integer
+                  minimum: 3
+                  maximum: 100
+                lockout_duration_seconds:
+                  type: integer
+                  minimum: 60
+                  maximum: 86400
                 lockout_threshold:
                   type: integer
-                lockout_window_minutes:
+                  minimum: 3
+                  maximum: 100
+                lockout_window_seconds:
                   type: integer
+                  minimum: 60
+                  maximum: 86400
+                mfa_max_failed_attempts:
+                  type: integer
+                  minimum: 3
+                  maximum: 20
                 mfa_requirement:
                   enum:
                   - 'off'
                   - optional
                   - required
-                password_max_age_days:
+                otp_digits:
+                  type: integer
+                  minimum: 6
+                  maximum: 10
+                otp_drift_steps:
+                  type: integer
+                  minimum: 0
+                  maximum: 2
+                otp_hotp_look_ahead:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                otp_methods:
+                  type: array
+                  items:
+                    enum:
+                    - totp
+                    - hotp
+                  minItems: 1
+                  maxItems: 2
+                otp_step_seconds:
+                  type: integer
+                  minimum: 30
+                  maximum: 900
+                password_max_age_seconds:
                   anyOf:
                   - type: 'null'
                   - type: integer
+                    minimum: 86400
+                    maximum: 31536000
                 password_min_length:
                   type: integer
+                  minimum: 8
+                  maximum: 128
                 password_require_lowercase:
                   anyOf:
                   - type: boolean
@@ -194,23 +250,31 @@ paths:
                 password_require_uppercase:
                   anyOf:
                   - type: boolean
-                refresh_token_ttl_days:
+                refresh_token_ttl_seconds:
                   type: integer
+                  minimum: 86400
+                  maximum: 31536000
                 require_email_verification:
                   anyOf:
                   - type: boolean
-                session_idle_timeout_minutes:
+                session_idle_timeout_seconds:
                   anyOf:
                   - type: 'null'
                   - type: integer
+                    minimum: 300
+                    maximum: 2592000
                 signing_algorithm:
                   enum:
                   - ES256
                   - RS256
                   - PS256
-                signing_key_rotation_days:
+                signing_key_rotation_seconds:
                   type: integer
+                  minimum: 2592000
+                  maximum: 31536000
               type: object
+              unevaluatedProperties: false
+              additionalProperties: false
       responses:
         '200':
           description: updated
@@ -245,15 +309,23 @@ paths:
               properties:
                 name:
                   type: string
+                  minLength: 1
+                  maxLength: 100
                 password:
                   type: string
+                  minLength: 1
+                  maxLength: 128
                 token:
                   type: string
+                  minLength: 1
+                  maxLength: 256
               type: object
+              unevaluatedProperties: false
               required:
               - name
               - password
               - token
+              additionalProperties: false
       responses:
         '201':
           description: user created
@@ -294,9 +366,13 @@ paths:
               properties:
                 token:
                   type: string
+                  minLength: 1
+                  maxLength: 256
               type: object
+              unevaluatedProperties: false
               required:
               - token
+              additionalProperties: false
       responses:
         '204':
           description: email verified
@@ -327,9 +403,13 @@ paths:
               properties:
                 token:
                   type: string
+                  minLength: 1
+                  maxLength: 256
               type: object
+              unevaluatedProperties: false
               required:
               - token
+              additionalProperties: false
       responses:
         '204':
           description: email changed; all sessions signed out
@@ -366,9 +446,13 @@ paths:
               properties:
                 email:
                   type: string
+                  minLength: 1
+                  maxLength: 254
               type: object
+              unevaluatedProperties: false
               required:
               - email
+              additionalProperties: false
       responses:
         '202':
           description: accepted, whether or not the email exists
@@ -391,11 +475,19 @@ paths:
           application/json:
             schema:
               properties:
+                otp_type:
+                  enum:
+                  - totp
+                  - hotp
                 session:
                   type: string
+                  minLength: 1
+                  maxLength: 256
               type: object
+              unevaluatedProperties: false
               required:
               - session
+              additionalProperties: false
       responses:
         '200':
           description: secret and QR code
@@ -430,9 +522,13 @@ paths:
               properties:
                 refresh_token:
                   type: string
+                  minLength: 1
+                  maxLength: 256
               type: object
+              unevaluatedProperties: false
               required:
               - refresh_token
+              additionalProperties: false
       responses:
         '200':
           description: new tokens
@@ -467,9 +563,13 @@ paths:
               properties:
                 email:
                   type: string
+                  minLength: 1
+                  maxLength: 254
               type: object
+              unevaluatedProperties: false
               required:
               - email
+              additionalProperties: false
       responses:
         '202':
           description: accepted, whether or not the email exists
@@ -494,12 +594,18 @@ paths:
               properties:
                 password:
                   type: string
+                  minLength: 1
+                  maxLength: 128
                 token:
                   type: string
+                  minLength: 1
+                  maxLength: 256
               type: object
+              unevaluatedProperties: false
               required:
               - password
               - token
+              additionalProperties: false
       responses:
         '204':
           description: password changed
@@ -536,19 +642,27 @@ paths:
               properties:
                 challenge:
                   enum:
-                  - totp
+                  - otp
                   - new_password
                   - mfa_setup
                 code:
                   type: string
+                  minLength: 1
+                  maxLength: 32
                 new_password:
                   type: string
+                  minLength: 1
+                  maxLength: 128
                 session:
                   type: string
+                  minLength: 1
+                  maxLength: 256
               type: object
+              unevaluatedProperties: false
               required:
               - challenge
               - session
+              additionalProperties: false
       responses:
         '200':
           description: tokens, or the next challenge
@@ -564,6 +678,12 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '422':
           description: invalid new password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '403':
+          description: user disabled after too many wrong codes in a row
           content:
             application/json:
               schema:
@@ -595,12 +715,18 @@ paths:
               properties:
                 email:
                   type: string
+                  minLength: 1
+                  maxLength: 254
                 password:
                   type: string
+                  minLength: 1
+                  maxLength: 128
               type: object
+              unevaluatedProperties: false
               required:
               - email
               - password
+              additionalProperties: false
       responses:
         '200':
           description: tokens, or a challenge to answer
@@ -653,9 +779,13 @@ paths:
               properties:
                 refresh_token:
                   type: string
+                  minLength: 1
+                  maxLength: 256
               type: object
+              unevaluatedProperties: false
               required:
               - refresh_token
+              additionalProperties: false
       responses:
         '204':
           description: signed out
@@ -699,15 +829,18 @@ paths:
               properties:
                 email:
                   type: string
+                  format: email
                 role:
                   enum:
                   - owner
                   - admin
                   - member
               type: object
+              unevaluatedProperties: false
               required:
               - email
               - role
+              additionalProperties: false
       responses:
         '201':
           description: invitation sent
@@ -771,9 +904,11 @@ paths:
               properties:
                 name:
                   type: string
+                  minLength: 1
+                  maxLength: 100
               type: object
-              required:
-              - name
+              unevaluatedProperties: false
+              additionalProperties: false
       responses:
         '200':
           description: updated
@@ -810,14 +945,21 @@ paths:
               properties:
                 current_password:
                   type: string
+                  minLength: 1
+                  maxLength: 128
                 new_email:
                   type: string
+                  format: email
                 otp_code:
                   type: string
+                  minLength: 1
+                  maxLength: 32
               type: object
+              unevaluatedProperties: false
               required:
               - current_password
               - new_email
+              additionalProperties: false
       responses:
         '202':
           description: accepted; a confirmation is sent to the new address if it is
@@ -830,6 +972,133 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '422':
           description: wrong password or invalid email
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/otp":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Start setting up an authenticator app or hardware token
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              properties:
+                otp_type:
+                  enum:
+                  - totp
+                  - hotp
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '201':
+          description: secret and QR code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MfaEnrollment"
+        '422':
+          description: the account doesn't allow this method
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: MFA is already turned on
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Turn off MFA
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                current_password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+              type: object
+              unevaluatedProperties: false
+              required:
+              - code
+              - current_password
+              additionalProperties: false
+      responses:
+        '204':
+          description: MFA turned off
+        '403':
+          description: the account requires MFA
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/otp/confirm":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Confirm the authenticator app with a code
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+              type: object
+              unevaluatedProperties: false
+              required:
+              - code
+              additionalProperties: false
+      responses:
+        '200':
+          description: MFA turned on
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RecoveryCodes"
+        '401':
+          description: wrong code
           content:
             application/json:
               schema:
@@ -857,115 +1126,23 @@ paths:
               properties:
                 current_password:
                   type: string
+                  minLength: 1
+                  maxLength: 128
                 new_password:
                   type: string
+                  minLength: 1
+                  maxLength: 128
               type: object
+              unevaluatedProperties: false
               required:
               - current_password
               - new_password
+              additionalProperties: false
       responses:
         '204':
           description: password changed; other sessions signed out
         '422':
           description: wrong current password or invalid new password
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/Error"
-        '400':
-          "$ref": "#/components/responses/SchemaValidationError"
-  "/v1/accounts/{account_uid}/me/totp":
-    parameters:
-    - name: account_uid
-      in: path
-      required: true
-      schema:
-        type: string
-    post:
-      summary: Start setting up an authenticator app
-      tags:
-      - Me
-      security:
-      - BearerAuth: []
-      responses:
-        '201':
-          description: secret and QR code
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/MfaEnrollment"
-        '409':
-          description: MFA is already turned on
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/Error"
-        '400':
-          "$ref": "#/components/responses/SchemaValidationError"
-    delete:
-      summary: Turn off MFA
-      tags:
-      - Me
-      security:
-      - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              properties:
-                code:
-                  type: string
-                current_password:
-                  type: string
-              type: object
-              required:
-              - code
-              - current_password
-      responses:
-        '204':
-          description: MFA turned off
-        '403':
-          description: the account requires MFA
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/Error"
-        '400':
-          "$ref": "#/components/responses/SchemaValidationError"
-  "/v1/accounts/{account_uid}/me/totp/confirm":
-    parameters:
-    - name: account_uid
-      in: path
-      required: true
-      schema:
-        type: string
-    post:
-      summary: Confirm the authenticator app with a code
-      tags:
-      - Me
-      security:
-      - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              properties:
-                code:
-                  type: string
-              type: object
-              required:
-              - code
-      responses:
-        '200':
-          description: MFA turned on
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/RecoveryCodes"
-        '401':
-          description: wrong code
           content:
             application/json:
               schema:
@@ -1010,9 +1187,13 @@ paths:
               properties:
                 name:
                   type: string
+                  minLength: 1
+                  maxLength: 100
               type: object
+              unevaluatedProperties: false
               required:
               - name
+              additionalProperties: false
       responses:
         '201':
           description: created
@@ -1028,6 +1209,1124 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/.well-known/jwks.json":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Public keys for verifying the project's tokens
+      tags:
+      - End-user auth
+      responses:
+        '200':
+          description: JSON Web Key Set
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - keys
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the project's app clients
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: app clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/AppClient"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Create an app client
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                allowed_origins:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 255
+                  maxItems: 20
+                client_type:
+                  enum:
+                  - public
+                  - confidential
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_type
+              - name
+              additionalProperties: false
+      responses:
+        '201':
+          description: created; the secret is only shown now
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AppClientWithSecret"
+        '403':
+          description: only project admins and developers can manage app clients
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid name, type or origins
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{uid}/rotate-secret":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Replace a confidential client's secret
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the new secret; the old one stops working
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AppClientWithSecret"
+        '409':
+          description: public clients have no secret
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/attributes":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the project's custom end-user attributes
+      tags:
+      - End-user attributes
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: attributes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/AttributeDefinition"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Define a custom end-user attribute
+      tags:
+      - End-user attributes
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                data_type:
+                  enum:
+                  - string
+                  - number
+                  - boolean
+                  - date
+                include_in_token:
+                  anyOf:
+                  - type: boolean
+                key:
+                  type: string
+                  minLength: 1
+                  maxLength: 40
+                  pattern: "^[a-z][a-z0-9_]*$"
+                label:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                max_length:
+                  anyOf:
+                  - type: 'null'
+                  - type: integer
+                    minimum: 1
+                    maximum: 2048
+                required:
+                  anyOf:
+                  - type: boolean
+                user_editable:
+                  anyOf:
+                  - type: boolean
+              type: object
+              unevaluatedProperties: false
+              required:
+              - data_type
+              - key
+              - label
+              additionalProperties: false
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AttributeDefinition"
+        '403':
+          description: only project admins can define attributes
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid or reserved key
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/audit-events":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the project's audit events, newest first
+      tags:
+      - Audit log
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            action_eq:
+              type: string
+            action_start:
+              type: string
+            actor_uid_eq:
+              type: string
+            target_uid_eq:
+              type: string
+            app_client_uid_eq:
+              type: string
+            occurred_at_gteq:
+              type: string
+              format: date-time
+            occurred_at_lteq:
+              type: string
+              format: date-time
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/AuditEvent"
+        '403':
+          description: only project admins and developers can read the log
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/accept-invitation":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Set a first password with the code or link token from an invitation
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  pattern: "^\\d{6}$"
+                email:
+                  type: string
+                  minLength: 1
+                  maxLength: 254
+                password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                token:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - password
+              additionalProperties: false
+      responses:
+        '204':
+          description: password set; the end user can sign in
+        '400':
+          description: wrong, expired or already used invitation
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/confirm-forgot-password":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Set a new password with the code or link token from the email
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  pattern: "^\\d{6}$"
+                email:
+                  type: string
+                  minLength: 1
+                  maxLength: 254
+                password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                token:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - password
+              additionalProperties: false
+      responses:
+        '204':
+          description: password changed; every session signed out
+        '400':
+          description: wrong or expired code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: password breaks the project's rules
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/confirm-sign-up":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Confirm an end user's email with the code or link token from the email
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  pattern: "^\\d{6}$"
+                email:
+                  type: string
+                  minLength: 1
+                  maxLength: 254
+                token:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              additionalProperties: false
+      responses:
+        '204':
+          description: email confirmed
+        '400':
+          description: wrong or expired code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: neither a token nor email and code were sent
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/forgot-password":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Email a password reset code
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                email:
+                  type: string
+                  minLength: 1
+                  maxLength: 254
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - email
+              additionalProperties: false
+      responses:
+        '202':
+          description: accepted, whether or not the email exists
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/refresh":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Exchange a refresh token for new tokens
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                refresh_token:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - refresh_token
+              additionalProperties: false
+      responses:
+        '200':
+          description: new tokens
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/TokenSet"
+        '401':
+          description: invalid, reused or expired refresh token, or wrong app client
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/resend-confirmation":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Send a new confirmation code
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                email:
+                  type: string
+                  minLength: 1
+                  maxLength: 254
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - email
+              additionalProperties: false
+      responses:
+        '202':
+          description: accepted, whether or not the email exists
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/sign-in":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Sign in an end user
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                email:
+                  type: string
+                  minLength: 1
+                  maxLength: 254
+                password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - email
+              - password
+              additionalProperties: false
+      responses:
+        '200':
+          description: tokens (access, ID and refresh), or a challenge to answer
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignInResult"
+        '401':
+          description: wrong email or password, or invalid app client
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '403':
+          description: email not confirmed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '429':
+          description: locked out after too many failures
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/sign-out":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Revoke the session behind a refresh token
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                refresh_token:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - refresh_token
+              additionalProperties: false
+      responses:
+        '204':
+          description: signed out
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/sign-up":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Sign up an end user
+      tags:
+      - End-user auth
+      description: Always responds 202, whether or not the email is already registered.
+        New and unconfirmed addresses get a confirmation code; confirmed ones get
+        an email saying they already have an account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                custom_attributes:
+                  type: object
+                email:
+                  type: string
+                  format: email
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - email
+              - password
+              additionalProperties: false
+      responses:
+        '202':
+          description: accepted; check your email
+        '401':
+          description: unknown or disabled app client, or wrong client secret
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '403':
+          description: self sign-up is turned off
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid email, password or attributes
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List and search the project's end users
+      tags:
+      - End users
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            email_cont:
+              type: string
+            name_cont:
+              type: string
+            status_eq:
+              type: string
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: end users, paginated with Total, Per-Page and Link headers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/EndUser"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Create an end user and invite them to set a password
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                custom_attributes:
+                  type: object
+                email:
+                  type: string
+                  format: email
+                name:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 100
+                send_invitation:
+                  anyOf:
+                  - type: boolean
+              type: object
+              unevaluatedProperties: false
+              required:
+              - email
+              additionalProperties: false
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EndUser"
+        '403':
+          description: only project admins and developers can manage end users
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: an end user with this email already exists
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Update an end user's name, attributes or status
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                custom_attributes:
+                  type: object
+                name:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 100
+                status:
+                  enum:
+                  - active
+                  - disabled
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EndUser"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Delete an end user
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: deleted
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: The signed-in end user
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the end user
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EndUser"
+        '401':
+          description: missing or invalid access token
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    patch:
+      summary: Update your name and user-editable attributes
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                custom_attributes:
+                  type: object
+                name:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 100
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EndUser"
+        '422':
+          description: invalid name or attributes
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/email/confirm":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Confirm a new email with the code sent to it
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  pattern: "^\\d{6}$"
+              type: object
+              unevaluatedProperties: false
+              required:
+              - code
+              additionalProperties: false
+      responses:
+        '200':
+          description: email changed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EndUser"
+        '400':
+          description: wrong or expired code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
   "/v1/accounts/{account_uid}/projects/{project_uid}/members":
     parameters:
     - name: account_uid
@@ -1076,10 +2375,14 @@ paths:
                   - viewer
                 user_uid:
                   type: string
+                  minLength: 1
+                  maxLength: 64
               type: object
+              unevaluatedProperties: false
               required:
               - role
               - user_uid
+              additionalProperties: false
       responses:
         '201':
           description: added
@@ -1136,8 +2439,10 @@ paths:
                   - developer
                   - viewer
               type: object
+              unevaluatedProperties: false
               required:
               - role
+              additionalProperties: false
       responses:
         '200':
           description: updated
@@ -1215,11 +2520,34 @@ paths:
           application/json:
             schema:
               properties:
+                accept_invitation_url:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 2048
+                allow_self_sign_up:
+                  anyOf:
+                  - type: boolean
+                confirm_sign_up_url:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 2048
                 name:
                   type: string
+                  minLength: 1
+                  maxLength: 100
+                reset_password_url:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 2048
               type: object
-              required:
-              - name
+              unevaluatedProperties: false
+              additionalProperties: false
       responses:
         '200':
           description: renamed
@@ -1332,6 +2660,8 @@ paths:
                   - active
                   - disabled
               type: object
+              unevaluatedProperties: false
+              additionalProperties: false
       responses:
         '200':
           description: updated
@@ -1389,21 +2719,33 @@ paths:
               properties:
                 account_name:
                   type: string
+                  minLength: 1
+                  maxLength: 100
                 email:
                   type: string
+                  format: email
                 name:
                   type: string
+                  minLength: 1
+                  maxLength: 100
                 password:
                   type: string
+                  minLength: 1
+                  maxLength: 128
                 slug:
                   type: string
+                  minLength: 3
+                  maxLength: 40
+                  pattern: "^[A-Za-z0-9-]+$"
               type: object
+              unevaluatedProperties: false
               required:
               - account_name
               - email
               - name
               - password
               - slug
+              additionalProperties: false
       responses:
         '201':
           description: account created
@@ -1455,6 +2797,126 @@ components:
           type: string
           format: date-time
       title: Account
+    AppClient:
+      type: object
+      required:
+      - uid
+      - name
+      - client_type
+      - allowed_origins
+      - enabled
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: cl_4Kd8Wq2LmP7xR5tN9vB3cZ6h
+          description: Sent as `client_id` by the app.
+        name:
+          type: string
+        client_type:
+          type: string
+          enum:
+          - public
+          - confidential
+        allowed_origins:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: AppClient
+    AppClientWithSecret:
+      type: object
+      required:
+      - uid
+      - name
+      - client_type
+      - allowed_origins
+      - enabled
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: cl_4Kd8Wq2LmP7xR5tN9vB3cZ6h
+          description: Sent as `client_id` by the app.
+        name:
+          type: string
+        client_type:
+          type: string
+          enum:
+          - public
+          - confidential
+        allowed_origins:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        client_secret:
+          type:
+          - string
+          - 'null'
+          description: Confidential clients only. Shown once; store it securely.
+      title: AppClientWithSecret
+    AttributeDefinition:
+      type: object
+      required:
+      - uid
+      - key
+      - label
+      - data_type
+      - required
+      - user_editable
+      - include_in_token
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+        key:
+          type: string
+        label:
+          type: string
+        data_type:
+          type: string
+          enum:
+          - string
+          - number
+          - boolean
+          - date
+        required:
+          type: boolean
+        max_length:
+          type:
+          - integer
+          - 'null'
+        user_editable:
+          type: boolean
+          description: Whether end users can set it themselves.
+        include_in_token:
+          type: boolean
+          description: Whether it's added to the ID token's custom_attributes claim.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: AttributeDefinition
     AuditEvent:
       type: object
       required:
@@ -1505,6 +2967,11 @@ components:
           type:
           - string
           - 'null'
+        app_client_uid:
+          type:
+          - string
+          - 'null'
+          description: The app client an end user signed in through.
         ip:
           type:
           - string
@@ -1530,12 +2997,22 @@ components:
       - password_require_number
       - password_require_symbol
       - lockout_threshold
-      - lockout_window_minutes
-      - lockout_duration_minutes
-      - access_token_ttl_minutes
-      - refresh_token_ttl_days
+      - lockout_window_seconds
+      - lockout_duration_seconds
+      - access_token_ttl_seconds
+      - refresh_token_ttl_seconds
       - signing_algorithm
-      - signing_key_rotation_days
+      - signing_key_rotation_seconds
+      - mfa_max_failed_attempts
+      - email_code_max_attempts
+      - email_code_max_failures_per_email
+      - email_code_max_failures_per_code
+      - email_code_failure_window_seconds
+      - otp_methods
+      - otp_digits
+      - otp_step_seconds
+      - otp_drift_steps
+      - otp_hotp_look_ahead
       properties:
         mfa_requirement:
           type: string
@@ -1557,52 +3034,156 @@ components:
           type: boolean
         password_require_symbol:
           type: boolean
-        password_max_age_days:
-          type:
-          - integer
-          - 'null'
-          minimum: 1
-          maximum: 365
         lockout_threshold:
           type: integer
           minimum: 3
           maximum: 100
-        lockout_window_minutes:
-          type: integer
-          minimum: 1
-          maximum: 1440
-        lockout_duration_minutes:
-          type: integer
-          minimum: 1
-          maximum: 1440
-        access_token_ttl_minutes:
-          type: integer
-          minimum: 5
-          maximum: 60
-        refresh_token_ttl_days:
-          type: integer
-          minimum: 1
-          maximum: 365
-        session_idle_timeout_minutes:
-          type:
-          - integer
-          - 'null'
-          minimum: 5
-          maximum: 43200
         signing_algorithm:
           type: string
           enum:
           - ES256
           - RS256
           - PS256
-        signing_key_rotation_days:
+        mfa_max_failed_attempts:
+          type: integer
+          minimum: 3
+          maximum: 20
+        email_code_max_attempts:
+          type: integer
+          minimum: 3
+          maximum: 10
+        email_code_max_failures_per_email:
+          type: integer
+          minimum: 3
+          maximum: 100
+        email_code_max_failures_per_code:
+          type: integer
+          minimum: 2
+          maximum: 100
+        otp_methods:
+          type: array
+          items:
+            type: string
+            enum:
+            - totp
+            - hotp
+          minItems: 1
+        otp_digits:
+          type: integer
+          minimum: 6
+          maximum: 10
+        otp_step_seconds:
           type: integer
           minimum: 30
-          maximum: 365
+          maximum: 900
+        otp_drift_steps:
+          type: integer
+          minimum: 0
+          maximum: 2
+        otp_hotp_look_ahead:
+          type: integer
+          minimum: 1
+          maximum: 20
+        password_max_age_seconds:
+          type:
+          - integer
+          - 'null'
+          minimum: 86400
+          maximum: 31536000
+          description: Seconds.
+        lockout_window_seconds:
+          type: integer
+          minimum: 60
+          maximum: 86400
+          description: Seconds.
+        lockout_duration_seconds:
+          type: integer
+          minimum: 60
+          maximum: 86400
+          description: Seconds.
+        access_token_ttl_seconds:
+          type: integer
+          minimum: 300
+          maximum: 3600
+          description: Seconds.
+        refresh_token_ttl_seconds:
+          type: integer
+          minimum: 86400
+          maximum: 31536000
+          description: Seconds.
+        session_idle_timeout_seconds:
+          type:
+          - integer
+          - 'null'
+          minimum: 300
+          maximum: 2592000
+          description: Seconds.
+        signing_key_rotation_seconds:
+          type: integer
+          minimum: 2592000
+          maximum: 31536000
+          description: Seconds.
+        email_code_failure_window_seconds:
+          type: integer
+          minimum: 300
+          maximum: 86400
+          description: Seconds.
         updated_at:
           type: string
           format: date-time
       title: AuthConfiguration
+    EndUser:
+      type: object
+      required:
+      - uid
+      - email
+      - status
+      - email_verified
+      - mfa_enabled
+      - invitation_pending
+      - custom_attributes
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: eu_8Jd2Kq9LmP3xR5tN7vB4cZ6w
+          description: The `sub` claim in this end user's tokens.
+        email:
+          type: string
+          format: email
+        name:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - active
+          - disabled
+        email_verified:
+          type: boolean
+        mfa_enabled:
+          type: boolean
+        invitation_pending:
+          type: boolean
+          description: Created by an admin and hasn't set a password yet.
+        custom_attributes:
+          type: object
+          description: Values for the project's custom attributes, keyed by attribute
+            key.
+        last_sign_in_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: EndUser
     Error:
       type: object
       description: |-
@@ -1616,9 +3197,13 @@ components:
         - `mfa_required` (401): Multi-factor authentication is required. Sign in again to continue.
         - `invalid_challenge` (401): The sign-in session is invalid or has expired. Start signing in again.
         - `invalid_otp` (401): The verification code is incorrect.
+        - `invalid_client` (401): The app client is unknown, disabled, or its secret is wrong.
+        - `invalid_code` (400): The code is incorrect or has expired. Request a new one.
         - `forbidden` (403): You do not have permission to perform this action.
         - `email_not_verified` (403): Verify your email address before signing in.
         - `mfa_required_by_policy` (403): Multi-factor authentication is required by your account's policy and can't be turned off.
+        - `user_disabled` (403): Too many failed verification attempts. This account has been disabled; ask an administrator to re-enable it.
+        - `sign_up_disabled` (403): Self sign-up is turned off for this project.
         - `not_found` (404): The requested resource could not be found.
         - `method_not_allowed` (405): The request method is not supported for this resource.
         - `not_acceptable` (406): The requested response format is not supported.
@@ -1651,9 +3236,13 @@ components:
               - mfa_required
               - invalid_challenge
               - invalid_otp
+              - invalid_client
+              - invalid_code
               - forbidden
               - email_not_verified
               - mfa_required_by_policy
+              - user_disabled
+              - sign_up_disabled
               - not_found
               - method_not_allowed
               - not_acceptable
@@ -1724,6 +3313,7 @@ components:
       - created_at
       - updated_at
       - password_changed_at
+      - otp_methods
       - account
       properties:
         uid:
@@ -1763,19 +3353,43 @@ components:
         password_changed_at:
           type: string
           format: date-time
+        otp_methods:
+          type: array
+          items:
+            type: string
+            enum:
+            - totp
+            - hotp
+          description: Methods allowed when setting up MFA.
         account:
           "$ref": "#/components/schemas/Account"
       title: Me
     MfaEnrollment:
       type: object
       required:
+      - otp_type
+      - digits
       - secret
       - provisioning_uri
       - qr_code_svg
       properties:
+        otp_type:
+          type: string
+          enum:
+          - totp
+          - hotp
+        digits:
+          type: integer
+          minimum: 6
+          maximum: 10
+        step_seconds:
+          type:
+          - integer
+          - 'null'
+          description: TOTP only.
         secret:
           type: string
-          description: Base32 TOTP secret for manual entry.
+          description: Base32 secret for manual entry.
         provisioning_uri:
           type: string
           description: otpauth:// URI.
@@ -1788,6 +3402,8 @@ components:
       required:
       - uid
       - name
+      - allow_self_sign_up
+      - token_issuer
       - created_at
       - updated_at
       properties:
@@ -1796,6 +3412,26 @@ components:
           example: proj_9Fk2Lm8Qw3Rt7Yx5Vb1Nc4D
         name:
           type: string
+        allow_self_sign_up:
+          type: boolean
+        confirm_sign_up_url:
+          type:
+          - string
+          - 'null'
+          description: https URL with {token}, used for links in end-user emails.
+        reset_password_url:
+          type:
+          - string
+          - 'null'
+          description: https URL with {token}, used for links in end-user emails.
+        accept_invitation_url:
+          type:
+          - string
+          - 'null'
+          description: https URL with {token}, used for links in end-user emails.
+        token_issuer:
+          type: string
+          description: The `iss` of tokens issued to the project's end users.
         created_at:
           type: string
           format: date-time
@@ -1850,7 +3486,7 @@ components:
         challenge:
           type: string
           enum:
-          - totp
+          - otp
           - new_password
           - mfa_setup
         session:
@@ -1877,7 +3513,10 @@ components:
       properties:
         access_token:
           type: string
-          description: JWT. Verify with the account's JWKS.
+          description: JWT. Verify with the issuer's JWKS.
+        id_token:
+          type: string
+          description: 'End users only: a JWT with profile claims, for the app client.'
         refresh_token:
           type: string
           description: Single use. Every refresh returns a new one.

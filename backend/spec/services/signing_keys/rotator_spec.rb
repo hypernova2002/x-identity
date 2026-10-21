@@ -16,7 +16,7 @@ RSpec.describe SigningKeys::Rotator do
   it "rotates once the key is older than the rotation period" do
     key = rotator.current
 
-    travel (configuration.signing_key_rotation_days + 1).days do
+    travel configuration.signing_key_rotation + 1.day do
       expect(rotator.current).not_to eq(key)
     end
   end
@@ -33,7 +33,7 @@ RSpec.describe SigningKeys::Rotator do
     configuration.update!(signing_algorithm: "RS256")
     rotator.current
 
-    travel AuthConfiguration::MAX_ACCESS_TOKEN_TTL_MINUTES.minutes do
+    travel AuthConfiguration::MAX_ACCESS_TOKEN_TTL_SECONDS.seconds do
       expect(account.signing_keys.published).to include(key)
     end
   end

@@ -3,8 +3,8 @@ module V1
     module Me
       class EmailChangesController < AuthenticatedController
         def create
-          ::Users::EmailChange.new(account: current_account, request_context: request_context)
-            .request(user: current_user, **EmailChangeRequest.from_params(params).to_h)
+          ::Users::EmailChange.new(account: current_account, **client_info)
+            .request(user: current_user, **parse_request(::Me::EmailChangeRequest).to_h)
           head :accepted
         end
       end

@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe Auth::Lockout do
   let(:account) { create(:account) }
-  let(:configuration) { account.auth_configuration!.tap { |config| config.update!(lockout_threshold: 3, lockout_duration_minutes: 15) } }
+  let(:configuration) { account.auth_configuration!.tap { |config| config.update!(lockout_threshold: 3, lockout_duration_seconds: 15.minutes.to_i) } }
   let(:lockout) { described_class.new(owner: account, configuration: configuration) }
 
   it "locks after the threshold is reached" do

@@ -16,7 +16,7 @@ RSpec.describe "Email change", type: :openapi do
         tags "Me"
         security [ { BearerAuth: [] } ]
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: EmailChangeRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Me::EmailChangeRequest.as_schema } }
 
         response 202, "accepted; a confirmation is sent to the new address if it is available"
 
@@ -69,7 +69,7 @@ RSpec.describe "Email change", type: :openapi do
       post "Confirm a new email address" do
         tags "Me"
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: TokenRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Auth::ConfirmEmailChangeRequest.as_schema } }
 
         response 204, "email changed; all sessions signed out"
 

@@ -9,7 +9,7 @@ RSpec.describe "Sign-in challenges", type: :openapi do
   let(:path_params) { { account_uid: account.uid } }
 
   def start_sign_in(user)
-    Auth::SignIn.new(account: account).call(email: user.email, password: "correct horse battery staple").session
+    Auth::SignIn.new(realm: account.realm).call(email: user.email, password: "correct horse battery staple").session
   end
 
   describe "responding to a challenge" do
@@ -19,7 +19,7 @@ RSpec.describe "Sign-in challenges", type: :openapi do
       post "Answer a sign-in challenge" do
         tags "Sign in"
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: ChallengeResponseRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Auth::ChallengeResponseRequest.as_schema } }
 
         response 200, "tokens, or the next challenge" do
           schema Schemas::SignInResult
@@ -33,19 +33,23 @@ RSpec.describe "Sign-in challenges", type: :openapi do
           schema Schemas::Error
         end
 
+        response 403, "user disabled after too many wrong codes in a row" do
+          schema Schemas::Error
+        end
+
         response 429, "locked out after too many failures" do
           schema Schemas::Error
         end
       end
     end
 
-    context "with a totp challenge" do
+    context "with an otp challenge" do
       let(:user) { create(:user, :with_mfa, account: account) }
       let(:session) { start_sign_in(user) }
 
       it "returns tokens that record OTP use" do
-        assert_api_response :post, 200, body: { challenge: "totp", session: session, code: current_totp_for(user) }, path_params: path_params do
-          claims = Auth::AccessTokenVerifier.new(account: account).verify(parsed_body["access_token"])
+        assert_api_response :post, 200, body: { challenge: "otp", session: session, code: current_totp_for(user) }, path_params: path_params do
+          claims = Auth::AccessTokenVerifier.new(realm: account.realm).verify(parsed_body["access_token"])
           expect(claims["amr"]).to eq(%w[pwd otp])
         end
       end
@@ -53,16 +57,16 @@ RSpec.describe "Sign-in challenges", type: :openapi do
       it "accepts a recovery code" do
         code = RecoveryCode.regenerate_for!(user).first
 
-        assert_api_response :post, 200, body: { challenge: "totp", session: session, code: code }, path_params: path_params
+        assert_api_response :post, 200, body: { challenge: "otp", session: session, code: code }, path_params: path_params
       end
 
       it "rejects a wrong code but keeps the session usable" do
-        assert_api_response :post, 401, body: { challenge: "totp", session: session, code: "000000" }, path_params: path_params
-        assert_api_response :post, 200, body: { challenge: "totp", session: session, code: current_totp_for(user) }, path_params: path_params
+        assert_api_response :post, 401, body: { challenge: "otp", session: session, code: "000000" }, path_params: path_params
+        assert_api_response :post, 200, body: { challenge: "otp", session: session, code: current_totp_for(user) }, path_params: path_params
       end
 
       it "refuses to reuse a session once it has succeeded" do
-        body = { challenge: "totp", session: session, code: current_totp_for(user) }
+        body = { challenge: "otp", session: session, code: current_totp_for(user) }
         assert_api_response :post, 200, body: body, path_params: path_params
 
         assert_api_response(:post, 401, body: body, path_params: path_params) { expect(error_code).to eq("invalid_challenge") }
@@ -71,17 +75,36 @@ RSpec.describe "Sign-in challenges", type: :openapi do
       it "rejects a session from another account" do
         other_account = create(:account)
 
-        assert_api_response :post, 401, body: { challenge: "totp", session: session, code: current_totp_for(user) },
+        assert_api_response :post, 401, body: { challenge: "otp", session: session, code: current_totp_for(user) },
           path_params: { account_uid: other_account.uid }
       end
 
-      it "locks the user out after too many wrong codes" do
-        configuration.update!(lockout_threshold: 3)
-        3.times { assert_api_response :post, 401, body: { challenge: "totp", session: session, code: "000000" }, path_params: path_params }
+      it "disables the user after too many wrong codes in a row" do
+        configuration.update!(mfa_max_failed_attempts: 3)
+        2.times { assert_api_response :post, 401, body: { challenge: "otp", session: session, code: "000000" }, path_params: path_params }
 
-        assert_api_response(:post, 429, body: { challenge: "totp", session: session, code: current_totp_for(user) }, path_params: path_params) do
-          expect(error_code).to eq("too_many_attempts")
+        assert_api_response(:post, 403, body: { challenge: "otp", session: session, code: "000000" }, path_params: path_params) do
+          expect([ error_code, user.reload.status ]).to eq([ "user_disabled", "disabled" ])
         end
+      end
+
+      it "locks the account's last active owner out temporarily instead of disabling them" do
+        owner = create(:user, :owner, :with_mfa, account: account)
+        owner_session = start_sign_in(owner)
+        configuration.update!(mfa_max_failed_attempts: 3)
+        2.times { assert_api_response :post, 401, body: { challenge: "otp", session: owner_session, code: "000000" }, path_params: path_params }
+
+        assert_api_response(:post, 429, body: { challenge: "otp", session: owner_session, code: "000000" }, path_params: path_params) do
+          expect([ error_code, owner.reload.status ]).to eq([ "too_many_attempts", "active" ])
+        end
+      end
+
+      it "starts counting again after a correct code" do
+        configuration.update!(mfa_max_failed_attempts: 3)
+        2.times { assert_api_response :post, 401, body: { challenge: "otp", session: session, code: "000000" }, path_params: path_params }
+        assert_api_response :post, 200, body: { challenge: "otp", session: session, code: current_totp_for(user) }, path_params: path_params
+
+        expect(user.reload.failed_mfa_attempts).to eq(0)
       end
     end
 
@@ -89,7 +112,7 @@ RSpec.describe "Sign-in challenges", type: :openapi do
       let(:user) { create(:user, account: account, password_changed_at: 100.days.ago) }
       let(:session) { start_sign_in(user) }
 
-      before { configuration.update!(password_max_age_days: 90) }
+      before { configuration.update!(password_max_age_seconds: 90.days.to_i) }
 
       it "sets the new password and signs in" do
         assert_api_response :post, 200, body: { challenge: "new_password", session: session, new_password: "a brand new passphrase" },
@@ -111,7 +134,7 @@ RSpec.describe "Sign-in challenges", type: :openapi do
       before { configuration.update!(mfa_requirement: "required") }
 
       it "confirms the new authenticator and returns tokens with recovery codes" do
-        enrollment = Auth::ChallengeResponse.new(account: account).start_mfa_setup(session: session)
+        enrollment = Auth::ChallengeResponse.new(realm: account.realm).start_mfa_setup(session: session)
         code = ROTP::TOTP.new(enrollment.secret).now
 
         assert_api_response :post, 200, body: { challenge: "mfa_setup", session: session, code: code }, path_params: path_params do
@@ -128,7 +151,7 @@ RSpec.describe "Sign-in challenges", type: :openapi do
       post "Get a TOTP secret while answering an mfa_setup challenge" do
         tags "Sign in"
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: SessionRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Auth::MfaSetupRequest.as_schema } }
 
         response 200, "secret and QR code" do
           schema Schemas::MfaEnrollment

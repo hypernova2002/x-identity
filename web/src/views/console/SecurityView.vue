@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import RecoveryCodesList from '@/components/auth/RecoveryCodesList.vue'
-import TotpSetup from '@/components/auth/TotpSetup.vue'
+import OtpSetup from '@/components/auth/OtpSetup.vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import PageHeader from '@/components/console/PageHeader.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { meService } from '@/services/account'
 import { useSessionStore } from '@/stores/session'
-import type { MfaEnrollment } from '@/types/api'
+import type { MfaEnrollment, OtpType } from '@/types/api'
+import { otpMethodOptions } from '@/utils/options'
 
 const session = useSessionStore()
 const { account, me } = storeToRefs(session)
@@ -61,24 +63,27 @@ const requestEmailChange = useAsyncAction(async () => {
   emailOtp.value = ''
 })
 
-const startTotp = useAsyncAction(async () => {
+const otpType = ref<OtpType>('totp')
+const otpTypeOptions = computed(() => otpMethodOptions.filter((option) => me.value?.otp_methods.includes(option.value)))
+
+const startOtp = useAsyncAction(async () => {
   if (!account.value) return
   recoveryCodes.value = []
-  enrollment.value = await meService.startTotp(account.value.uid)
+  enrollment.value = await meService.startOtp(account.value.uid, otpTypeOptions.value.length > 1 ? otpType.value : (me.value?.otp_methods[0] ?? 'totp'))
 })
 
-const confirmTotp = useAsyncAction(async () => {
+const confirmOtp = useAsyncAction(async () => {
   if (!account.value) return
-  const result = await meService.confirmTotp(account.value.uid, enrollmentCode.value)
+  const result = await meService.confirmOtp(account.value.uid, enrollmentCode.value)
   recoveryCodes.value = result.recovery_codes
   enrollment.value = null
   enrollmentCode.value = ''
   await session.loadMe()
 })
 
-const disableTotp = useAsyncAction(async () => {
+const disableOtp = useAsyncAction(async () => {
   if (!account.value) return
-  await meService.disableTotp(account.value.uid, disablePassword.value, mfaCode.value)
+  await meService.disableOtp(account.value.uid, disablePassword.value, mfaCode.value)
   disablePassword.value = ''
   mfaCode.value = ''
   recoveryCodes.value = []
@@ -174,21 +179,27 @@ const regenerateCodes = useAsyncAction(async () => {
     <RecoveryCodesList v-if="recoveryCodes.length > 0" :codes="recoveryCodes" />
 
     <template v-if="!me?.mfa_enabled">
-      <BaseAlert v-if="startTotp.error.value" variant="danger">{{ startTotp.error.value.message }}</BaseAlert>
+      <BaseAlert v-if="startOtp.error.value" variant="danger">{{ startOtp.error.value.message }}</BaseAlert>
+      <BaseSelect
+        v-if="!enrollment && otpTypeOptions.length > 1"
+        v-model="otpType"
+        label="Method"
+        :options="otpTypeOptions"
+      />
       <BaseButton
         v-if="!enrollment"
-        label="Set up authenticator app"
-        :loading="startTotp.loading.value"
+        label="Set up multi-factor authentication"
+        :loading="startOtp.loading.value"
         class="self-start"
-        @click="startTotp.run()"
+        @click="startOtp.run()"
       />
 
-      <form v-else class="flex flex-col gap-4" novalidate @submit.prevent="confirmTotp.run()">
-        <TotpSetup :enrollment="enrollment" />
-        <BaseAlert v-if="confirmTotp.error.value" variant="danger">{{ confirmTotp.error.value.message }}</BaseAlert>
+      <form v-else class="flex flex-col gap-4" novalidate @submit.prevent="confirmOtp.run()">
+        <OtpSetup :enrollment="enrollment" />
+        <BaseAlert v-if="confirmOtp.error.value" variant="danger">{{ confirmOtp.error.value.message }}</BaseAlert>
         <BaseInput v-model="enrollmentCode" label="Verification code" autocomplete="one-time-code" inputmode="numeric" required />
         <div class="flex gap-2">
-          <BaseButton type="submit" label="Turn on MFA" :loading="confirmTotp.loading.value" />
+          <BaseButton type="submit" label="Turn on MFA" :loading="confirmOtp.loading.value" />
           <BaseButton label="Cancel" variant="secondary" @click="enrollment = null" />
         </div>
       </form>
@@ -196,8 +207,8 @@ const regenerateCodes = useAsyncAction(async () => {
 
     <form v-else class="flex flex-col gap-4" novalidate @submit.prevent="regenerateCodes.run()">
       <BaseAlert v-if="regenerateCodes.error.value" variant="danger">{{ regenerateCodes.error.value.message }}</BaseAlert>
-      <BaseAlert v-if="disableTotp.error.value && disableTotp.error.value.details.length === 0" variant="danger">
-        {{ disableTotp.error.value.message }}
+      <BaseAlert v-if="disableOtp.error.value && disableOtp.error.value.details.length === 0" variant="danger">
+        {{ disableOtp.error.value.message }}
       </BaseAlert>
       <BaseInput
         v-model="mfaCode"
@@ -213,11 +224,11 @@ const regenerateCodes = useAsyncAction(async () => {
         type="password"
         autocomplete="current-password"
         hint="Only needed to turn MFA off."
-        :error="disableTotp.error.value?.fieldError('current_password')"
+        :error="disableOtp.error.value?.fieldError('current_password')"
       />
       <div class="flex flex-wrap gap-2">
         <BaseButton type="submit" label="Get new recovery codes" variant="secondary" :loading="regenerateCodes.loading.value" />
-        <BaseButton label="Turn off MFA" variant="danger" :loading="disableTotp.loading.value" @click="disableTotp.run()" />
+        <BaseButton label="Turn off MFA" variant="danger" :loading="disableOtp.loading.value" @click="disableOtp.run()" />
       </div>
     </form>
   </BaseCard>

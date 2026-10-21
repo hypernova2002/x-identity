@@ -10,7 +10,7 @@ RSpec.describe "Token refresh", type: :openapi do
     post "Exchange a refresh token for new tokens" do
       tags "Sign in"
       consumes "application/json"
-      request_body required: true, content: { "application/json" => { schema: RefreshTokenRequest.as_schema } }
+      request_body required: true, content: { "application/json" => { schema: Auth::RefreshRequest.as_schema } }
 
       response 200, "new tokens" do
         schema Schemas::TokenSet
@@ -57,7 +57,7 @@ RSpec.describe "Token refresh", type: :openapi do
   end
 
   it "expires sessions left idle longer than the configured timeout" do
-    configuration.update!(session_idle_timeout_minutes: 30)
+    configuration.update!(session_idle_timeout_seconds: 30.minutes.to_i)
     tokens
 
     travel 31.minutes do

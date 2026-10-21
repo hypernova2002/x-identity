@@ -27,7 +27,7 @@ RSpec.describe "Project members", type: :openapi do
         tags "Projects"
         security [ { BearerAuth: [] } ]
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: AddProjectMemberRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: ProjectMembers::CreateRequest.as_schema } }
 
         response 201, "added" do
           schema Schemas::ProjectMember
@@ -78,7 +78,7 @@ RSpec.describe "Project members", type: :openapi do
         tags "Projects"
         security [ { BearerAuth: [] } ]
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: UpdateProjectMemberRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: ProjectMembers::UpdateRequest.as_schema } }
 
         response 200, "updated" do
           schema Schemas::ProjectMember

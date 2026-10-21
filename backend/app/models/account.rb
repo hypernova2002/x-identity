@@ -24,6 +24,11 @@ class Account < ApplicationRecord
     exclusion: { in: RESERVED_SLUGS, message: "is reserved" },
     uniqueness: true
 
+  # @return [Realms::AccountRealm]
+  def realm
+    Realms::AccountRealm.new(self)
+  end
+
   # The account's auth configuration, created with defaults if it doesn't exist yet.
   # @return [AuthConfiguration]
   def auth_configuration!

@@ -12,3 +12,26 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 40)
 }
+
+const DURATION_UNITS: [number, string][] = [
+  [86_400, 'day'],
+  [3_600, 'hour'],
+  [60, 'minute'],
+  [1, 'second'],
+]
+
+/** Seconds as a readable duration, e.g. 5400 → "1 hour 30 minutes". Uses at most two units. */
+export function formatDuration(totalSeconds: number): string {
+  if (totalSeconds <= 0) return '0 seconds'
+
+  const parts: string[] = []
+  let remaining = Math.floor(totalSeconds)
+  for (const [size, unit] of DURATION_UNITS) {
+    const count = Math.floor(remaining / size)
+    if (count > 0 && parts.length < 2) {
+      parts.push(`${count} ${unit}${count === 1 ? '' : 's'}`)
+      remaining -= count * size
+    }
+  }
+  return parts.join(' ')
+}

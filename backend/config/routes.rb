@@ -34,9 +34,9 @@ Rails.application.routes.draw do
       scope "me", module: :me, as: :me do
         put "password", to: "passwords#update"
         post "email", to: "email_changes#create"
-        post "totp", to: "totps#create"
-        post "totp/confirm", to: "totps#confirm"
-        delete "totp", to: "totps#destroy"
+        post "otp", to: "otps#create"
+        post "otp/confirm", to: "otps#confirm"
+        delete "otp", to: "otps#destroy"
         post "recovery-codes", to: "recovery_codes#create"
       end
 
@@ -48,6 +48,55 @@ Rails.application.routes.draw do
       resources :projects, only: %i[index show create update destroy], param: :uid do
         resources :members, only: %i[index create update destroy], param: :user_uid, controller: "project_members"
       end
+
+      # Path scopes can't be nested inside `resources` without being moved in front of the parent path,
+      # so the rest of the project's routes are scoped explicitly.
+      scope "projects/:project_uid", module: :projects, as: :project do
+        get ".well-known/jwks.json", to: "jwks#show", format: false, as: :jwks
+
+        scope "auth", module: :auth, as: :auth do
+          post "sign-up", to: "sign_ups#create"
+          post "confirm-sign-up", to: "confirmations#create"
+          post "resend-confirmation", to: "confirmations#resend"
+          post "sign-in", to: "sign_ins#create"
+          post "respond-to-challenge", to: "challenges#create"
+          post "mfa-setup", to: "mfa_setups#create"
+          post "refresh", to: "refreshes#create"
+          post "sign-out", to: "sign_outs#create"
+          post "forgot-password", to: "password_resets#create"
+          post "confirm-forgot-password", to: "password_resets#update"
+          post "accept-invitation", to: "invitation_acceptances#create"
+        end
+
+        get "me", to: "me#show"
+        patch "me", to: "me#update"
+        scope "me", module: :me, as: :me do
+          put "password", to: "passwords#update"
+          post "email", to: "email_changes#create"
+          post "email/confirm", to: "email_changes#confirm"
+          post "otp", to: "otps#create"
+          post "otp/confirm", to: "otps#confirm"
+          delete "otp", to: "otps#destroy"
+          post "recovery-codes", to: "recovery_codes#create"
+        end
+
+        get "auth-configuration", to: "auth_configurations#show"
+        put "auth-configuration", to: "auth_configurations#update"
+
+        resources :app_clients, path: "app-clients", param: :uid, only: %i[index show create update destroy] do
+          post "rotate-secret", on: :member, action: :rotate_secret
+        end
+        resources :end_users, path: "end-users", param: :uid, only: %i[index show create update destroy] do
+          member do
+            delete "mfa", action: :reset_mfa
+            post "sign-out", action: :sign_out
+            post "invitation", action: :resend_invitation
+          end
+        end
+        resources :attribute_definitions, path: "attributes", param: :uid, only: %i[index create update destroy]
+        resources :audit_events, path: "audit-events", only: :index
+      end
+
       resources :audit_events, path: "audit-events", only: :index
     end
   end

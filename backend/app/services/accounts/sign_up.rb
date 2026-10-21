@@ -3,6 +3,13 @@ module Accounts
   class SignUp
     Result = Data.define(:account, :user)
 
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(ip: nil, user_agent: nil)
+      @ip = ip
+      @user_agent = user_agent
+    end
+
     # @return [Result]
     # @raise [ApiError] `validation_failed`
     def call(account_name:, slug:, name:, email:, password:)
@@ -18,8 +25,8 @@ module Accounts
         user.save!
       end
 
-      AuditEvents::Recorder.new(account: account).record(action: "account.created", actor: user, target: account)
-      Auth::EmailVerification.new(account: account).request(email: user.email)
+      account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "account.created", actor: user, target: account)
+      Auth::EmailVerification.new(account: account, ip: @ip, user_agent: @user_agent).request(email: user.email)
       Result.new(account: account, user: user)
     rescue ActiveRecord::RecordNotUnique
       raise ApiError.validation(slug: "has already been taken")

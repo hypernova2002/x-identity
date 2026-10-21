@@ -1,10 +1,12 @@
 module Auth
   class PasswordReset
     # @param account [Account]
-    # @param request_context [RequestContext] who asked, for the audit log
-    def initialize(account:, request_context: RequestContext.blank)
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(account:, ip: nil, user_agent: nil)
       @account = account
-      @request_context = request_context
+      @ip = ip
+      @user_agent = user_agent
     end
 
     # Queues a reset email. The lookup happens in the job, so callers learn nothing about which
@@ -13,16 +15,16 @@ module Auth
     def request(email:)
       PasswordResetEmailJob.perform_later(
         account_id: @account.id,
-        email: normalize(email),
-        ip: @request_context.ip,
-        user_agent: @request_context.user_agent
+        email: email,
+        ip: @ip,
+        user_agent: @user_agent
       )
     end
 
     # Emails a reset link if the address belongs to an active user; does nothing otherwise.
     # @param email [String]
     def deliver(email:)
-      user = @account.users.active.find_by(email: normalize(email))
+      user = @account.users.active.find_by(email: email)
       return if user.nil?
 
       _record, token = OneTimeToken.issue!(subject: user, purpose: :password_reset)
@@ -56,12 +58,8 @@ module Auth
 
     private
 
-    def normalize(email)
-      email.to_s.strip.downcase
-    end
-
     def recorder
-      AuditEvents::Recorder.new(account: @account, request_context: @request_context)
+      AuditEvents::Recorder.new(account: @account, ip: @ip, user_agent: @user_agent)
     end
   end
 end

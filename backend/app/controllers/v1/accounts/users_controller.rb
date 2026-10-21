@@ -16,16 +16,20 @@ module V1
       end
 
       def update
-        user = ::Users::Management.new(actor: current_user).update(@user, **UpdateUserRequest.from_params(params).to_h)
+        user = management.update(@user, **parse_request(::Users::UpdateRequest).to_h)
         render json: UserSerializer.new(user).serializable_hash
       end
 
       def destroy
-        ::Users::Management.new(actor: current_user).destroy(@user)
+        management.destroy(@user)
         head :no_content
       end
 
       private
+
+      def management
+        ::Users::Management.new(actor: current_user, **client_info)
+      end
 
       def set_user
         @user = current_account.users.find_by_uid!(params[:uid])

@@ -8,7 +8,7 @@ RSpec.describe "Sign up", type: :openapi do
     post "Create an account and its first owner" do
       tags "Sign up"
       consumes "application/json"
-      request_body required: true, content: { "application/json" => { schema: SignUpRequest.as_schema } }
+      request_body required: true, content: { "application/json" => { schema: SignUps::CreateRequest.as_schema } }
 
       response 201, "account created" do
         schema type: :object, required: %w[account user], properties: { account: Schemas::Account, user: Schemas::User }

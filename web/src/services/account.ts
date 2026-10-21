@@ -7,9 +7,11 @@ import type {
   Invitation,
   Me,
   MfaEnrollment,
+  OtpType,
   Project,
   ProjectMember,
   ProjectRole,
+  ProjectSettings,
   User,
   UserStatus,
 } from '@/types/api'
@@ -19,7 +21,10 @@ const authenticated = { authenticated: true } as const
 
 export interface AuditEventFilters {
   action_start?: string
-  project_uid_eq?: string
+}
+
+export function auditEventQuery(page: number, filters: AuditEventFilters) {
+  return { page, 'q[action_start]': filters.action_start }
 }
 
 export const meService = {
@@ -42,14 +47,14 @@ export const meService = {
       body: { new_email: newEmail, current_password: currentPassword, otp_code: otpCode },
     }),
 
-  startTotp: (accountUid: string) =>
-    apiRequest<MfaEnrollment>(`${base(accountUid)}/me/totp`, { ...authenticated, method: 'POST' }),
+  startOtp: (accountUid: string, otpType: OtpType) =>
+    apiRequest<MfaEnrollment>(`${base(accountUid)}/me/otp`, { ...authenticated, method: 'POST', body: { otp_type: otpType } }),
 
-  confirmTotp: (accountUid: string, code: string) =>
-    apiRequest<{ recovery_codes: string[] }>(`${base(accountUid)}/me/totp/confirm`, { ...authenticated, method: 'POST', body: { code } }),
+  confirmOtp: (accountUid: string, code: string) =>
+    apiRequest<{ recovery_codes: string[] }>(`${base(accountUid)}/me/otp/confirm`, { ...authenticated, method: 'POST', body: { code } }),
 
-  disableTotp: (accountUid: string, currentPassword: string, code: string) =>
-    apiRequest<null>(`${base(accountUid)}/me/totp`, {
+  disableOtp: (accountUid: string, currentPassword: string, code: string) =>
+    apiRequest<null>(`${base(accountUid)}/me/otp`, {
       ...authenticated,
       method: 'DELETE',
       body: { current_password: currentPassword, code },
@@ -74,7 +79,7 @@ export const accountService = {
   listAuditEvents: (accountUid: string, page: number, filters: AuditEventFilters) =>
     apiPage<AuditEvent>(`${base(accountUid)}/audit-events`, {
       ...authenticated,
-      query: { page, 'q[action_start]': filters.action_start, 'q[project_uid_eq]': filters.project_uid_eq },
+      query: auditEventQuery(page, filters),
     }),
 }
 
@@ -107,8 +112,8 @@ export const projectService = {
   create: (accountUid: string, name: string) =>
     apiRequest<Project>(`${base(accountUid)}/projects`, { ...authenticated, method: 'POST', body: { name } }),
 
-  update: (accountUid: string, projectUid: string, name: string) =>
-    apiRequest<Project>(`${base(accountUid)}/projects/${projectUid}`, { ...authenticated, method: 'PATCH', body: { name } }),
+  update: (accountUid: string, projectUid: string, settings: Partial<ProjectSettings>) =>
+    apiRequest<Project>(`${base(accountUid)}/projects/${projectUid}`, { ...authenticated, method: 'PATCH', body: settings }),
 
   remove: (accountUid: string, projectUid: string) =>
     apiRequest<null>(`${base(accountUid)}/projects/${projectUid}`, { ...authenticated, method: 'DELETE' }),

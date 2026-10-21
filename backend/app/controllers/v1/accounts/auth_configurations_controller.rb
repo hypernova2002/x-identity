@@ -8,7 +8,8 @@ module V1
       end
 
       def update
-        configuration = ::Accounts::AuthConfigurationUpdate.new(actor: current_user).call(AuthConfigurationRequest.from_params(params).to_h)
+        configuration = ::AuthConfigurations::Update.new(actor: current_user, owner: current_account, **client_info)
+          .call(parse_request(::AuthConfigurations::UpdateRequest).to_h)
         render json: AuthConfigurationSerializer.new(configuration).serializable_hash
       end
     end

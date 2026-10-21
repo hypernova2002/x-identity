@@ -1,5 +1,13 @@
 import type { SelectOption } from '@/components/base/types'
-import type { AccountRole, MfaRequirement, ProjectRole, SigningAlgorithm } from '@/types/api'
+import type {
+  AccountRole,
+  AppClientType,
+  AttributeDataType,
+  MfaRequirement,
+  OtpType,
+  ProjectRole,
+  SigningAlgorithm,
+} from '@/types/api'
 
 export const accountRoleOptions: SelectOption<AccountRole>[] = [
   { label: 'Owner', value: 'owner' },
@@ -23,4 +31,21 @@ export const signingAlgorithmOptions: SelectOption<SigningAlgorithm>[] = [
   { label: 'ES256 (ECDSA P-256)', value: 'ES256' },
   { label: 'RS256 (RSA PKCS#1)', value: 'RS256' },
   { label: 'PS256 (RSA-PSS)', value: 'PS256' },
+]
+
+export const appClientTypeOptions: SelectOption<AppClientType>[] = [
+  { label: 'Public — browser or mobile app, no secret', value: 'public' },
+  { label: 'Confidential — server-side app with a secret', value: 'confidential' },
+]
+
+export const attributeDataTypeOptions: SelectOption<AttributeDataType>[] = [
+  { label: 'Text', value: 'string' },
+  { label: 'Number', value: 'number' },
+  { label: 'Yes / no', value: 'boolean' },
+  { label: 'Date', value: 'date' },
+]
+
+export const otpMethodOptions: SelectOption<OtpType>[] = [
+  { label: 'Authenticator app (time-based codes)', value: 'totp' },
+  { label: 'Hardware token (counter-based codes)', value: 'hotp' },
 ]

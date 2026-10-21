@@ -4,7 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AccountLookupState from '@/components/auth/AccountLookupState.vue'
 import RecoveryCodesList from '@/components/auth/RecoveryCodesList.vue'
-import TotpSetup from '@/components/auth/TotpSetup.vue'
+import OtpSetup from '@/components/auth/OtpSetup.vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
@@ -33,7 +33,7 @@ const recoveryCodes = ref<string[]>([])
 const heading = computed(() => {
   if (recoveryCodes.value.length > 0) return 'Multi-factor authentication is on'
   switch (challenge.value?.challenge) {
-    case 'totp':
+    case 'otp':
       return 'Enter your verification code'
     case 'new_password':
       return 'Choose a new password'
@@ -134,7 +134,7 @@ const challengeExpired = computed(() => answer.error.value?.code === 'invalid_ch
           {{ answer.error.value.message }}
         </BaseAlert>
 
-        <template v-if="challenge.challenge === 'totp'">
+        <template v-if="challenge.challenge === 'otp'">
           <p class="text-sm text-text-muted">Enter the code from your authenticator app, or one of your recovery codes.</p>
           <BaseInput v-model="code" label="Verification code" autocomplete="one-time-code" inputmode="numeric" required />
         </template>
@@ -153,7 +153,7 @@ const challengeExpired = computed(() => answer.error.value?.code === 'invalid_ch
 
         <template v-else-if="challenge.challenge === 'mfa_setup'">
           <p class="text-sm text-text-muted">Your account requires multi-factor authentication.</p>
-          <TotpSetup v-if="enrollment" :enrollment="enrollment" />
+          <OtpSetup v-if="enrollment" :enrollment="enrollment" />
           <BaseInput v-model="code" label="Verification code" autocomplete="one-time-code" inputmode="numeric" required />
         </template>
 

@@ -1,17 +1,23 @@
 module Users
+  # Password changes for console users and end users.
   class PasswordChange
-    # @param user [User]
-    def initialize(user:)
+    # @param user [User, EndUser]
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(user:, ip: nil, user_agent: nil)
       @user = user
+      @realm = user.realm
+      @ip = ip
+      @user_agent = user_agent
       @hasher = Passwords::Hasher.new
     end
 
-    # Sets a new password after checking it against the account's password rules.
+    # Sets a new password after checking it against the realm's password rules.
     # @param password [String]
     # @param field [Symbol] the request field to report violations against
     # @raise [ApiError] `validation_failed`
     def set_password!(password, field: :new_password)
-      violations = @user.account.auth_configuration!.password_violations(password)
+      violations = @realm.auth_configuration.password_violations(password)
       raise ApiError.validation(field => violations) if violations.any?
       raise ApiError.validation(field => "must be different from your current password") if @hasher.matches?(password, @user.password_digest)
 
@@ -28,7 +34,8 @@ module Users
 
       set_password!(new_password)
       @user.revoke_other_sessions!(keep_family_id: keep_family_id)
-      AuditEvents::Recorder.new(account: @user.account).record(action: "user.password_changed", actor: @user, target: @user)
+      @realm.recorder(ip: @ip, user_agent: @user_agent)
+        .record(action: "#{@realm.event_prefix}.password_changed", actor: @user, target: @user)
     end
   end
 end

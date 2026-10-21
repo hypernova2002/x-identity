@@ -1,7 +1,7 @@
 class AuditEventSerializer
   include Alba::Resource
 
-  attributes :uid, :action, :ip, :user_agent, :metadata, :occurred_at
+  attributes :uid, :action, :app_client_uid, :ip, :user_agent, :metadata, :occurred_at
 
   attribute(:actor) { |event| { type: event.actor_type, uid: event.actor_uid, label: event.actor_label } }
   attribute(:target) do |event|

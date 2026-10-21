@@ -3,7 +3,8 @@ module V1
     module Auth
       class RefreshesController < BaseController
         def create
-          tokens = ::Auth::Refresh.new(account: current_account).call(**RefreshTokenRequest.from_params(params).to_h)
+          tokens = ::Auth::Refresh.new(realm: current_account.realm, **client_info)
+            .call(**parse_request(::Auth::RefreshRequest).to_h)
           render json: TokenSetSerializer.new(tokens).serializable_hash
         end
       end

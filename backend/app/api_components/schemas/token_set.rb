@@ -5,7 +5,8 @@ class Schemas::TokenSet
     type: :object,
     required: %w[access_token refresh_token token_type expires_in],
     properties: {
-      access_token: { type: :string, description: "JWT. Verify with the account's JWKS." },
+      access_token: { type: :string, description: "JWT. Verify with the issuer's JWKS." },
+      id_token: { type: :string, description: "End users only: a JWT with profile claims, for the app client." },
       refresh_token: { type: :string, description: "Single use. Every refresh returns a new one." },
       token_type: { type: :string, enum: %w[Bearer] },
       expires_in: { type: :integer, description: "Access token lifetime in seconds." },

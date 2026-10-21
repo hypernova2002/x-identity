@@ -46,8 +46,28 @@ const router = createRouter({
         { path: 'projects', name: 'projects', component: () => import('../views/console/ProjectsView.vue') },
         {
           path: 'projects/:projectUid',
-          name: 'project',
-          component: () => import('../views/console/ProjectDetailView.vue'),
+          component: () => import('../views/console/project/ProjectLayout.vue'),
+          children: [
+            { path: '', name: 'project', component: () => import('../views/console/project/ProjectOverviewView.vue') },
+            { path: 'members', name: 'project-members', component: () => import('../views/console/project/ProjectMembersView.vue') },
+            {
+              path: 'app-clients',
+              name: 'project-app-clients',
+              component: () => import('../views/console/project/ProjectAppClientsView.vue'),
+            },
+            { path: 'end-users', name: 'project-end-users', component: () => import('../views/console/project/ProjectEndUsersView.vue') },
+            {
+              path: 'attributes',
+              name: 'project-attributes',
+              component: () => import('../views/console/project/ProjectAttributesView.vue'),
+            },
+            {
+              path: 'authentication',
+              name: 'project-authentication',
+              component: () => import('../views/console/project/ProjectAuthSettingsView.vue'),
+            },
+            { path: 'audit-log', name: 'project-audit-log', component: () => import('../views/console/project/ProjectAuditLogView.vue') },
+          ],
         },
         {
           path: 'users',

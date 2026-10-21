@@ -6,7 +6,7 @@ module V1
       end
 
       def update
-        raise ApiError.from_record(current_user) unless current_user.update(NameRequest.from_params(params).to_h)
+        raise ApiError.from_record(current_user) unless current_user.update(parse_request(::Me::UpdateRequest).to_h)
 
         render json: MeSerializer.new(current_user).serializable_hash
       end

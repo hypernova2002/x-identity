@@ -3,7 +3,8 @@ module V1
     module Me
       class RecoveryCodesController < AuthenticatedController
         def create
-          codes = ::Mfa::TotpEnrollment.new(user: current_user).regenerate_recovery_codes(**CodeRequest.from_params(params).to_h)
+          codes = ::Mfa::OtpEnrollment.new(user: current_user, **client_info)
+            .regenerate_recovery_codes(**parse_request(::Me::RegenerateRecoveryCodesRequest).to_h)
           render json: { recovery_codes: codes }, status: :created
         end
       end

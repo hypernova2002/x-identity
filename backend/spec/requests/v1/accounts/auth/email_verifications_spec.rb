@@ -15,7 +15,7 @@ RSpec.describe "Email verification", type: :openapi do
       post "Confirm an email address" do
         tags "Email verification"
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: TokenRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Auth::ConfirmEmailRequest.as_schema } }
 
         response 204, "email verified"
 
@@ -45,7 +45,7 @@ RSpec.describe "Email verification", type: :openapi do
       post "Resend the verification email" do
         tags "Email verification"
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: EmailRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Auth::ResendConfirmationRequest.as_schema } }
 
         response 202, "accepted, whether or not the email exists"
       end

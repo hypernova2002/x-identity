@@ -1,24 +1,26 @@
 module Auth
   class EmailVerification
     # @param account [Account]
-    # @param request_context [RequestContext] who asked, for the audit log
-    def initialize(account:, request_context: RequestContext.blank)
+    # @param ip [String, nil] the caller's IP address, for the audit log
+    # @param user_agent [String, nil]
+    def initialize(account:, ip: nil, user_agent: nil)
       @account = account
-      @request_context = request_context
+      @ip = ip
+      @user_agent = user_agent
     end
 
     # Queues a verification email. The lookup happens in the job, so callers learn nothing about
     # which emails exist, not even from response timing.
     # @param email [String]
     def request(email:)
-      VerificationEmailJob.perform_later(account_id: @account.id, email: email.to_s.strip.downcase)
+      VerificationEmailJob.perform_later(account_id: @account.id, email: email)
     end
 
     # Emails a verification link if the address belongs to an active, unverified user; does
     # nothing otherwise.
     # @param email [String]
     def deliver(email:)
-      user = @account.users.active.find_by(email: email.to_s.strip.downcase)
+      user = @account.users.active.find_by(email: email)
       return if user.nil? || user.email_verified?
 
       _record, token = OneTimeToken.issue!(subject: user, purpose: :email_verification)
@@ -34,7 +36,7 @@ module Auth
       raise ApiError.new(:invalid_token) unless user.is_a?(User) && user.account_id == @account.id && record.consume!
 
       user.verify_email!
-      AuditEvents::Recorder.new(account: @account, request_context: @request_context)
+      AuditEvents::Recorder.new(account: @account, ip: @ip, user_agent: @user_agent)
         .record(action: "user.email_verified", actor: user, target: user)
       user
     end

@@ -7,6 +7,6 @@ class EmailChangeEmailJob < TransactionalEmailJob
     user = User.active.find_by(id: user_id)
     return if user.nil?
 
-    Users::EmailChange.new(account: user.account, request_context: request_context(ip, user_agent)).deliver(user: user, new_email: new_email)
+    Users::EmailChange.new(account: user.account, ip: ip, user_agent: user_agent).deliver(user: user, new_email: new_email)
   end
 end

@@ -3,7 +3,8 @@ module V1
     module Auth
       class EmailChangesController < BaseController
         def update
-          ::Users::EmailChange.new(account: current_account, request_context: request_context).confirm(**TokenRequest.from_params(params).to_h)
+          ::Users::EmailChange.new(account: current_account, **client_info)
+            .confirm(**parse_request(::Auth::ConfirmEmailChangeRequest).to_h)
           head :no_content
         end
       end

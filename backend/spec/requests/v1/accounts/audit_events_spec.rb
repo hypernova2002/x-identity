@@ -17,7 +17,7 @@ RSpec.describe "Audit events", type: :openapi do
           action_start: { type: :string, description: "Action prefix, e.g. `user.`" },
           actor_uid_eq: { type: :string },
           target_uid_eq: { type: :string },
-          project_uid_eq: { type: :string },
+          app_client_uid_eq: { type: :string },
           occurred_at_gteq: { type: :string, format: "date-time" },
           occurred_at_lteq: { type: :string, format: "date-time" }
         }
@@ -56,14 +56,13 @@ RSpec.describe "Audit events", type: :openapi do
     end
   end
 
-  it "filters by project" do
+  it "leaves out events that belong to a project's own log" do
     project = create(:project, account: account)
-    recorder.record(action: "project.created", actor: admin, project: project)
+    recorder.record(action: "project.member_added", actor: admin, project: project)
     recorder.record(action: "user.signed_in", actor: admin)
 
-    assert_api_response :get, 200, headers: auth_headers_for(admin), params: { q: { project_uid_eq: project.uid } },
-      path_params: { account_uid: account.uid } do
-      expect(parsed_body.pluck("project_uid")).to eq([ project.uid ])
+    assert_api_response :get, 200, headers: auth_headers_for(admin), path_params: { account_uid: account.uid } do
+      expect(parsed_body.pluck("action")).to eq([ "user.signed_in" ])
     end
   end
 

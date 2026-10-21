@@ -26,7 +26,7 @@ RSpec.describe "Projects", type: :openapi do
         tags "Projects"
         security [ { BearerAuth: [] } ]
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: NameRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Projects::CreateRequest.as_schema } }
 
         response 201, "created" do
           schema Schemas::Project
@@ -88,7 +88,7 @@ RSpec.describe "Projects", type: :openapi do
         tags "Projects"
         security [ { BearerAuth: [] } ]
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: NameRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Projects::UpdateRequest.as_schema } }
 
         response 200, "renamed" do
           schema Schemas::Project

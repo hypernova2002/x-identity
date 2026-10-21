@@ -1,0 +1,5 @@
+Hi <%= @user.name %>,
+
+Your user <%= @user.email %> in the <%= @user.account.name %> account on x-identity has been disabled after too many wrong verification codes in a row. Someone may know your password.
+
+Ask an administrator of <%= @user.account.name %> to re-enable you, then change your password.

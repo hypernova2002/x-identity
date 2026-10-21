@@ -67,7 +67,7 @@ RSpec.describe "Users", type: :openapi do
         tags "Users"
         security [ { BearerAuth: [] } ]
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: UpdateUserRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Users::UpdateRequest.as_schema } }
 
         response 200, "updated" do
           schema Schemas::User

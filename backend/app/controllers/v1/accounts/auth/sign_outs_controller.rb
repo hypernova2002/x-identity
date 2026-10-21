@@ -3,7 +3,8 @@ module V1
     module Auth
       class SignOutsController < BaseController
         def create
-          ::Auth::SignOut.new(account: current_account).call(**RefreshTokenRequest.from_params(params).to_h)
+          ::Auth::SignOut.new(realm: current_account.realm, **client_info)
+            .call(**parse_request(::Auth::SignOutRequest).to_h)
           head :no_content
         end
       end

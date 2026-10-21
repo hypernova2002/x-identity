@@ -1,0 +1,13 @@
+Hi<%= " #{@end_user.name}" if @end_user.name.present? %>,
+
+An account has been created for you on <%= @project.name %> with this email address. To set your password, use this code:
+
+    <%= @code %>
+
+<% if @link -%>
+Or open:
+
+<%= @link %>
+
+<% end -%>
+The invitation expires in 7 days.

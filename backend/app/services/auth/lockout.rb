@@ -20,8 +20,12 @@ module Auth
     # @param email [String]
     def register_failure(email)
       failures = @store.increment(failures_key(email), 1, expires_in: @configuration.lockout_window)
-      return if failures.to_i < @configuration.lockout_threshold
+      lock!(email) if failures.to_i >= @configuration.lockout_threshold
+    end
 
+    # Locks the email straight away, e.g. when disabling the user isn't an option.
+    # @param email [String]
+    def lock!(email)
       @store.write(lock_key(email), true, expires_in: @configuration.lockout_duration)
       @store.delete(failures_key(email))
     end
@@ -34,11 +38,11 @@ module Auth
     private
 
     def failures_key(email)
-      "lockout:#{@owner.class.name.underscore}:#{@owner.id}:#{email}:failures"
+      "lockout:#{@owner.class.name.underscore}:#{@owner.id}:#{EmailAddress.normalize(email)}:failures"
     end
 
     def lock_key(email)
-      "lockout:#{@owner.class.name.underscore}:#{@owner.id}:#{email}:locked"
+      "lockout:#{@owner.class.name.underscore}:#{@owner.id}:#{EmailAddress.normalize(email)}:locked"
     end
   end
 end

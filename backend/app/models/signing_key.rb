@@ -45,10 +45,10 @@ class SigningKey < ApplicationRecord
     JWT::JWK.new(verification_key, { kid: kid, use: "sig", alg: algorithm }).export
   end
 
-  # @param rotation_days [Integer]
+  # @param rotation_period [ActiveSupport::Duration]
   # @return [Boolean]
-  def due_for_rotation?(rotation_days)
-    activated_at < rotation_days.days.ago
+  def due_for_rotation?(rotation_period)
+    activated_at < rotation_period.ago
   end
 
   # Stops signing with this key but keeps publishing it until tokens it signed have expired.

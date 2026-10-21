@@ -29,7 +29,7 @@ RSpec.describe "Me", type: :openapi do
         tags "Me"
         security [ { BearerAuth: [] } ]
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: NameRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Me::UpdateRequest.as_schema } }
 
         response 200, "updated" do
           schema Schemas::Me
@@ -102,7 +102,7 @@ RSpec.describe "Me", type: :openapi do
         tags "Me"
         security [ { BearerAuth: [] } ]
         consumes "application/json"
-        request_body required: true, content: { "application/json" => { schema: ChangePasswordRequest.as_schema } }
+        request_body required: true, content: { "application/json" => { schema: Me::ChangePasswordRequest.as_schema } }
 
         response 204, "password changed; other sessions signed out"
 

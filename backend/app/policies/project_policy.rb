@@ -1,5 +1,6 @@
 # Account owners and admins can do anything with every project. Other users see only projects
-# they're a member of, and only project admins can change them.
+# they're a member of: project admins manage everything in the project, developers manage its
+# app clients and end users, viewers can only look.
 class ProjectPolicy
   class Scope
     # @param user [User]
@@ -27,12 +28,33 @@ class ProjectPolicy
     same_account? && (@user.account_admin? || membership.present?)
   end
 
+  # Rename the project and change its sign-up settings.
   def update?
-    same_account? && (@user.account_admin? || membership&.admin? || false)
+    admin?
   end
 
   def manage_members?
-    update?
+    admin?
+  end
+
+  def manage_settings?
+    admin?
+  end
+
+  def manage_end_users?
+    admin? || developer?
+  end
+
+  def manage_app_clients?
+    admin? || developer?
+  end
+
+  def manage_attributes?
+    admin?
+  end
+
+  def view_audit_log?
+    admin? || developer?
   end
 
   def destroy?
@@ -40,6 +62,14 @@ class ProjectPolicy
   end
 
   private
+
+  def admin?
+    same_account? && (@user.account_admin? || membership&.admin? || false)
+  end
+
+  def developer?
+    same_account? && (membership&.developer? || false)
+  end
 
   def same_account?
     @user.account_id == @project.account_id
