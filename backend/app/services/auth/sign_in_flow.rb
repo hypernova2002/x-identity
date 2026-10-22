@@ -26,6 +26,9 @@ module Auth
     # @param recovery_codes [Array<String>, nil] passed through to the client after MFA setup
     # @return [SignInResult]
     def continue(user:, amr:, authenticated_at:, recovery_codes: nil)
+      app = @interaction&.subject || @app_client
+      Apps::Access.authorize!(app, user, recorder: recorder) if user.is_a?(EndUser) && app
+
       challenge = next_challenge(user, amr)
 
       if challenge
@@ -44,8 +47,7 @@ module Auth
       end
 
       user.record_sign_in!
-      @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
-        .record(action: "#{@realm.event_prefix}.signed_in", actor: user, target: user, metadata: { amr: amr })
+      recorder.record(action: "#{@realm.event_prefix}.signed_in", actor: user, target: user, metadata: { amr: amr })
       if @interaction
         return SignInResult.completed(SignInCompletion.new(user: user, amr: amr, authenticated_at: authenticated_at), recovery_codes: recovery_codes)
       end
@@ -55,6 +57,10 @@ module Auth
     end
 
     private
+
+    def recorder
+      @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
+    end
 
     def next_challenge(user, amr)
       return "otp" if !@configuration.mfa_off? && user.mfa_enabled? && !amr.include?("otp")

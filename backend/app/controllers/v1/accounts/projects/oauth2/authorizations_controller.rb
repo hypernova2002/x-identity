@@ -22,6 +22,8 @@ module V1
           def resume
             outcome = authorization.resume(oauth_params(request.query_parameters)["ticket"])
             store_session(outcome.session_token, outcome.session_expires_at)
+            return render(html: outcome.html.html_safe, content_type: "text/html") if outcome.html
+
             redirect_to outcome.redirect_url, allow_other_host: true
           end
 

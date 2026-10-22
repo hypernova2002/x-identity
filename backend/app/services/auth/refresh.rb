@@ -16,7 +16,7 @@ module Auth
 
     # @param refresh_token [String]
     # @return [TokenSet]
-    # @raise [ApiError] `invalid_token`, `session_expired` or `mfa_required`
+    # @raise [ApiError] `invalid_token`, `session_expired`, `mfa_required` or `app_access_denied`
     def call(refresh_token:)
       record = RefreshToken.find_by_token(refresh_token)
       user = record&.subject
@@ -33,7 +33,8 @@ module Auth
           authenticated_at: record.authenticated_at,
           amr: record.amr,
           family_id: record.family_id,
-          refresh_expires_at: record.expires_at
+          refresh_expires_at: record.expires_at,
+          scope: record.scope
         )
       end
 
@@ -53,6 +54,7 @@ module Auth
       end
 
       return :invalid_token if record.revoked? || !user.active?
+      return :app_access_denied if user.is_a?(EndUser) && @app_client && !Apps::Access.allowed?(@app_client, user)
       return :session_expired if record.expired?
 
       if idle?(record) || (@configuration.mfa_required? && !record.amr.include?("otp"))

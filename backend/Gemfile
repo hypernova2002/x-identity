@@ -11,6 +11,7 @@ gem "argon2"
 gem "jwt"
 gem "rotp"
 gem "rqrcode"
+gem "ruby-saml", "~> 1.18"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]

@@ -11,7 +11,10 @@ class AppClient < ApplicationRecord
   LOOPBACK_HOSTS = %w[localhost 127.0.0.1 ::1].freeze
   UNSAFE_SCHEMES = %w[javascript data file vbscript about blob].freeze
 
+  PORTAL = "portal".freeze
+
   belongs_to :project
+  has_many :app_assignments, as: :app, dependent: :delete_all
 
   enum :client_type, { public: "public", confidential: "confidential" }, validate: true, prefix: true
 
@@ -19,8 +22,13 @@ class AppClient < ApplicationRecord
   validate :allowed_origins_are_origins
   validate :redirect_uris_are_valid
   validate :post_logout_redirect_uris_are_valid
+  validates :launch_url, length: { maximum: WebUrl::MAX_LENGTH }, allow_nil: true
+  validate :launch_url_is_a_web_url
+  validates :system_kind, inclusion: { in: [ PORTAL ] }, allow_nil: true
 
   scope :enabled, -> { where(enabled: true) }
+  # Clients admins create; the system's own clients (the app portal) are managed by x-identity.
+  scope :managed, -> { where(system_kind: nil) }
 
   # @param origin [String]
   # @return [Boolean] whether any enabled app client lists the origin
@@ -36,15 +44,24 @@ class AppClient < ApplicationRecord
     secret
   end
 
+  # @return [Boolean] the app portal, which every end user may use
+  def portal?
+    system_kind == PORTAL
+  end
+
   # @param uri [String, nil]
   # @return [Boolean] whether the uri is registered, compared exactly
   def redirect_uri_allowed?(uri)
+    return uri == Oidc::Urls.hosted_page(project, "apps") if portal?
+
     uri.present? && redirect_uris.include?(uri)
   end
 
   # @param uri [String, nil]
   # @return [Boolean] whether the uri is a registered post-logout redirect URI, compared exactly
   def post_logout_redirect_uri_allowed?(uri)
+    return uri == Oidc::Urls.hosted_page(project, "signed-out") if portal?
+
     uri.present? && post_logout_redirect_uris.include?(uri)
   end
 
@@ -67,6 +84,10 @@ class AppClient < ApplicationRecord
 
     invalid = allowed_origins.reject { |origin| origin.is_a?(String) && origin.match?(ORIGIN_FORMAT) }
     errors.add(:allowed_origins, "must look like https://app.example.com, without a path: #{invalid.join(', ')}") if invalid.any?
+  end
+
+  def launch_url_is_a_web_url
+    errors.add(:launch_url, "must be an https URL (or http://localhost)") if launch_url.present? && !WebUrl.valid?(launch_url)
   end
 
   def redirect_uris_are_valid

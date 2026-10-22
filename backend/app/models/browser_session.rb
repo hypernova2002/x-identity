@@ -6,6 +6,7 @@ class BrowserSession < ApplicationRecord
 
   belongs_to :project
   belongs_to :end_user
+  has_many :browser_session_apps, dependent: :delete_all
 
   scope :active, -> { where(revoked_at: nil).where("expires_at > ?", Time.current) }
 

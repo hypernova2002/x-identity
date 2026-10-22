@@ -91,6 +91,7 @@ export interface AppClient {
   allowed_origins: string[]
   redirect_uris: string[]
   post_logout_redirect_uris: string[]
+  launch_url: string | null
   enabled: boolean
   created_at: string
   updated_at: string
@@ -98,6 +99,95 @@ export interface AppClient {
 
 export interface AppClientWithSecret extends AppClient {
   client_secret: string | null
+}
+
+export interface GroupSummary {
+  uid: string
+  name: string
+}
+
+export interface Group {
+  uid: string
+  name: string
+  description: string | null
+  default_for_new_users: boolean
+  member_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type AppKind = 'app_client' | 'saml_app'
+export type PrincipalType = 'end_user' | 'group'
+
+export interface AppAssignment {
+  uid: string
+  principal_type: PrincipalType
+  principal_uid: string
+  principal_label: string
+  created_at: string
+}
+
+export type SamlNameIdFormat = 'email' | 'persistent' | 'unspecified'
+
+export interface SamlAttributeMapping {
+  name: string
+  source: string
+}
+
+export interface SamlApp {
+  uid: string
+  name: string
+  enabled: boolean
+  entity_id: string
+  acs_urls: string[]
+  slo_url: string | null
+  sp_certificate: string | null
+  name_id_format: SamlNameIdFormat
+  attribute_mappings: SamlAttributeMapping[]
+  sign_assertion: boolean
+  sign_response: boolean
+  require_signed_requests: boolean
+  default_relay_state: string | null
+  launch_url: string
+  created_at: string
+  updated_at: string
+}
+
+/** What a SAML app's metadata says, for filling in the form. */
+export type SamlAppMetadata = Partial<Pick<SamlApp, 'entity_id' | 'acs_urls' | 'slo_url' | 'sp_certificate' | 'name_id_format'>>
+
+export type SamlCertificateStatus = 'next' | 'active' | 'retired'
+
+export interface SamlCertificate {
+  uid: string
+  status: SamlCertificateStatus
+  certificate: string
+  fingerprint_sha256: string
+  activated_at: string | null
+  expires_at: string
+  created_at: string
+}
+
+export interface SamlIdentityProviderInfo {
+  entity_id: string
+  metadata_url: string
+  sso_url: string
+  slo_url: string
+  certificates: SamlCertificate[]
+}
+
+export interface PortalConfig {
+  issuer: string
+  client_id: string
+  redirect_uri: string
+  post_logout_redirect_uri: string
+}
+
+export interface PortalApp {
+  uid: string
+  kind: 'oidc' | 'saml'
+  name: string
+  launch_url: string
 }
 
 export type IdentityProviderKind = 'google' | 'apple' | 'oidc'
@@ -165,6 +255,7 @@ export interface EndUser {
   email_verified: boolean
   mfa_enabled: boolean
   invitation_pending: boolean
+  groups: GroupSummary[]
   custom_attributes: CustomAttributes
   last_sign_in_at: string | null
   created_at: string

@@ -12,6 +12,19 @@ FactoryBot.define do
 
     password_digest { Passwords::Hasher.new.digest(password) }
 
+    # Like the migration that introduced app assignment, everyone is in the project's
+    # "All end users" group, which every app client is assigned to.
+    transient do
+      in_all_end_users_group { true }
+    end
+
+    after(:create) do |end_user, evaluator|
+      next unless evaluator.in_all_end_users_group
+
+      group = end_user.project.groups.find_or_create_by!(name: "All end users") { |created| created.default_for_new_users = true }
+      group.group_memberships.find_or_create_by!(end_user: end_user)
+    end
+
     trait :unverified do
       email_verified_at { nil }
     end
@@ -35,6 +48,17 @@ FactoryBot.define do
     sequence(:name) { |n| "App #{n}" }
     client_type { "public" }
     allowed_origins { [] }
+
+    transient do
+      assigned_to_everyone { true }
+    end
+
+    after(:create) do |app_client, evaluator|
+      next unless evaluator.assigned_to_everyone
+
+      group = app_client.project.groups.find_or_create_by!(name: "All end users") { |created| created.default_for_new_users = true }
+      AppAssignment.create!(project: app_client.project, app: app_client, principal: group)
+    end
 
     trait :confidential do
       client_type { "confidential" }

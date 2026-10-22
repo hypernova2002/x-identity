@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_22_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_22_010001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -22,6 +22,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_000001) do
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_accounts_on_slug", unique: true
     t.index ["uid"], name: "index_accounts_on_uid", unique: true
+  end
+
+  create_table "app_assignments", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.string "app_type", null: false
+    t.bigint "app_id", null: false
+    t.string "principal_type", null: false
+    t.bigint "principal_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_type", "app_id", "principal_type", "principal_id"], name: "index_app_assignments_uniqueness", unique: true
+    t.index ["principal_type", "principal_id"], name: "index_app_assignments_on_principal"
+    t.index ["project_id"], name: "index_app_assignments_on_project_id"
+    t.index ["uid"], name: "index_app_assignments_on_uid", unique: true
   end
 
   create_table "app_clients", force: :cascade do |t|
@@ -36,7 +51,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_000001) do
     t.datetime "updated_at", null: false
     t.jsonb "redirect_uris", default: [], null: false
     t.jsonb "post_logout_redirect_uris", default: [], null: false
+    t.string "launch_url"
+    t.string "system_kind"
     t.index ["allowed_origins"], name: "index_app_clients_on_allowed_origins", using: :gin
+    t.index ["project_id", "system_kind"], name: "index_app_clients_on_project_id_and_system_kind", unique: true, where: "(system_kind IS NOT NULL)"
     t.index ["project_id"], name: "index_app_clients_on_project_id"
     t.index ["uid"], name: "index_app_clients_on_uid", unique: true
   end
@@ -99,6 +117,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_000001) do
     t.string "otp_method", default: "totp", null: false
     t.integer "sso_session_ttl_seconds", default: 28800, null: false
     t.index ["owner_type", "owner_id"], name: "index_auth_configurations_on_owner_type_and_owner_id", unique: true
+  end
+
+  create_table "browser_session_apps", force: :cascade do |t|
+    t.bigint "browser_session_id", null: false
+    t.bigint "saml_app_id", null: false
+    t.string "name_id", null: false
+    t.string "session_index", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["browser_session_id", "saml_app_id"], name: "idx_on_browser_session_id_saml_app_id_07b3c7817a", unique: true
+    t.index ["saml_app_id"], name: "index_browser_session_apps_on_saml_app_id"
   end
 
   create_table "browser_sessions", force: :cascade do |t|
@@ -166,6 +195,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_000001) do
     t.integer "failed_mfa_attempts", default: 0, null: false
     t.index ["project_id", "email"], name: "index_end_users_on_project_id_and_email", unique: true
     t.index ["uid"], name: "index_end_users_on_uid", unique: true
+  end
+
+  create_table "group_memberships", force: :cascade do |t|
+    t.bigint "group_id", null: false
+    t.bigint "end_user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["end_user_id"], name: "index_group_memberships_on_end_user_id"
+    t.index ["group_id", "end_user_id"], name: "index_group_memberships_on_group_id_and_end_user_id", unique: true
+  end
+
+  create_table "groups", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.string "name", null: false
+    t.string "description"
+    t.boolean "default_for_new_users", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id", "name"], name: "index_groups_on_project_id_and_name", unique: true
+    t.index ["uid"], name: "index_groups_on_uid", unique: true
   end
 
   create_table "identity_providers", force: :cascade do |t|
@@ -286,10 +336,46 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_000001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "app_client_id"
+    t.string "scope"
     t.index ["app_client_id"], name: "index_refresh_tokens_on_app_client_id"
     t.index ["family_id"], name: "index_refresh_tokens_on_family_id"
     t.index ["subject_type", "subject_id"], name: "index_refresh_tokens_on_subject_type_and_subject_id"
     t.index ["token_digest"], name: "index_refresh_tokens_on_token_digest", unique: true
+  end
+
+  create_table "saml_apps", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.string "name", null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "entity_id", null: false
+    t.jsonb "acs_urls", default: [], null: false
+    t.string "slo_url"
+    t.text "sp_certificate"
+    t.string "name_id_format", default: "email", null: false
+    t.jsonb "attribute_mappings", default: [], null: false
+    t.boolean "sign_assertion", default: true, null: false
+    t.boolean "sign_response", default: false, null: false
+    t.boolean "require_signed_requests", default: false, null: false
+    t.string "default_relay_state"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id", "entity_id"], name: "index_saml_apps_on_project_id_and_entity_id", unique: true
+    t.index ["uid"], name: "index_saml_apps_on_uid", unique: true
+  end
+
+  create_table "saml_certificates", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.text "private_key", null: false
+    t.text "certificate", null: false
+    t.string "status", null: false
+    t.datetime "activated_at"
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id"], name: "index_saml_certificates_on_project_id"
+    t.index ["uid"], name: "index_saml_certificates_on_uid", unique: true
   end
 
   create_table "signing_keys", force: :cascade do |t|

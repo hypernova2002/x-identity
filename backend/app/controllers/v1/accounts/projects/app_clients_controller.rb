@@ -5,7 +5,7 @@ module V1
         before_action :set_app_client, only: %i[show update destroy rotate_secret]
 
         def index
-          app_clients = paginated(current_project.app_clients.order(:created_at, :id))
+          app_clients = paginated(current_project.app_clients.managed.order(:created_at, :id))
           render json: AppClientSerializer.new(app_clients).serializable_hash
         end
 
@@ -35,7 +35,7 @@ module V1
         private
 
         def set_app_client
-          @app_client = current_project.app_clients.find_by_uid!(params[:uid])
+          @app_client = current_project.app_clients.managed.find_by_uid!(params[:uid])
         end
 
         def management

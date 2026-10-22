@@ -18,7 +18,7 @@ module V1
             subject_types_supported: [ "public" ],
             id_token_signing_alg_values_supported: [ current_project.auth_configuration!.signing_algorithm ],
             scopes_supported: ::Oidc::Authorization::SUPPORTED_SCOPES,
-            claims_supported: %w[sub iss aud exp iat auth_time nonce amr email email_verified name custom_attributes],
+            claims_supported: %w[sub iss aud exp iat auth_time nonce amr email email_verified name custom_attributes groups],
             token_endpoint_auth_methods_supported: %w[client_secret_basic client_secret_post none],
             revocation_endpoint_auth_methods_supported: %w[client_secret_basic client_secret_post none],
             code_challenge_methods_supported: [ "S256" ],

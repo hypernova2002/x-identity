@@ -15,7 +15,15 @@ module IdentityProviders
     # @raise [Error]
     def get_json(url)
       uri = parse(url)
-      perform(uri, Net::HTTP::Get.new(uri))
+      perform(uri, Net::HTTP::Get.new(uri, "Accept" => "application/json"))
+    end
+
+    # @param url [String]
+    # @return [String] the body, e.g. a SAML metadata document
+    # @raise [Error]
+    def get_text(url)
+      uri = parse(url)
+      perform(uri, Net::HTTP::Get.new(uri, "Accept" => "application/samlmetadata+xml, application/xml, text/xml"), parse_json: false)
     end
 
     # @param url [String]
@@ -25,7 +33,7 @@ module IdentityProviders
     # @raise [Error] including when the provider answers with an OAuth error
     def post_form(url, form, basic_auth: nil)
       uri = parse(url)
-      request = Net::HTTP::Post.new(uri)
+      request = Net::HTTP::Post.new(uri, "Accept" => "application/json")
       request.set_form_data(form)
       request.basic_auth(*basic_auth) if basic_auth
       perform(uri, request)
@@ -42,8 +50,7 @@ module IdentityProviders
       raise Error, "#{url} isn't a valid URL"
     end
 
-    def perform(uri, request)
-      request["Accept"] = "application/json"
+    def perform(uri, request, parse_json: true)
       http = Net::HTTP.new(uri.host, uri.port)
       http.ipaddr = public_address(uri.host)
       http.use_ssl = true
@@ -52,6 +59,11 @@ module IdentityProviders
       response = http.request(request)
       body = response.body.to_s
       raise Error, "#{uri.host} sent a response that is too large" if body.bytesize > MAX_BODY_BYTES
+      unless parse_json
+        raise Error, "#{uri.host} answered #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+
+        return body
+      end
 
       json = JSON.parse(body)
       raise Error, oauth_error(uri, response, json) unless response.is_a?(Net::HTTPSuccess) && json.is_a?(Hash)

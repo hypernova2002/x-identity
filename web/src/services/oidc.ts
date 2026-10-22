@@ -37,8 +37,12 @@ export const oidcService = {
     return `${issuer}/oauth2/authorize?${query.toString()}`
   },
 
-  logoutUrl(issuer: string): string {
-    return `${issuer}/oauth2/logout`
+  /** Ends the hosted login session, and with it every app the session signed in to. */
+  logoutUrl(issuer: string, request?: { clientId: string; postLogoutRedirectUri: string }): string {
+    if (!request) return `${issuer}/oauth2/logout`
+
+    const query = new URLSearchParams({ client_id: request.clientId, post_logout_redirect_uri: request.postLogoutRedirectUri })
+    return `${issuer}/oauth2/logout?${query.toString()}`
   },
 
   /** Redeems an authorization code at the token endpoint, as a public client. OAuth errors become ApiErrors. */

@@ -8,7 +8,7 @@ module V1
 
         def index
           end_users = current_project.end_users.ransack(params.fetch(:q, {}).permit(*FILTERS)).result
-          end_users = paginated(end_users.includes(:otp_credential).order(:created_at, :id))
+          end_users = paginated(end_users.includes(:otp_credential, :identities, :groups).order(:created_at, :id))
           render json: EndUserSerializer.new(end_users).serializable_hash
         end
 

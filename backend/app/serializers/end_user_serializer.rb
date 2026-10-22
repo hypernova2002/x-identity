@@ -5,5 +5,6 @@ class EndUserSerializer
 
   attribute :email_verified, &:email_verified?
   attribute :mfa_enabled, &:mfa_enabled?
-  attribute(:invitation_pending) { |end_user| !end_user.password_set? }
+  attribute(:invitation_pending) { |end_user| !end_user.password_set? && end_user.identities.none? }
+  attribute(:groups) { |end_user| end_user.groups.sort_by(&:name).map { |group| { uid: group.uid, name: group.name } } }
 end

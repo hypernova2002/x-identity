@@ -129,10 +129,12 @@ module IdentityProviders
 
     def hosted_callback(data, provider:, code:, error:, apple_user:)
       interaction = OneTimeToken.usable.find_by(id: data["interaction_id"], purpose: "oidc_interaction")
-      app_client = interaction&.subject
-      unless app_client&.enabled?
+      unless interaction&.subject&.enabled?
         return Oidc::Urls.hosted_page(@project, "error", error: "invalid_request", error_description: Oidc::Authorization::EXPIRED)
       end
+
+      # SAML interactions have no app client; the interaction itself names the app.
+      app_client = interaction.subject if interaction.subject.is_a?(AppClient)
 
       begin
         end_user = provider_user(provider, app_client, data, code: code, error: error, apple_user: apple_user)

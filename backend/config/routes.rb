@@ -55,6 +55,16 @@ Rails.application.routes.draw do
         get ".well-known/jwks.json", to: "jwks#show", format: false, as: :jwks
         get ".well-known/openid-configuration", to: "openid_configurations#show", format: false, as: :openid_configuration
 
+        scope "saml", as: :saml do
+          get "metadata", to: "saml#metadata", format: false
+          match "sso", to: "saml#sso", via: %i[get post]
+          match "slo", to: "saml#slo", via: %i[get post]
+          get "apps/:uid/launch", to: "saml#launch", as: :launch
+        end
+
+        get "portal", to: "portal#show"
+        get "portal/apps", to: "portal#apps"
+
         scope "oauth2", module: :oauth2, as: :oauth2 do
           get "authorize", to: "authorizations#new"
           get "authorize/resume", to: "authorizations#resume", as: :authorize_resume
@@ -117,6 +127,17 @@ Rails.application.routes.draw do
         resources :identity_providers, path: "identity-providers", param: :uid, only: %i[index show create update destroy]
         resources :app_clients, path: "app-clients", param: :uid, only: %i[index show create update destroy] do
           post "rotate-secret", on: :member, action: :rotate_secret
+          resources :assignments, controller: "app_assignments", param: :uid, only: %i[index create destroy], defaults: { app_kind: "app_client" }
+        end
+        resources :saml_apps, path: "saml-apps", param: :uid, only: %i[index show create update destroy] do
+          post "parse-metadata", on: :collection, action: :parse_metadata
+          resources :assignments, controller: "app_assignments", param: :uid, only: %i[index create destroy], defaults: { app_kind: "saml_app" }
+        end
+        resources :saml_certificates, path: "saml-certificates", param: :uid, only: %i[index create destroy] do
+          post "activate", on: :member
+        end
+        resources :groups, param: :uid, only: %i[index show create update destroy] do
+          resources :members, controller: "group_members", param: :uid, only: %i[index create destroy]
         end
         resources :end_users, path: "end-users", param: :uid, only: %i[index show create update destroy] do
           member do

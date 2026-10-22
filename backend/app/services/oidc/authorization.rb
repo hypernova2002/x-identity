@@ -1,18 +1,19 @@
 module Oidc
   # The authorization endpoint of a project's OpenID Connect provider (code flow with PKCE).
+  # Hosted login interactions for SAML apps finish here too, with a SAML response instead of a code.
   #
   # A browser with a valid single sign-on session gets a code straight away. Otherwise an
   # interaction is started and the browser goes to the hosted login page; once the user has signed
   # in there, {#complete} hands the page a ticket, and {#resume} turns the ticket into a session
   # cookie and a code for the app.
   class Authorization
-    Outcome = Data.define(:redirect_url, :session_token, :session_expires_at) do
-      def initialize(redirect_url:, session_token: nil, session_expires_at: nil)
+    Outcome = Data.define(:redirect_url, :html, :session_token, :session_expires_at) do
+      def initialize(redirect_url: nil, html: nil, session_token: nil, session_expires_at: nil)
         super
       end
     end
 
-    SUPPORTED_SCOPES = %w[openid profile email offline_access].freeze
+    SUPPORTED_SCOPES = %w[openid profile email groups offline_access].freeze
     CODE_CHALLENGE_FORMAT = /\A[A-Za-z0-9_-]{43}\z/
     MAX_AGE_FORMAT = /\A\d{1,9}\z/
     LIMITS = { "state" => 1024, "nonce" => 512, "login_hint" => 254 }.freeze
@@ -44,6 +45,10 @@ module Oidc
 
       session = BrowserSession.find_valid(session_token, project: @project)
       if session && !prompts.include?("login") && fresh?(session, params["max_age"])
+        unless Apps::Access.allowed?(app_client, session.end_user)
+          raise Error.new("access_denied", ApiError.new(:app_access_denied).message, redirect_uri: redirect_uri, state: state)
+        end
+
         session.update_column(:last_used_at, Time.current)
         record_sso_sign_in(session, app_client)
         return Outcome.new(redirect_url: code_redirect(app_client, request, session.end_user, session.amr, session.authenticated_at))
@@ -77,8 +82,8 @@ module Oidc
       raise Error.new("invalid_request", EXPIRED) unless record&.consume!
 
       interaction = OneTimeToken.usable.find_by(id: record.data["interaction_id"], purpose: "oidc_interaction")
-      app_client = interaction&.subject
-      valid = interaction&.consume! && app_client.project_id == @project.id && app_client.enabled? && record.subject.active?
+      app = interaction&.subject
+      valid = interaction&.consume! && app.project_id == @project.id && app.enabled? && record.subject.active?
       raise Error.new("invalid_request", EXPIRED) unless valid
 
       end_user = record.subject
@@ -86,11 +91,13 @@ module Oidc
       authenticated_at = Time.iso8601(record.data["authenticated_at"])
       session, token = BrowserSession.start!(end_user: end_user, amr: amr, authenticated_at: authenticated_at)
 
-      Outcome.new(
-        redirect_url: code_redirect(app_client, interaction.data, end_user, amr, authenticated_at),
-        session_token: token,
-        session_expires_at: session.expires_at
-      )
+      response =
+        if app.is_a?(SamlApp)
+          SamlIdp::SignOn.new(project: @project, ip: @ip, user_agent: @user_agent).respond(app, interaction.data, session).to_h.slice(:redirect_url, :html)
+        else
+          { redirect_url: code_redirect(app, interaction.data, end_user, amr, authenticated_at) }
+        end
+      Outcome.new(**response, session_token: token, session_expires_at: session.expires_at)
     end
 
     private

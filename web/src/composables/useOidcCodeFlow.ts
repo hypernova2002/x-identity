@@ -4,8 +4,6 @@ import { oidcService } from '@/services/oidc'
 import type { TokenSet } from '@/types/api'
 import { codeChallengeFor, randomUrlSafe } from '@/utils/pkce'
 
-const STORAGE_KEY = 'x-identity:test-hosted-login'
-
 interface PendingSignIn {
   issuer: string
   clientId: string
@@ -14,37 +12,45 @@ interface PendingSignIn {
   codeVerifier: string
 }
 
-export interface HostedLoginReturn {
+export interface CodeFlowReturn {
   code?: string
   state?: string
   error?: string
   errorDescription?: string
 }
 
-function remember(pending: PendingSignIn) {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(pending))
-  } catch {
-    // Without storage the sign-in can't be completed; completing it reports that.
-  }
-}
-
-function recall(): PendingSignIn | null {
-  try {
-    const value = sessionStorage.getItem(STORAGE_KEY)
-    sessionStorage.removeItem(STORAGE_KEY)
-    return value ? (JSON.parse(value) as PendingSignIn) : null
-  } catch {
-    return null
-  }
+export interface CodeFlowOptions {
+  /** Where the code verifier and state wait while the browser is away. */
+  storageKey: string
+  scope: string
+  navigate?: (url: string) => void
 }
 
 /**
- * Signs in through a project's hosted login like an OpenID Connect app would: the authorization
- * code flow with PKCE, with the console as a public client. The verifier and state wait in session
- * storage while the browser is away.
+ * Signs in like an OpenID Connect public client: the authorization code flow with PKCE. Used by
+ * the console's test sign-in and by the app portal, which is a client of its own project.
  */
-export function useHostedLoginTest(navigate: (url: string) => void = (url) => window.location.assign(url)) {
+export function useOidcCodeFlow(options: CodeFlowOptions) {
+  const navigate = options.navigate ?? ((url: string) => window.location.assign(url))
+
+  function remember(pending: PendingSignIn) {
+    try {
+      sessionStorage.setItem(options.storageKey, JSON.stringify(pending))
+    } catch {
+      // Without storage the sign-in can't be completed; completing it reports that.
+    }
+  }
+
+  function recall(): PendingSignIn | null {
+    try {
+      const value = sessionStorage.getItem(options.storageKey)
+      sessionStorage.removeItem(options.storageKey)
+      return value ? (JSON.parse(value) as PendingSignIn) : null
+    } catch {
+      return null
+    }
+  }
+
   const start = useAsyncAction(async (issuer: string, clientId: string, redirectUri: string) => {
     const codeVerifier = randomUrlSafe(48)
     const state = randomUrlSafe(16)
@@ -53,7 +59,7 @@ export function useHostedLoginTest(navigate: (url: string) => void = (url) => wi
       oidcService.authorizeUrl(issuer, {
         clientId,
         redirectUri,
-        scope: 'openid email profile offline_access',
+        scope: options.scope,
         state,
         nonce: randomUrlSafe(16),
         codeChallenge: await codeChallengeFor(codeVerifier),
@@ -62,7 +68,7 @@ export function useHostedLoginTest(navigate: (url: string) => void = (url) => wi
   })
 
   /** Finishes the sign-in when the browser comes back with a code or an error. */
-  const complete = useAsyncAction(async (returned: HostedLoginReturn): Promise<{ clientId: string; tokens: TokenSet }> => {
+  const complete = useAsyncAction(async (returned: CodeFlowReturn): Promise<{ clientId: string; tokens: TokenSet }> => {
     const pending = recall()
     if (returned.error) throw new ApiError(returned.error, returned.errorDescription || returned.error, 0)
     if (!pending || !returned.code || returned.state !== pending.state) {

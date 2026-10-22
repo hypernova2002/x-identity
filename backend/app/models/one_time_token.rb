@@ -14,7 +14,8 @@ class OneTimeToken < ApplicationRecord
     "provider_code" => 1.minute,
     "oidc_interaction" => 30.minutes,
     "oidc_login_ticket" => 2.minutes,
-    "oidc_code" => 1.minute
+    "oidc_code" => 1.minute,
+    "saml_logout" => 10.minutes
   }.freeze
   CODE_GENERATION_TRIES = 10
 

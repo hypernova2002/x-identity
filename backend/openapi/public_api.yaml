@@ -1305,6 +1305,11 @@ paths:
                   enum:
                   - public
                   - confidential
+                launch_url:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 2048
                 name:
                   type: string
                   minLength: 1
@@ -1342,6 +1347,87 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '422':
           description: invalid name, type or origins
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/assignments":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: app_client_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List who can use an app client
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/AppAssignment"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Give an end user or group access to an app client
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                principal_type:
+                  enum:
+                  - end_user
+                  - group
+                principal_uid:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+              type: object
+              unevaluatedProperties: false
+              required:
+              - principal_type
+              - principal_uid
+              additionalProperties: false
+      responses:
+        '201':
+          description: assigned
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AppAssignment"
+        '404':
+          description: no such end user or group in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: already assigned
           content:
             application/json:
               schema:
@@ -2589,6 +2675,151 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/groups":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the project's groups
+      tags:
+      - Groups
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: groups, with member counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Group"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Create a group
+      tags:
+      - Groups
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                default_for_new_users:
+                  anyOf:
+                  - type: boolean
+                description:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 500
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+              type: object
+              unevaluatedProperties: false
+              required:
+              - name
+              additionalProperties: false
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Group"
+        '403':
+          description: viewers can't manage groups
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: the name is missing or already used
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/groups/{group_uid}/members":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: group_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List a group's members
+      tags:
+      - Groups
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: end users in the group
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/EndUser"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Add an end user to a group
+      tags:
+      - Groups
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                end_user_uid:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+              type: object
+              unevaluatedProperties: false
+              required:
+              - end_user_uid
+              additionalProperties: false
+      responses:
+        '204':
+          description: added
+        '409':
+          description: already a member
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/identity-providers":
     parameters:
     - name: account_uid
@@ -3161,6 +3392,267 @@ paths:
                 - sub
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/portal/apps":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the apps the signed-in end user can open
+      tags:
+      - App portal
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: assigned apps with a launch URL
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - uid
+                  - kind
+                  - name
+                  - launch_url
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Add a SAML app
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                acs_urls:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 2048
+                  minItems: 1
+                  maxItems: 10
+                attribute_mappings:
+                  type: array
+                  items:
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                      source:
+                        type: string
+                        minLength: 1
+                        maxLength: 50
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - name
+                    - source
+                    additionalProperties: false
+                  maxItems: 20
+                default_relay_state:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 1024
+                enabled:
+                  anyOf:
+                  - type: boolean
+                entity_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 1024
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                name_id_format:
+                  enum:
+                  - email
+                  - persistent
+                  - unspecified
+                require_signed_requests:
+                  anyOf:
+                  - type: boolean
+                sign_assertion:
+                  anyOf:
+                  - type: boolean
+                sign_response:
+                  anyOf:
+                  - type: boolean
+                slo_url:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 2048
+                sp_certificate:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 10000
+              type: object
+              unevaluatedProperties: false
+              required:
+              - acs_urls
+              - entity_id
+              - name
+              additionalProperties: false
+      responses:
+        '201':
+          description: created; nobody can use it until it's assigned
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SamlApp"
+        '422':
+          description: invalid settings
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps/parse-metadata":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Read a SAML app's metadata into settings
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                metadata_url:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
+                metadata_xml:
+                  type: string
+                  minLength: 1
+                  maxLength: 256000
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: the settings found; nothing is saved
+          content:
+            application/json:
+              schema:
+                type: object
+        '422':
+          description: not SAML service provider metadata
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml-certificates":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: The project's SAML identity provider details and certificates
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: entity ID, endpoints and certificates
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SamlIdentityProvider"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Add the next signing certificate
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: added and published, not yet used for signing
+        '403':
+          description: only admins can rotate certificates
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml/metadata":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: SAML identity provider metadata
+      tags:
+      - SAML
+      responses:
+        '200':
+          description: metadata XML
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{uid}":
     parameters:
     - name: account_uid
@@ -3489,6 +3981,32 @@ components:
           type: string
           format: date-time
       title: Account
+    AppAssignment:
+      type: object
+      required:
+      - uid
+      - principal_type
+      - principal_uid
+      - principal_label
+      - created_at
+      properties:
+        uid:
+          type: string
+          example: asg_2Wq7Lm4Xc9Vb3Nz8Rt5Kj6Hd
+        principal_type:
+          type: string
+          enum:
+          - end_user
+          - group
+        principal_uid:
+          type: string
+        principal_label:
+          type: string
+          description: The group's name or the end user's email.
+        created_at:
+          type: string
+          format: date-time
+      title: AppAssignment
     AppClient:
       type: object
       required:
@@ -3498,6 +4016,7 @@ components:
       - allowed_origins
       - redirect_uris
       - post_logout_redirect_uris
+      - launch_url
       - enabled
       - created_at
       - updated_at
@@ -3525,6 +4044,11 @@ components:
           type: array
           items:
             type: string
+        launch_url:
+          type:
+          - string
+          - 'null'
+          description: Where the app portal opens the app.
         enabled:
           type: boolean
         created_at:
@@ -3543,6 +4067,7 @@ components:
       - allowed_origins
       - redirect_uris
       - post_logout_redirect_uris
+      - launch_url
       - enabled
       - created_at
       - updated_at
@@ -3570,6 +4095,11 @@ components:
           type: array
           items:
             type: string
+        launch_url:
+          type:
+          - string
+          - 'null'
+          description: Where the app portal opens the app.
         enabled:
           type: boolean
         created_at:
@@ -3858,6 +4388,7 @@ components:
       - email_verified
       - mfa_enabled
       - invitation_pending
+      - groups
       - custom_attributes
       - created_at
       - updated_at
@@ -3878,6 +4409,18 @@ components:
           enum:
           - active
           - disabled
+        groups:
+          type: array
+          items:
+            type: object
+            required:
+            - uid
+            - name
+            properties:
+              uid:
+                type: string
+              name:
+                type: string
         email_verified:
           type: boolean
         mfa_enabled:
@@ -3967,6 +4510,7 @@ components:
         - `mfa_required_by_policy` (403): Multi-factor authentication is required by your account's policy and can't be turned off.
         - `user_disabled` (403): Too many failed verification attempts. This account has been disabled; ask an administrator to re-enable it.
         - `sign_up_disabled` (403): Self sign-up is turned off for this project.
+        - `app_access_denied` (403): You don't have access to this app. Ask an administrator to give you access.
         - `provider_email_unverified` (403): Your email address isn't verified with this identity provider.
         - `not_found` (404): The requested resource could not be found.
         - `method_not_allowed` (405): The request method is not supported for this resource.
@@ -4014,6 +4558,7 @@ components:
               - mfa_required_by_policy
               - user_disabled
               - sign_up_disabled
+              - app_access_denied
               - provider_email_unverified
               - not_found
               - method_not_allowed
@@ -4044,6 +4589,38 @@ components:
                   message:
                     type: string
       title: Error
+    Group:
+      type: object
+      required:
+      - uid
+      - name
+      - description
+      - default_for_new_users
+      - member_count
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: grp_5Hk2Lq8Wm3Xn7Bv4Lc9Tz6Rp
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        default_for_new_users:
+          type: boolean
+          description: New end users join the group automatically.
+        member_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: Group
     IdentityProvider:
       type: object
       required:
@@ -4343,6 +4920,140 @@ components:
           minItems: 10
           maxItems: 10
       title: RecoveryCodes
+    SamlApp:
+      type: object
+      required:
+      - uid
+      - name
+      - enabled
+      - entity_id
+      - acs_urls
+      - slo_url
+      - sp_certificate
+      - name_id_format
+      - attribute_mappings
+      - sign_assertion
+      - sign_response
+      - require_signed_requests
+      - default_relay_state
+      - launch_url
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: saml_9Lq3Wm7Xc2Vb8Nz4Rt6Kj5Hd
+        name:
+          type: string
+        enabled:
+          type: boolean
+        entity_id:
+          type: string
+        acs_urls:
+          type: array
+          items:
+            type: string
+        slo_url:
+          type:
+          - string
+          - 'null'
+        sp_certificate:
+          type:
+          - string
+          - 'null'
+        name_id_format:
+          type: string
+          enum:
+          - email
+          - persistent
+          - unspecified
+        attribute_mappings:
+          type: array
+          items:
+            type: object
+            required:
+            - name
+            - source
+            properties:
+              name:
+                type: string
+              source:
+                type: string
+        sign_assertion:
+          type: boolean
+        sign_response:
+          type: boolean
+        require_signed_requests:
+          type: boolean
+        default_relay_state:
+          type:
+          - string
+          - 'null'
+        launch_url:
+          type: string
+          description: Starts an IdP-initiated sign-in.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: SamlApp
+    SamlIdentityProvider:
+      type: object
+      required:
+      - entity_id
+      - metadata_url
+      - sso_url
+      - slo_url
+      - certificates
+      properties:
+        entity_id:
+          type: string
+        metadata_url:
+          type: string
+        sso_url:
+          type: string
+        slo_url:
+          type: string
+        certificates:
+          type: array
+          items:
+            type: object
+            required:
+            - uid
+            - status
+            - certificate
+            - fingerprint_sha256
+            - activated_at
+            - expires_at
+            - created_at
+            properties:
+              uid:
+                type: string
+              status:
+                type: string
+                enum:
+                - next
+                - active
+                - retired
+              certificate:
+                type: string
+                description: PEM.
+              fingerprint_sha256:
+                type: string
+              activated_at:
+                type:
+                - string
+                - 'null'
+                format: date-time
+              expires_at:
+                type: string
+                format: date-time
+              created_at:
+                type: string
+                format: date-time
+      title: SamlIdentityProvider
     SignInChallenge:
       type: object
       required:

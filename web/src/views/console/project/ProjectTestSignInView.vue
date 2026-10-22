@@ -12,7 +12,7 @@ import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { SelectOption } from '@/components/base/types'
 import DecodedToken from '@/components/project/DecodedToken.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
-import { useHostedLoginTest } from '@/composables/useHostedLoginTest'
+import { useOidcCodeFlow } from '@/composables/useOidcCodeFlow'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { useTestSignIn } from '@/composables/useTestSignIn'
 import { oidcService } from '@/services/oidc'
@@ -23,7 +23,7 @@ const route = useRoute()
 const router = useRouter()
 const { accountUid, project } = useProjectContext()
 const flow = useTestSignIn()
-const hostedLogin = useHostedLoginTest()
+const hostedLogin = useOidcCodeFlow({ storageKey: 'x-identity:test-hosted-login', scope: 'openid email profile groups offline_access' })
 const { challenge, enrollment, tokens, recoveryCodes, refreshedAt, signedOut } = flow
 
 const clients = ref<AppClient[]>([])

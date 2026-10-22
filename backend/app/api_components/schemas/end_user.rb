@@ -3,12 +3,16 @@ class Schemas::EndUser
 
   schema(
     type: :object,
-    required: %w[uid email status email_verified mfa_enabled invitation_pending custom_attributes created_at updated_at],
+    required: %w[uid email status email_verified mfa_enabled invitation_pending groups custom_attributes created_at updated_at],
     properties: {
       uid: { type: :string, example: "eu_8Jd2Kq9LmP3xR5tN7vB4cZ6w", description: "The `sub` claim in this end user's tokens." },
       email: { type: :string, format: :email },
       name: { type: [ :string, :null ] },
       status: { type: :string, enum: EndUser.statuses.keys },
+      groups: {
+        type: :array,
+        items: { type: :object, required: %w[uid name], properties: { uid: { type: :string }, name: { type: :string } } }
+      },
       email_verified: { type: :boolean },
       mfa_enabled: { type: :boolean },
       invitation_pending: { type: :boolean, description: "Created by an admin and hasn't set a password yet." },

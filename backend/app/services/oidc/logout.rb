@@ -1,7 +1,8 @@
 module Oidc
-  # RP-initiated logout: ends the browser's single sign-on session, then sends the browser to the
-  # app's registered post-logout redirect URI, or to the hosted signed-out page. Tokens the app holds
-  # are the app's to discard; revoking them is what the revocation endpoint is for.
+  # RP-initiated logout: ends the browser's single sign-on session, logs it out of the SAML apps it
+  # signed in to, then sends the browser to the app's registered post-logout redirect URI, or to the
+  # hosted signed-out page. Tokens the app holds are the app's to discard; revoking them is what the
+  # revocation endpoint is for.
   class Logout
     # @param project [Project]
     # @param ip [String, nil] the caller's IP address, for the audit log
@@ -16,8 +17,14 @@ module Oidc
     # @param params [Hash{String => String}] id_token_hint, client_id, post_logout_redirect_uri, state
     # @return [String] where to send the browser
     def call(session_token:, params:)
-      end_session(session_token)
+      session = end_session(session_token)
+      destination = destination_for(params)
+      session ? SamlIdp::Logout.new(project: @project, ip: @ip, user_agent: @user_agent).start(session, final_url: destination) : destination
+    end
 
+    private
+
+    def destination_for(params)
       redirect_uri = params["post_logout_redirect_uri"].presence
       return Urls.hosted_page(@project, "signed-out") unless redirect_uri
 
@@ -27,16 +34,16 @@ module Oidc
       Urls.hosted_page(@project, "error", error: "invalid_request", error_description: "You're signed out, but the app's post-logout address isn't registered.")
     end
 
-    private
-
+    # @return [BrowserSession, nil] the session that was ended
     def end_session(session_token)
-      return if session_token.blank?
+      return nil if session_token.blank?
 
       session = BrowserSession.find_by(project: @project, token_digest: BrowserSession.digest(session_token), revoked_at: nil)
-      return unless session
+      return nil unless session
 
       session.revoke!
       @project.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "end_user.signed_out", actor: session.end_user, target: session.end_user, metadata: { sso: true })
+      session
     end
 
     def client_for(params)

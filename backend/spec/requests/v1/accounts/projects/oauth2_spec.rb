@@ -127,6 +127,24 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
       expect(claims(response.parsed_body["id_token"])).to include("nonce" => "app-nonce", "aud" => app_client.uid, "sub" => end_user.uid)
     end
 
+    it "adds the user's groups to the ID token and userinfo for the groups scope" do
+      exchange(code_for_app(scope: "openid groups"))
+      token = response.parsed_body
+
+      expect(claims(token["id_token"])["groups"]).to eq([ "All end users" ])
+      get oauth_path("userinfo"), headers: { "Authorization" => "Bearer #{token['access_token']}" }
+      expect(response.parsed_body["groups"]).to eq([ "All end users" ])
+    end
+
+    it "refuses an SSO sign-in to an app the user isn't assigned to" do
+      follow(sign_in_on_hosted_page["redirect_to"])
+      other = create(:app_client, project: project, redirect_uris: [ "https://other.example.com/cb" ], assigned_to_everyone: false)
+
+      location = authorize(client_id: other.uid, redirect_uri: "https://other.example.com/cb")
+
+      expect(query_of(location)).to include("error" => "access_denied")
+    end
+
     it "issues a refresh token for offline_access, which the token endpoint can refresh" do
       exchange(code_for_app(scope: "openid offline_access"))
       refresh_token = response.parsed_body.fetch("refresh_token")

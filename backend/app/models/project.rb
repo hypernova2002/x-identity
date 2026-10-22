@@ -11,6 +11,10 @@ class Project < ApplicationRecord
   has_many :end_users
   has_many :app_clients
   has_many :identity_providers
+  has_many :groups
+  has_many :saml_apps
+  has_many :saml_certificates
+  has_many :app_assignments
   has_many :end_user_attribute_definitions
   has_many :signing_keys, as: :owner
   has_one :auth_configuration, as: :owner
@@ -32,6 +36,15 @@ class Project < ApplicationRecord
   # @return [AuthConfiguration]
   def auth_configuration!
     auth_configuration || create_auth_configuration!(require_email_verification: true)
+  end
+
+  # The app portal's own OpenID Connect client, created on first use.
+  # @return [AppClient]
+  def portal_client!
+    app_clients.find_by(system_kind: AppClient::PORTAL) ||
+      app_clients.create!(name: "App portal", client_type: "public", system_kind: AppClient::PORTAL)
+  rescue ActiveRecord::RecordNotUnique
+    app_clients.find_by!(system_kind: AppClient::PORTAL)
   end
 
   # The `iss` claim for tokens issued to this project's end users.

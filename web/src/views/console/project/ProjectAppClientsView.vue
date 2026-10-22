@@ -8,6 +8,8 @@ import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseTable from '@/components/base/BaseTable.vue'
+import AppAccessDialog from '@/components/project/AppAccessDialog.vue'
+import type { AppRef } from '@/composables/useAppAccess'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectAdminService } from '@/services/project'
@@ -24,17 +26,21 @@ const clientType = ref<AppClientType>('public')
 const origins = ref('')
 const redirectUris = ref('')
 const postLogoutUris = ref('')
+const launchUrl = ref('')
+const accessFor = ref<AppRef | null>(null)
 const editing = ref<AppClient | null>(null)
 const editName = ref('')
 const editOrigins = ref('')
 const editRedirectUris = ref('')
 const editPostLogoutUris = ref('')
+const editLaunchUrl = ref('')
 const revealed = ref<AppClientWithSecret | null>(null)
 const pendingDelete = ref<AppClient | null>(null)
 
 const redirectUrisHint =
   'Where users return after signing in through hosted login or a sign-in provider, matched exactly. https URLs, ' +
   'http://localhost URLs, or app schemes like com.example.shop:/callback. Separate several with commas.'
+const launchUrlHint = "Optional. Where the app portal opens this app. Apps without one aren't listed in the portal."
 const postLogoutUrisHint = 'Where your app may send users after logging out of hosted login, matched exactly. Separate several with commas.'
 
 const columns = [
@@ -59,6 +65,7 @@ const create = useAsyncAction(async () => {
     allowed_origins: parseList(origins.value),
     redirect_uris: parseList(redirectUris.value),
     post_logout_redirect_uris: parseList(postLogoutUris.value),
+    launch_url: launchUrl.value.trim() || null,
   })
   clients.value = [...clients.value, created]
   createOpen.value = false
@@ -66,6 +73,7 @@ const create = useAsyncAction(async () => {
   origins.value = ''
   redirectUris.value = ''
   postLogoutUris.value = ''
+  launchUrl.value = ''
   revealed.value = created
 })
 
@@ -75,6 +83,7 @@ function startEditing(client: AppClient) {
   editOrigins.value = client.allowed_origins.join(', ')
   editRedirectUris.value = client.redirect_uris.join(', ')
   editPostLogoutUris.value = client.post_logout_redirect_uris.join(', ')
+  editLaunchUrl.value = client.launch_url ?? ''
   update.error.value = null
 }
 
@@ -85,6 +94,7 @@ const update = useAsyncAction(async () => {
     allowed_origins: parseList(editOrigins.value),
     redirect_uris: parseList(editRedirectUris.value),
     post_logout_redirect_uris: parseList(editPostLogoutUris.value),
+    launch_url: editLaunchUrl.value.trim() || null,
   })
   clients.value = clients.value.map((existing) => (existing.uid === updated.uid ? updated : existing))
   editing.value = null
@@ -154,7 +164,9 @@ onMounted(() => load.run())
         <span class="block text-xs text-text-muted">Since {{ formatDateTime(row.created_at) }}</span>
       </template>
       <template #cell-actions="{ row }">
-        <div v-if="access.developer" class="flex flex-wrap justify-end gap-2">
+        <div class="flex flex-wrap justify-end gap-2">
+          <BaseButton label="Access" variant="secondary" size="sm" @click="accessFor = { kind: 'app_client', uid: row.uid, name: row.name }" />
+          <template v-if="access.developer">
           <BaseButton label="Edit" variant="secondary" size="sm" :disabled="clientAction.loading.value" @click="startEditing(row)" />
           <BaseButton
             :label="row.enabled ? 'Disable' : 'Enable'"
@@ -172,6 +184,7 @@ onMounted(() => load.run())
             @click="clientAction.run(row, 'rotate')"
           />
           <BaseButton label="Delete" variant="ghost" size="sm" :disabled="clientAction.loading.value" @click="pendingDelete = row" />
+          </template>
         </div>
       </template>
     </BaseTable>
@@ -200,6 +213,8 @@ onMounted(() => load.run())
         :hint="postLogoutUrisHint"
         :error="create.error.value?.fieldError('post_logout_redirect_uris')"
       />
+      <BaseInput v-model="launchUrl" label="Launch URL" type="url" :hint="launchUrlHint" :error="create.error.value?.fieldError('launch_url')" />
+      <p class="text-xs text-text-muted">Nobody can sign in to a new client until you give end users or groups access to it.</p>
     </form>
     <template #footer>
       <BaseButton label="Cancel" variant="secondary" @click="createOpen = false" />
@@ -229,12 +244,15 @@ onMounted(() => load.run())
         :hint="postLogoutUrisHint"
         :error="update.error.value?.fieldError('post_logout_redirect_uris')"
       />
+      <BaseInput v-model="editLaunchUrl" label="Launch URL" type="url" :hint="launchUrlHint" :error="update.error.value?.fieldError('launch_url')" />
     </form>
     <template #footer>
       <BaseButton label="Cancel" variant="secondary" @click="editing = null" />
       <BaseButton label="Save" type="submit" form="edit-app-client" :loading="update.loading.value" />
     </template>
   </BaseDialog>
+
+  <AppAccessDialog v-if="project" :account-uid="accountUid" :project-uid="project.uid" :app="accessFor" :can-manage="access.developer" @close="accessFor = null" />
 
   <BaseDialog :visible="revealed !== null" title="Client details" @update:visible="(open: boolean) => !open && (revealed = null)">
     <dl v-if="revealed" class="grid gap-2 text-sm">

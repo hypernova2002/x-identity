@@ -16,8 +16,9 @@ module Auth
     # @param refresh_expires_at [Time, nil] keeps a family's absolute lifetime fixed across rotations
     # @param nonce [String, nil] echoed in the ID token, for OpenID Connect clients
     # @param refresh [Boolean] false issues no refresh token (OpenID Connect without offline_access)
+    # @param scope [String, nil] OpenID Connect scopes; `groups` adds the user's groups to the ID token
     # @return [TokenSet]
-    def issue(user:, authenticated_at:, amr:, family_id: SecureRandom.uuid, refresh_expires_at: nil, nonce: nil, refresh: true)
+    def issue(user:, authenticated_at:, amr:, family_id: SecureRandom.uuid, refresh_expires_at: nil, nonce: nil, refresh: true, scope: nil)
       now = Time.current
       refresh_token = SecureRandom.base58(43) if refresh
 
@@ -29,6 +30,7 @@ module Auth
           family_id: family_id,
           authenticated_at: authenticated_at,
           amr: amr,
+          scope: scope,
           expires_at: refresh_expires_at || now + @configuration.refresh_token_ttl
         )
       end
@@ -37,10 +39,10 @@ module Auth
       base = base_claims(user, authenticated_at, now)
 
       TokenSet.new(
-        access_token: sign(key, base.merge(token_use: "access", amr: amr, sid: family_id, jti: SecureRandom.uuid).merge(client_claims)),
+        access_token: sign(key, base.merge(token_use: "access", amr: amr, sid: family_id, jti: SecureRandom.uuid, scope: scope).compact.merge(client_claims)),
         refresh_token: refresh_token,
         expires_in: @configuration.access_token_ttl.to_i,
-        id_token: @app_client ? sign(key, base.merge(id_claims(user)).merge({ nonce: nonce }.compact)) : nil
+        id_token: @app_client ? sign(key, base.merge(id_claims(user, scope)).merge({ nonce: nonce }.compact)) : nil
       )
     end
 
@@ -61,14 +63,15 @@ module Auth
       @app_client ? { client_id: @app_client.uid } : {}
     end
 
-    def id_claims(user)
+    def id_claims(user, scope)
       attributes = user.project.end_user_attribute_definitions.where(include_in_token: true).pluck(:key)
       {
         token_use: "id",
         email: user.email,
         email_verified: user.email_verified?,
         name: user.name,
-        custom_attributes: user.custom_attributes.slice(*attributes)
+        custom_attributes: user.custom_attributes.slice(*attributes),
+        groups: (user.groups.order(:name).pluck(:name) if scope.to_s.split(" ").include?("groups"))
       }.compact
     end
 

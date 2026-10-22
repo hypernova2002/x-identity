@@ -61,7 +61,15 @@ module Projects
           model.where(subject_type: "EndUser", subject_id: end_user_ids).delete_all
         end
         EndUserIdentity.where(end_user_id: end_user_ids).delete_all
+        OneTimeToken.where(subject_type: "BrowserSession", subject_id: BrowserSession.where(project: project).select(:id)).delete_all
+        BrowserSessionApp.where(browser_session_id: BrowserSession.where(project: project).select(:id)).delete_all
         BrowserSession.where(project: project).delete_all
+        GroupMembership.where(group_id: project.groups.select(:id)).delete_all
+        project.app_assignments.delete_all
+        project.groups.delete_all
+        OneTimeToken.where(subject_type: "SamlApp", subject_id: project.saml_apps.select(:id)).delete_all
+        project.saml_apps.delete_all
+        project.saml_certificates.delete_all
         OneTimeToken.where(subject_type: "AppClient", subject_id: project.app_clients.select(:id)).delete_all
         OneTimeToken.where(subject_type: "IdentityProvider", subject_id: project.identity_providers.select(:id)).delete_all
         project.identity_providers.delete_all

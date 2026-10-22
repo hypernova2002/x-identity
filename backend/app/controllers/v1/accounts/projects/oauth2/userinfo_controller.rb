@@ -10,7 +10,8 @@ module V1
               email: current_user.email,
               email_verified: current_user.email_verified?,
               name: current_user.name,
-              custom_attributes: current_user.custom_attributes.slice(*attributes)
+              custom_attributes: current_user.custom_attributes.slice(*attributes),
+              groups: (current_user.groups.order(:name).pluck(:name) if @access_token_claims["scope"].to_s.split(" ").include?("groups"))
             }.compact
           end
         end

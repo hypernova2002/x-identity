@@ -43,6 +43,7 @@ const router = createRouter({
         { path: 'login', name: 'hosted-login', component: () => import('../views/hosted/HostedLoginView.vue') },
         { path: 'error', name: 'hosted-error', component: () => import('../views/hosted/HostedErrorView.vue') },
         { path: 'signed-out', name: 'hosted-signed-out', component: () => import('../views/hosted/HostedSignedOutView.vue') },
+        { path: 'apps', name: 'hosted-portal', component: () => import('../views/hosted/HostedPortalView.vue') },
       ],
     },
     {
@@ -73,6 +74,18 @@ const router = createRouter({
               name: 'project-app-clients',
               component: () => import('../views/console/project/ProjectAppClientsView.vue'),
               meta: { title: 'App clients' },
+            },
+            {
+              path: 'saml-apps',
+              name: 'project-saml-apps',
+              component: () => import('../views/console/project/ProjectSamlAppsView.vue'),
+              meta: { title: 'SAML apps' },
+            },
+            {
+              path: 'groups',
+              name: 'project-groups',
+              component: () => import('../views/console/project/ProjectGroupsView.vue'),
+              meta: { title: 'Groups' },
             },
             {
               path: 'end-users',

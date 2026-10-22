@@ -20,6 +20,7 @@ module ErrorCodes
     mfa_required_by_policy: { status: 403, default_message: "Multi-factor authentication is required by your account's policy and can't be turned off." },
     user_disabled: { status: 403, default_message: "Too many failed verification attempts. This account has been disabled; ask an administrator to re-enable it." },
     sign_up_disabled: { status: 403, default_message: "Self sign-up is turned off for this project." },
+    app_access_denied: { status: 403, default_message: "You don't have access to this app. Ask an administrator to give you access." },
     provider_email_unverified: { status: 403, default_message: "Your email address isn't verified with this identity provider." },
     not_found: { status: 404, default_message: "The requested resource could not be found." },
     method_not_allowed: { status: 405, default_message: "The request method is not supported for this resource." },

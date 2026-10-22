@@ -41,6 +41,7 @@ const identities = ref<EndUserIdentity[]>([])
 const columns = [
   { key: 'email', label: 'End user' },
   { key: 'status', label: 'Status' },
+  { key: 'groups', label: 'Groups' },
   { key: 'mfa_enabled', label: 'MFA' },
   { key: 'last_sign_in_at', label: 'Last sign-in' },
   { key: 'actions', label: 'Actions', srOnly: true },
@@ -171,6 +172,10 @@ onMounted(() => load.run())
         <span class="block text-xs text-text-muted">
           {{ row.invitation_pending ? 'Invitation pending' : row.email_verified ? 'Email confirmed' : 'Email not confirmed' }}
         </span>
+      </template>
+      <template #cell-groups="{ row }">
+        <span v-if="row.groups.length === 0" class="text-text-muted">None</span>
+        <span v-else class="text-xs">{{ row.groups.map((group) => group.name).join(', ') }}</span>
       </template>
       <template #cell-mfa_enabled="{ row }">{{ row.mfa_enabled ? 'On' : 'Off' }}</template>
       <template #cell-last_sign_in_at="{ row }">{{ formatDateTime(row.last_sign_in_at) }}</template>

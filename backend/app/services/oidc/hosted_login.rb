@@ -1,8 +1,8 @@
 module Oidc
   # What the hosted login page can do within one interaction: sign in (with any challenges), sign up,
   # confirm an email, reset a password, or go to an identity provider. The interaction stands in for
-  # the app client, so confidential clients' secrets never reach the browser; a finished sign-in
-  # never returns tokens to the page, only where to send the browser next.
+  # the app (an app client, or a SAML app), so confidential clients' secrets never reach the browser;
+  # a finished sign-in never returns tokens to the page, only where to send the browser next.
   class HostedLogin
     # @param project [Project]
     # @param interaction_token [String, nil] from the hosted page's URL
@@ -15,8 +15,10 @@ module Oidc
       @ip = ip
       @user_agent = user_agent
       @interaction = interaction_token.present? && OneTimeToken.find_usable(interaction_token, purpose: :oidc_interaction)
-      @app_client = @interaction&.subject
-      raise ApiError.new(:invalid_interaction) unless @app_client&.enabled? && @app_client.project_id == project.id
+      @app = @interaction&.subject
+      raise ApiError.new(:invalid_interaction) unless @app&.enabled? && @app.project_id == project.id
+
+      @app_client = @app if @app.is_a?(AppClient)
     end
 
     # @return [Hash] what the page shows
@@ -24,7 +26,7 @@ module Oidc
       {
         account_name: @project.account.name,
         project_name: @project.name,
-        app_name: @app_client.name,
+        app_name: @app.name,
         allow_self_sign_up: @project.allow_self_sign_up,
         login_hint: @interaction.data["login_hint"],
         identity_providers: @project.identity_providers.enabled.order(:created_at, :id).map { |provider| IdentityProviderSummarySerializer.new(provider).serializable_hash }

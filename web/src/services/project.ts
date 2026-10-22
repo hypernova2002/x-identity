@@ -5,6 +5,8 @@ import type {
   AppClientType,
   AppClientWithSecret,
   AttributeDataType,
+  AppAssignment,
+  AppKind,
   AttributeDefinition,
   AuditEvent,
   AuthConfiguration,
@@ -12,8 +14,14 @@ import type {
   EndUser,
   EndUserIdentity,
   EndUserStatus,
+  Group,
   IdentityProvider,
   IdentityProviderKind,
+  PrincipalType,
+  SamlApp,
+  SamlAppMetadata,
+  SamlCertificate,
+  SamlIdentityProviderInfo,
 } from '@/types/api'
 
 const authenticated = { authenticated: true } as const
@@ -32,7 +40,18 @@ export interface NewAppClient {
   allowed_origins: string[]
   redirect_uris: string[]
   post_logout_redirect_uris: string[]
+  launch_url: string | null
 }
+
+export interface GroupInput {
+  name: string
+  description: string | null
+  default_for_new_users: boolean
+}
+
+export type SamlAppInput = Omit<SamlApp, 'uid' | 'launch_url' | 'created_at' | 'updated_at'>
+
+const appPath = (kind: AppKind) => (kind === 'saml_app' ? 'saml-apps' : 'app-clients')
 
 /** Settings for an identity provider. Secrets are write-only: leave them out to keep the current ones. */
 export interface IdentityProviderInput {
@@ -137,6 +156,74 @@ export const projectAdminService = {
       ...authenticated,
       method: 'DELETE',
     }),
+
+  listGroups: (accountUid: string, projectUid: string) =>
+    apiPage<Group>(`${base(accountUid, projectUid)}/groups`, { ...authenticated, query: { per_page: 100 } }),
+
+  createGroup: (accountUid: string, projectUid: string, input: GroupInput) =>
+    apiRequest<Group>(`${base(accountUid, projectUid)}/groups`, { ...authenticated, method: 'POST', body: input }),
+
+  updateGroup: (accountUid: string, projectUid: string, groupUid: string, input: Partial<GroupInput>) =>
+    apiRequest<Group>(`${base(accountUid, projectUid)}/groups/${groupUid}`, { ...authenticated, method: 'PATCH', body: input }),
+
+  deleteGroup: (accountUid: string, projectUid: string, groupUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/groups/${groupUid}`, { ...authenticated, method: 'DELETE' }),
+
+  listGroupMembers: (accountUid: string, projectUid: string, groupUid: string, page: number) =>
+    apiPage<EndUser>(`${base(accountUid, projectUid)}/groups/${groupUid}/members`, { ...authenticated, query: { page } }),
+
+  addGroupMember: (accountUid: string, projectUid: string, groupUid: string, endUserUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/groups/${groupUid}/members`, {
+      ...authenticated,
+      method: 'POST',
+      body: { end_user_uid: endUserUid },
+    }),
+
+  removeGroupMember: (accountUid: string, projectUid: string, groupUid: string, endUserUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/groups/${groupUid}/members/${endUserUid}`, { ...authenticated, method: 'DELETE' }),
+
+  listAssignments: (accountUid: string, projectUid: string, kind: AppKind, appUid: string) =>
+    apiPage<AppAssignment>(`${base(accountUid, projectUid)}/${appPath(kind)}/${appUid}/assignments`, { ...authenticated, query: { per_page: 100 } }),
+
+  assign: (accountUid: string, projectUid: string, kind: AppKind, appUid: string, principalType: PrincipalType, principalUid: string) =>
+    apiRequest<AppAssignment>(`${base(accountUid, projectUid)}/${appPath(kind)}/${appUid}/assignments`, {
+      ...authenticated,
+      method: 'POST',
+      body: { principal_type: principalType, principal_uid: principalUid },
+    }),
+
+  unassign: (accountUid: string, projectUid: string, kind: AppKind, appUid: string, assignmentUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/${appPath(kind)}/${appUid}/assignments/${assignmentUid}`, {
+      ...authenticated,
+      method: 'DELETE',
+    }),
+
+  listSamlApps: (accountUid: string, projectUid: string) =>
+    apiPage<SamlApp>(`${base(accountUid, projectUid)}/saml-apps`, { ...authenticated, query: { per_page: 100 } }),
+
+  createSamlApp: (accountUid: string, projectUid: string, input: SamlAppInput) =>
+    apiRequest<SamlApp>(`${base(accountUid, projectUid)}/saml-apps`, { ...authenticated, method: 'POST', body: input }),
+
+  updateSamlApp: (accountUid: string, projectUid: string, appUid: string, input: Partial<SamlAppInput>) =>
+    apiRequest<SamlApp>(`${base(accountUid, projectUid)}/saml-apps/${appUid}`, { ...authenticated, method: 'PATCH', body: input }),
+
+  deleteSamlApp: (accountUid: string, projectUid: string, appUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/saml-apps/${appUid}`, { ...authenticated, method: 'DELETE' }),
+
+  parseSamlMetadata: (accountUid: string, projectUid: string, source: { metadata_xml: string } | { metadata_url: string }) =>
+    apiRequest<SamlAppMetadata>(`${base(accountUid, projectUid)}/saml-apps/parse-metadata`, { ...authenticated, method: 'POST', body: source }),
+
+  getSamlIdentityProvider: (accountUid: string, projectUid: string) =>
+    apiRequest<SamlIdentityProviderInfo>(`${base(accountUid, projectUid)}/saml-certificates`, authenticated),
+
+  addSamlCertificate: (accountUid: string, projectUid: string) =>
+    apiRequest<SamlCertificate>(`${base(accountUid, projectUid)}/saml-certificates`, { ...authenticated, method: 'POST' }),
+
+  activateSamlCertificate: (accountUid: string, projectUid: string, certificateUid: string) =>
+    apiRequest<SamlCertificate>(`${base(accountUid, projectUid)}/saml-certificates/${certificateUid}/activate`, { ...authenticated, method: 'POST' }),
+
+  removeSamlCertificate: (accountUid: string, projectUid: string, certificateUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/saml-certificates/${certificateUid}`, { ...authenticated, method: 'DELETE' }),
 
   listEndUsers: (accountUid: string, projectUid: string, page: number, filters: EndUserFilters) =>
     apiPage<EndUser>(`${base(accountUid, projectUid)}/end-users`, {

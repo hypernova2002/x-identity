@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -12,10 +13,14 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectService } from '@/services/account'
 import { useProjectStore } from '@/stores/project'
+import { useSessionStore } from '@/stores/session'
 
 const router = useRouter()
 const projectStore = useProjectStore()
 const { accountUid, project, access } = useProjectContext()
+const { account } = storeToRefs(useSessionStore())
+
+const portalUrl = computed(() => (project.value && account.value ? `${window.location.origin}/auth/${account.value.slug}/${project.value.uid}/apps` : ''))
 
 const name = ref('')
 const allowSelfSignUp = ref(true)
@@ -71,6 +76,12 @@ const destroy = useAsyncAction(async () => {
         <dd class="font-mono text-xs break-all">{{ project.token_issuer }}/.well-known/openid-configuration</dd>
         <dt class="font-medium">JWKS</dt>
         <dd class="font-mono text-xs break-all">{{ project.token_issuer }}/.well-known/jwks.json</dd>
+        <dt class="font-medium">SAML metadata</dt>
+        <dd class="font-mono text-xs break-all">{{ project.token_issuer }}/saml/metadata</dd>
+        <dt class="font-medium">App portal</dt>
+        <dd class="font-mono text-xs break-all">
+          <a :href="portalUrl" target="_blank" rel="noopener" class="text-primary underline hover:text-primary-hover">{{ portalUrl }}</a>
+        </dd>
       </dl>
       <p class="text-sm text-text-muted">
         Any OpenID Connect library can sign users in with hosted login: point it at the issuer, and use an app client's ID with one

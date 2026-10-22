@@ -42,7 +42,7 @@ module Oidc
 
       tokens = Auth::TokenIssuer.new(realm: @project.realm, app_client: app_client).issue(
         user: end_user, authenticated_at: Time.iso8601(data["authenticated_at"]), amr: data["amr"],
-        nonce: data["nonce"], refresh: data["scope"].to_s.split(" ").include?("offline_access")
+        nonce: data["nonce"], refresh: data["scope"].to_s.split(" ").include?("offline_access"), scope: data["scope"]
       )
       response_for(tokens, scope: data["scope"])
     end
