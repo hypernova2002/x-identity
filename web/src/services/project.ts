@@ -22,6 +22,8 @@ import type {
   SamlAppMetadata,
   SamlCertificate,
   SamlIdentityProviderInfo,
+  SamlNameIdFormat,
+  SamlProviderMetadata,
 } from '@/types/api'
 
 const authenticated = { authenticated: true } as const
@@ -56,7 +58,7 @@ const appPath = (kind: AppKind) => (kind === 'saml_app' ? 'saml-apps' : 'app-cli
 /** Settings for an identity provider. Secrets are write-only: leave them out to keep the current ones. */
 export interface IdentityProviderInput {
   name: string
-  client_id: string
+  client_id?: string
   client_secret?: string
   additional_audiences: string[]
   scopes?: string
@@ -64,6 +66,18 @@ export interface IdentityProviderInput {
   apple_team_id?: string
   apple_key_id?: string
   apple_private_key?: string
+  saml_idp_entity_id?: string
+  saml_sso_url?: string
+  saml_slo_url?: string | null
+  saml_idp_certificates?: string[]
+  saml_name_id_format?: SamlNameIdFormat
+  saml_email_attribute?: string | null
+  saml_name_attribute?: string | null
+  saml_groups_attribute?: string | null
+  domains?: string[]
+  create_users?: boolean
+  allow_idp_initiated?: boolean
+  group_mappings?: { value: string; group_uid: string }[]
   enabled?: boolean
 }
 
@@ -143,6 +157,13 @@ export const projectAdminService = {
       ...authenticated,
       method: 'PATCH',
       body: changes,
+    }),
+
+  parseSamlProviderMetadata: (accountUid: string, projectUid: string, source: { metadata_xml: string } | { metadata_url: string }) =>
+    apiRequest<SamlProviderMetadata>(`${base(accountUid, projectUid)}/identity-providers/parse-saml-metadata`, {
+      ...authenticated,
+      method: 'POST',
+      body: source,
     }),
 
   deleteIdentityProvider: (accountUid: string, projectUid: string, providerUid: string) =>

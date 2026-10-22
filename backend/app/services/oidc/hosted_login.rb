@@ -29,8 +29,23 @@ module Oidc
         app_name: @app.name,
         allow_self_sign_up: @project.allow_self_sign_up,
         login_hint: @interaction.data["login_hint"],
-        identity_providers: @project.identity_providers.enabled.order(:created_at, :id).map { |provider| IdentityProviderSummarySerializer.new(provider).serializable_hash }
+        home_realm_discovery: @project.identity_providers.enabled.kind_saml.where("jsonb_array_length(domains) > 0").exists?,
+        # SAML providers with domains are reached by entering an email instead of a button.
+        identity_providers: @project.identity_providers.enabled.where.not(kind: "saml").or(@project.identity_providers.enabled.where(domains: []))
+          .order(:created_at, :id).map { |provider| IdentityProviderSummarySerializer.new(provider).serializable_hash }
       }
+    end
+
+    # Home realm discovery: the SAML provider for the email's domain, which the page sends the user to
+    # instead of asking for a password. Domains aren't listed on the page, so it can't reveal which
+    # companies use the project.
+    # @param email [String]
+    # @return [IdentityProvider, nil]
+    def discover(email:)
+      domain = email.split("@", 2).last.to_s.downcase
+      return nil if domain.blank? || !email.include?("@")
+
+      @project.identity_providers.enabled.kind_saml.where("domains @> ?", [ domain ].to_json).first
     end
 
     # @return [Hash] a challenge, or where to go once signed in

@@ -14,6 +14,7 @@ export const identityProviderKindOptions: SelectOption<IdentityProviderKind>[] =
   { label: 'Google', value: 'google' },
   { label: 'Apple', value: 'apple' },
   { label: 'Other OpenID Connect provider', value: 'oidc' },
+  { label: "SAML 2.0 (a company's identity provider)", value: 'saml' },
 ]
 
 export const accountRoleOptions: SelectOption<AccountRole>[] = [

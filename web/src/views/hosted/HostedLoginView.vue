@@ -18,7 +18,7 @@ const CHALLENGES: SignInChallengeName[] = ['otp', 'new_password', 'mfa_setup']
 const route = useRoute()
 const { account, loading: accountLoading, error: accountError } = useAccountFromRoute()
 const login = useHostedLogin()
-const { details, step, email, challenge, enrollment, recoveryCodes, notice } = login
+const { details, step, email, challenge, enrollment, recoveryCodes, notice, passwordStep } = login
 
 const password = ref('')
 const name = ref('')
@@ -86,13 +86,22 @@ watch(
 
       <template v-if="step === 'sign-in'">
         <BaseAlert v-if="providerError" variant="danger">{{ providerError }}</BaseAlert>
-        <form class="flex flex-col gap-4" novalidate @submit.prevent="login.signIn.run(password)">
+        <form class="flex flex-col gap-4" novalidate @submit.prevent="passwordStep ? login.signIn.run(password) : login.discover.run()">
           <BaseAlert v-if="login.signIn.error.value && login.signIn.error.value.details.length === 0" variant="danger">
             {{ login.signIn.error.value.message }}
           </BaseAlert>
-          <BaseInput v-model="email" label="Email" type="email" autocomplete="username" required :error="login.signIn.error.value?.fieldError('email')" />
-          <BaseInput v-model="password" label="Password" type="password" autocomplete="current-password" required />
-          <BaseButton type="submit" label="Sign in" :loading="login.signIn.loading.value" />
+          <BaseAlert v-if="login.discover.error.value" variant="danger">{{ login.discover.error.value.message }}</BaseAlert>
+          <BaseInput
+            v-model="email"
+            label="Email"
+            type="email"
+            autocomplete="username"
+            required
+            :error="login.signIn.error.value?.fieldError('email') ?? login.discover.error.value?.fieldError('email')"
+          />
+          <BaseInput v-if="passwordStep" v-model="password" label="Password" type="password" autocomplete="current-password" required />
+          <BaseButton v-if="passwordStep" type="submit" label="Sign in" :loading="login.signIn.loading.value" />
+          <BaseButton v-else type="submit" label="Continue" :loading="login.discover.loading.value" />
         </form>
 
         <div v-if="details.identity_providers.length > 0" class="flex flex-col gap-2">

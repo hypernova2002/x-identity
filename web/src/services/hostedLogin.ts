@@ -30,6 +30,10 @@ export const hostedLoginService = {
   signIn: (ref: InteractionRef, email: string, password: string) =>
     apiRequest<HostedSignInResult>(interactionPath(ref, 'sign-in'), { method: 'POST', body: { email, password } }),
 
+  /** Which company identity provider, if any, an email's domain belongs to. */
+  discover: (ref: InteractionRef, email: string) =>
+    apiRequest<{ identity_provider_uid: string | null }>(interactionPath(ref, 'discover'), { method: 'POST', body: { email } }),
+
   respondToChallenge: (ref: InteractionRef, answer: HostedChallengeAnswer) =>
     apiRequest<HostedSignInResult>(interactionPath(ref, 'respond-to-challenge'), { method: 'POST', body: answer }),
 

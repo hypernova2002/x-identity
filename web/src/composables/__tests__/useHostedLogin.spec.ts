@@ -10,6 +10,7 @@ vi.mock('@/services/hostedLogin', () => ({
   hostedLoginService: {
     details: vi.fn<Service['details']>(),
     signIn: vi.fn<Service['signIn']>(),
+    discover: vi.fn<Service['discover']>(),
     respondToChallenge: vi.fn<Service['respondToChallenge']>(),
     startMfaSetup: vi.fn<Service['startMfaSetup']>(),
     signUp: vi.fn<Service['signUp']>(),
@@ -28,6 +29,7 @@ const details: HostedLoginDetails = {
   app_name: 'Web shop',
   allow_self_sign_up: true,
   login_hint: 'casey@shop.test',
+  home_realm_discovery: false,
   identity_providers: [],
 }
 
@@ -108,6 +110,23 @@ describe('useHostedLogin', () => {
     expect(stepAfterSignUp).toBe('confirm-sign-up')
     expect(hostedLoginService.confirmSignUp).toHaveBeenCalledWith(interaction, 'new@shop.test', '123456')
     expect(hostedLoginService.signIn).toHaveBeenCalledWith(interaction, 'new@shop.test', 'brand-new-password')
+  })
+
+  it('sends company emails to their identity provider, and asks everyone else for a password', async () => {
+    vi.mocked(hostedLoginService.details).mockResolvedValue({ ...details, home_realm_discovery: true, login_hint: null })
+    vi.mocked(hostedLoginService.providerUrl).mockReturnValue('http://api.test/providers/idp_acme')
+    const login = await loaded()
+    expect(login.passwordStep.value).toBe(false)
+
+    vi.mocked(hostedLoginService.discover).mockResolvedValueOnce({ identity_provider_uid: 'idp_acme' })
+    login.email.value = 'jane@acme.com'
+    await login.discover.run()
+    expect(navigate).toHaveBeenCalledWith('http://api.test/providers/idp_acme')
+
+    vi.mocked(hostedLoginService.discover).mockResolvedValueOnce({ identity_provider_uid: null })
+    login.email.value = 'casey@shop.test'
+    await login.discover.run()
+    expect(login.passwordStep.value).toBe(true)
   })
 
   it('returns to sign-in after a password reset', async () => {

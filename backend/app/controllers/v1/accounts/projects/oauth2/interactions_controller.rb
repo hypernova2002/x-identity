@@ -12,6 +12,10 @@ module V1
             render json: hosted_login.sign_in(**parse_request(::HostedLogin::SignInRequest).to_h)
           end
 
+          def discover
+            render json: { identity_provider_uid: hosted_login.discover(**parse_request(::HostedLogin::DiscoverRequest).to_h)&.uid }
+          end
+
           def respond_to_challenge
             render json: hosted_login.respond_to_challenge(**parse_request(::HostedLogin::ChallengeResponseRequest).to_h)
           end

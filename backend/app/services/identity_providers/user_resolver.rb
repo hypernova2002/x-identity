@@ -5,7 +5,9 @@ module IdentityProviders
   # - Otherwise the provider must vouch for the email. A matching user is linked when their email is
   #   verified, or when they have no password yet (invited); a user with a password but an unverified
   #   email is refused, so nobody can pre-register someone else's address and take over their sign-in.
-  # - With no matching user, one is created when the project allows self sign-up.
+  # - With no matching user, one is created when the project allows self sign-up, or the provider
+  #   creates users on first sign-in.
+  # - Providers with group mappings set the user's memberships of the mapped groups at every sign-in.
   class UserResolver
     Resolved = Data.define(:end_user, :identity)
 
@@ -29,11 +31,15 @@ module IdentityProviders
     def resolve(claims, name: nil)
       attempts ||= 0
       identity = @provider.identities.includes(:end_user).find_by(subject: claims["sub"].to_s)
-      return signed_in(identity, claims) if identity
-
-      email = verified_email(claims)
-      end_user = @project.end_users.find_by(email: email)
-      end_user ? link(end_user, claims) : sign_up(email, claims, name)
+      resolved = if identity
+        signed_in(identity, claims)
+      else
+        email = verified_email(claims)
+        end_user = @project.end_users.find_by(email: email)
+        end_user ? link(end_user, claims) : sign_up(email, claims, name)
+      end
+      sync_groups(resolved.end_user, claims["groups"]) if claims.key?("groups")
+      resolved
     rescue ActiveRecord::RecordNotUnique
       # A concurrent sign-in created the user or identity first; look again.
       attempts += 1
@@ -65,7 +71,7 @@ module IdentityProviders
     end
 
     def sign_up(email, claims, name)
-      raise ApiError.new(:sign_up_disabled) unless @project.allow_self_sign_up
+      raise ApiError.new(:sign_up_disabled) unless @project.allow_self_sign_up || @provider.create_users
 
       end_user, identity = EndUser.transaction do
         created = @project.end_users.create!(email: email, name: display_name(claims, name), email_verified_at: Time.current)
@@ -73,6 +79,27 @@ module IdentityProviders
       end
       record("end_user.signed_up", end_user, identity)
       Resolved.new(end_user: end_user, identity: identity)
+    end
+
+    # Only the mapped groups follow the provider; the user's other groups are left alone.
+    def sync_groups(end_user, values)
+      mappings = @provider.group_mappings.includes(:group).to_a
+      return if mappings.empty?
+
+      wanted = mappings.select { |mapping| Array(values).include?(mapping.value) }.map(&:group).uniq
+      mapped = mappings.map(&:group).uniq
+      current = end_user.groups.where(id: mapped.map(&:id)).to_a
+
+      (wanted - current).each { |group| group.group_memberships.create!(end_user: end_user) }
+      (current - wanted).each { |group| group.group_memberships.where(end_user: end_user).delete_all }
+      changes = { added: (wanted - current).map(&:name), removed: (current - wanted).map(&:name) }
+      record_groups(end_user, changes) if changes.values.any?(&:present?)
+    end
+
+    def record_groups(end_user, changes)
+      @project.realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client).record(
+        action: "end_user.groups_synced", actor: end_user, target: end_user, metadata: changes.merge(identity_provider: @provider.uid)
+      )
     end
 
     def create_identity(end_user, claims)
@@ -88,6 +115,9 @@ module IdentityProviders
     def verified_email(claims)
       email = email_claim(claims)
       verified = [ true, "true" ].include?(claims["email_verified"])
+      if @provider.kind_saml? && !(email && verified)
+        raise ApiError.new(:provider_email_unverified, message: "#{@provider.name} can only sign in addresses at #{@provider.domains.join(', ').presence || 'its listed domains'}.")
+      end
       raise ApiError.new(:provider_email_unverified) unless email && verified
 
       email

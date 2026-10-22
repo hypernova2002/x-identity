@@ -6,6 +6,8 @@ class BrowserSession < ApplicationRecord
 
   belongs_to :project
   belongs_to :end_user
+  # Set when the user signed in through an upstream SAML provider, for single logout there.
+  belongs_to :identity_provider, optional: true
   has_many :browser_session_apps, dependent: :delete_all
 
   scope :active, -> { where(revoked_at: nil).where("expires_at > ?", Time.current) }
@@ -19,13 +21,16 @@ class BrowserSession < ApplicationRecord
   # @param end_user [EndUser]
   # @param amr [Array<String>]
   # @param authenticated_at [Time]
+  # @param upstream [Hash, nil] identity_provider_id, name_id, name_id_format and session_index from an upstream SAML provider
   # @return [Array(BrowserSession, String)] the session and the token for the cookie
-  def self.start!(end_user:, amr:, authenticated_at:)
+  def self.start!(end_user:, amr:, authenticated_at:, upstream: nil)
     token = SecureRandom.base58(43)
     ttl = end_user.project.auth_configuration!.sso_session_ttl_seconds.seconds
     session = create!(
       project: end_user.project, end_user: end_user, token_digest: digest(token),
-      amr: amr, authenticated_at: authenticated_at, expires_at: ttl.from_now, last_used_at: Time.current
+      amr: amr, authenticated_at: authenticated_at, expires_at: ttl.from_now, last_used_at: Time.current,
+      identity_provider_id: upstream&.dig("identity_provider_id"), upstream_name_id: upstream&.dig("name_id"),
+      upstream_name_id_format: upstream&.dig("name_id_format"), upstream_session_index: upstream&.dig("session_index")
     )
     [ session, token ]
   end

@@ -15,6 +15,7 @@ module ErrorCodes
     invalid_state: { status: 400, default_message: "The sign-in request is unknown or has expired. Start signing in again." },
     invalid_interaction: { status: 400, default_message: "This sign-in has expired. Go back to the app and try again." },
     invalid_id_token: { status: 401, default_message: "The identity provider's token is invalid or has expired." },
+    invalid_saml_response: { status: 401, default_message: "The sign-in response from the identity provider couldn't be verified." },
     forbidden: { status: 403, default_message: "You do not have permission to perform this action." },
     email_not_verified: { status: 403, default_message: "Verify your email address before signing in." },
     mfa_required_by_policy: { status: 403, default_message: "Multi-factor authentication is required by your account's policy and can't be turned off." },

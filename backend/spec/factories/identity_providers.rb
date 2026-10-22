@@ -22,6 +22,17 @@ FactoryBot.define do
       end
     end
 
+    trait :saml do
+      kind { "saml" }
+      name { "Acme SSO" }
+      client_id { nil }
+      client_secret { nil }
+      saml_idp_entity_id { "https://idp.acme.com/saml" }
+      saml_sso_url { "https://idp.acme.com/saml/sso" }
+      saml_idp_certificates { [ SamlCertificate.generate!(project: create(:project), status: "active").certificate ] }
+      domains { [ "acme.com" ] }
+    end
+
     trait :apple do
       kind { "apple" }
       name { "Apple" }

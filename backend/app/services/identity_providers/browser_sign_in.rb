@@ -10,6 +10,10 @@ module IdentityProviders
   #
   # Hosted login starts with {#authorize_for_interaction} instead; the callback then continues the
   # hosted sign-in, sending the browser back to the hosted page for any challenge.
+  #
+  # SAML providers get a signed AuthnRequest instead, and answer at {#saml_callback}. Providers that
+  # allow it may also send unsolicited (IdP-initiated) responses, which sign the user in to the app
+  # portal.
   class BrowserSignIn
     CODE_CHALLENGE_FORMAT = /\A[A-Za-z0-9_-]{43}\z/
     DISABLED_MESSAGE = "This user has been disabled. Ask an administrator to re-enable it.".freeze
@@ -62,8 +66,30 @@ module IdentityProviders
 
       provider = record.subject
       data = record.data
-      callback = { provider: provider, code: code, error: error, apple_user: apple_user }
-      data["interaction_id"] ? hosted_callback(data, **callback) : app_callback(data, **callback)
+      resolve = ->(app_client, _interaction) { oidc_user(provider, app_client, data, code: code, error: error, apple_user: apple_user) }
+      continue_after_provider(data, provider, resolve)
+    end
+
+    # @param provider [IdentityProvider] a SAML provider
+    # @param saml_response [String, nil] base64, as posted to the ACS URL
+    # @param relay_state [String, nil] the state sent with the AuthnRequest; anything else is unsolicited
+    # @return [String] where to send the browser
+    def saml_callback(provider:, saml_response:, relay_state:)
+      record = relay_state.present? && OneTimeToken.find_usable(relay_state, purpose: :provider_authorization)
+      if record && record.subject == provider
+        raise ApiError.new(:invalid_state) unless record.consume!
+
+        resolve = ->(app_client, interaction) { saml_user(provider, app_client, interaction, saml_response, record.data["saml_request_id"]) }
+        return continue_after_provider(record.data, provider, resolve)
+      end
+
+      unless provider.allow_idp_initiated && provider.enabled?
+        return Oidc::Urls.hosted_page(@project, "error", error: "invalid_request", error_description: "#{provider.name} sent a sign-in that wasn't started here. Start from the app instead.")
+      end
+
+      interaction, token = OneTimeToken.issue!(subject: @project.portal_client!, purpose: :oidc_interaction, replace: false, data: { "protocol" => "portal" })
+      resolve = ->(app_client, current) { saml_user(provider, app_client, current, saml_response, nil) }
+      hosted_callback({ "interaction_id" => interaction.id, "interaction_token" => token }, provider, resolve)
     end
 
     # @param app_client [AppClient]
@@ -89,6 +115,8 @@ module IdentityProviders
     private
 
     def provider_url(provider, data)
+      return saml_url(provider, data) if provider.kind_saml?
+
       nonce = SecureRandom.base58(32)
       provider_verifier = SecureRandom.base58(64) if provider.supports_pkce?
       _record, provider_state = OneTimeToken.issue!(
@@ -106,11 +134,23 @@ module IdentityProviders
       "#{provider.endpoints['authorization_endpoint']}?#{query.to_query}"
     end
 
-    def app_callback(data, provider:, code:, error:, apple_user:)
+    def saml_url(provider, data)
+      record, relay_state = OneTimeToken.issue!(subject: provider, purpose: :provider_authorization, replace: false, data: data)
+      url, request_id = SamlSp::AuthnRequest.url(provider, relay_state: relay_state)
+      record.update!(data: record.data.merge("saml_request_id" => request_id))
+      url
+    end
+
+    # `resolve` turns the provider's answer into an end user: `->(app_client, interaction) { end_user }`.
+    def continue_after_provider(data, provider, resolve)
+      data["interaction_id"] ? hosted_callback(data, provider, resolve) : app_callback(data, provider, resolve)
+    end
+
+    def app_callback(data, provider, resolve)
       app_client = @project.app_clients.enabled.find_by(id: data["app_client_id"])
       raise ApiError.new(:invalid_state) unless app_client
 
-      end_user = provider_user(provider, app_client, data, code: code, error: error, apple_user: apple_user)
+      end_user = resolve.call(app_client, nil)
       _code_record, app_code = OneTimeToken.issue!(
         subject: end_user,
         purpose: :provider_code,
@@ -127,7 +167,7 @@ module IdentityProviders
       Oidc::Urls.append_query(data["redirect_uri"], error: failure.code, error_description: failure.message, state: data["state"])
     end
 
-    def hosted_callback(data, provider:, code:, error:, apple_user:)
+    def hosted_callback(data, provider, resolve)
       interaction = OneTimeToken.usable.find_by(id: data["interaction_id"], purpose: "oidc_interaction")
       unless interaction&.subject&.enabled?
         return Oidc::Urls.hosted_page(@project, "error", error: "invalid_request", error_description: Oidc::Authorization::EXPIRED)
@@ -137,7 +177,7 @@ module IdentityProviders
       app_client = interaction.subject if interaction.subject.is_a?(AppClient)
 
       begin
-        end_user = provider_user(provider, app_client, data, code: code, error: error, apple_user: apple_user)
+        end_user = resolve.call(app_client, interaction)
         result = Auth::SignInFlow.new(realm: @project.realm, app_client: app_client, ip: @ip, user_agent: @user_agent, interaction: interaction)
           .continue(user: end_user, amr: [ "fed" ], authenticated_at: Time.current)
         return Oidc::Authorization.new(project: @project, ip: @ip, user_agent: @user_agent).complete(interaction, result.completion) if result.completed?
@@ -148,7 +188,7 @@ module IdentityProviders
       end
     end
 
-    def provider_user(provider, app_client, data, code:, error:, apple_user:)
+    def oidc_user(provider, app_client, data, code:, error:, apple_user:)
       raise ApiError.new(:identity_provider_error, message: "Signing in with #{provider.name} was cancelled or failed.") if error.present? || code.blank?
       raise ApiError.new(:invalid_state) unless provider.enabled?
 
@@ -156,6 +196,18 @@ module IdentityProviders
       claims = IdTokenVerifier.new(provider: provider, key_set: @key_set).verify(id_token, nonce: data["nonce"])
       UserResolver.new(provider: provider, app_client: app_client, ip: @ip, user_agent: @user_agent)
         .resolve(claims, name: apple_name(apple_user)).end_user
+    end
+
+    # Hosted sign-ins remember the SAML session, so logging out can log out of the provider too.
+    def saml_user(provider, app_client, interaction, saml_response, request_id)
+      raise ApiError.new(:invalid_state) unless provider.enabled?
+
+      claims = SamlSp::ResponseValidator.new(provider).validate(saml_response, request_id: request_id)
+      if interaction
+        upstream = { "identity_provider_id" => provider.id, "name_id" => claims["name_id"], "name_id_format" => claims["name_id_format"], "session_index" => claims["session_index"] }
+        interaction.update!(data: interaction.data.merge("upstream" => upstream))
+      end
+      UserResolver.new(provider: provider, app_client: app_client, ip: @ip, user_agent: @user_agent).resolve(claims).end_user
     end
 
     def s256(verifier)

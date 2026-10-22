@@ -9,6 +9,7 @@ class Group < ApplicationRecord
   has_many :group_memberships, dependent: :delete_all
   has_many :end_users, through: :group_memberships
   has_many :app_assignments, as: :principal, dependent: :delete_all
+  has_many :identity_provider_group_mappings, dependent: :delete_all
 
   validates :name, presence: true, length: { maximum: 100 }, uniqueness: { scope: :project_id, case_sensitive: false }
   validates :description, length: { maximum: 500 }, allow_nil: true

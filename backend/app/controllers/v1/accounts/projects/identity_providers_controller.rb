@@ -23,6 +23,10 @@ module V1
           render json: IdentityProviderSerializer.new(provider).serializable_hash
         end
 
+        def parse_saml_metadata
+          render json: management.parse_saml_metadata(**parse_request(::IdentityProviders::ParseSamlMetadataRequest).to_h)
+        end
+
         def destroy
           management.destroy(@identity_provider)
           head :no_content

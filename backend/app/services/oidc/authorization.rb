@@ -89,11 +89,13 @@ module Oidc
       end_user = record.subject
       amr = record.data["amr"]
       authenticated_at = Time.iso8601(record.data["authenticated_at"])
-      session, token = BrowserSession.start!(end_user: end_user, amr: amr, authenticated_at: authenticated_at)
+      session, token = BrowserSession.start!(end_user: end_user, amr: amr, authenticated_at: authenticated_at, upstream: interaction.data["upstream"])
 
       response =
         if app.is_a?(SamlApp)
           SamlIdp::SignOn.new(project: @project, ip: @ip, user_agent: @user_agent).respond(app, interaction.data, session).to_h.slice(:redirect_url, :html)
+        elsif interaction.data["protocol"] == "portal"
+          { redirect_url: Urls.hosted_page(@project, "apps") }
         else
           { redirect_url: code_redirect(app, interaction.data, end_user, amr, authenticated_at) }
         end

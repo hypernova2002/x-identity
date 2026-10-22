@@ -190,14 +190,14 @@ export interface PortalApp {
   launch_url: string
 }
 
-export type IdentityProviderKind = 'google' | 'apple' | 'oidc'
+export type IdentityProviderKind = 'google' | 'apple' | 'oidc' | 'saml'
 
 export interface IdentityProvider {
   uid: string
   kind: IdentityProviderKind
   name: string
   enabled: boolean
-  client_id: string
+  client_id: string | null
   client_secret_set: boolean
   additional_audiences: string[]
   scopes: string
@@ -207,9 +207,33 @@ export interface IdentityProvider {
   apple_key_id: string | null
   apple_private_key_set: boolean
   callback_url: string
+  saml_idp_entity_id: string | null
+  saml_sso_url: string | null
+  saml_slo_url: string | null
+  saml_idp_certificates: string[]
+  saml_name_id_format: SamlNameIdFormat
+  saml_email_attribute: string | null
+  saml_name_attribute: string | null
+  saml_groups_attribute: string | null
+  domains: string[]
+  create_users: boolean
+  allow_idp_initiated: boolean
+  sp_entity_id: string | null
+  acs_url: string | null
+  sp_slo_url: string | null
+  group_mappings: IdentityProviderGroupMapping[]
   created_at: string
   updated_at: string
 }
+
+export interface IdentityProviderGroupMapping {
+  value: string
+  group_uid: string
+  group_name: string
+}
+
+/** What an upstream SAML provider's metadata says, for filling in the form. */
+export type SamlProviderMetadata = Partial<Pick<IdentityProvider, 'saml_idp_entity_id' | 'saml_sso_url' | 'saml_slo_url' | 'saml_idp_certificates'>>
 
 export interface IdentityProviderSummary {
   uid: string
@@ -224,6 +248,8 @@ export interface HostedLoginDetails {
   app_name: string
   allow_self_sign_up: boolean
   login_hint: string | null
+  /** Some company providers are found from the email's domain instead of a button. */
+  home_realm_discovery: boolean
   identity_providers: IdentityProviderSummary[]
 }
 

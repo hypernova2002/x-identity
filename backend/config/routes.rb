@@ -60,6 +60,12 @@ Rails.application.routes.draw do
           match "sso", to: "saml#sso", via: %i[get post]
           match "slo", to: "saml#slo", via: %i[get post]
           get "apps/:uid/launch", to: "saml#launch", as: :launch
+
+          scope "sp/:provider_uid", as: :sp do
+            get "metadata", to: "saml_sp#metadata", format: false
+            post "acs", to: "saml_sp#acs"
+            match "slo", to: "saml_sp#slo", via: %i[get post]
+          end
         end
 
         get "portal", to: "portal#show"
@@ -76,6 +82,7 @@ Rails.application.routes.draw do
           scope "interactions/:interaction", as: :interaction do
             get "/", to: "interactions#show"
             post "sign-in", to: "interactions#sign_in"
+            post "discover", to: "interactions#discover"
             post "respond-to-challenge", to: "interactions#respond_to_challenge"
             post "mfa-setup", to: "interactions#mfa_setup"
             post "sign-up", to: "interactions#sign_up"
@@ -124,7 +131,9 @@ Rails.application.routes.draw do
         get "auth-configuration", to: "auth_configurations#show"
         put "auth-configuration", to: "auth_configurations#update"
 
-        resources :identity_providers, path: "identity-providers", param: :uid, only: %i[index show create update destroy]
+        resources :identity_providers, path: "identity-providers", param: :uid, only: %i[index show create update destroy] do
+          post "parse-saml-metadata", on: :collection, action: :parse_saml_metadata
+        end
         resources :app_clients, path: "app-clients", param: :uid, only: %i[index show create update destroy] do
           post "rotate-secret", on: :member, action: :rotate_secret
           resources :assignments, controller: "app_assignments", param: :uid, only: %i[index create destroy], defaults: { app_kind: "app_client" }

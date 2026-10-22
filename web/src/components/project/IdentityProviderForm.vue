@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import BaseAlert from '@/components/base/BaseAlert.vue'
+import BaseCheckbox from '@/components/base/BaseCheckbox.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
+import SamlProviderFields from '@/components/project/SamlProviderFields.vue'
 import type { ApiError } from '@/services/http'
-import type { IdentityProvider } from '@/types/api'
+import type { Group, IdentityProvider } from '@/types/api'
 import type { IdentityProviderDraft } from '@/utils/identityProviders'
 
 defineProps<{
@@ -11,10 +13,15 @@ defineProps<{
   /** The provider being edited; null when adding one. */
   existing: IdentityProvider | null
   error: ApiError | null
+  /** For SAML group mappings. */
+  groups: readonly Group[]
+  importError: ApiError | null
+  importing: boolean
 }>()
 
 const emit = defineEmits<{
   submit: []
+  importMetadata: [source: { metadata_xml: string } | { metadata_url: string }]
 }>()
 
 const draft = defineModel<IdentityProviderDraft>({ required: true })
@@ -26,6 +33,17 @@ const draft = defineModel<IdentityProviderDraft>({ required: true })
 
     <BaseInput v-model="draft.name" label="Name" required hint="Shown to end users, e.g. on sign-in buttons." :error="error?.fieldError('name')" />
 
+    <SamlProviderFields
+      v-if="draft.kind === 'saml'"
+      v-model="draft"
+      :groups="groups"
+      :error="error"
+      :import-error="importError"
+      :importing="importing"
+      @import-metadata="(source) => emit('importMetadata', source)"
+    />
+
+    <template v-else>
     <BaseInput
       v-if="draft.kind === 'oidc'"
       v-model="draft.discoveryUrl"
@@ -92,6 +110,13 @@ const draft = defineModel<IdentityProviderDraft>({ required: true })
           : 'Optional. iOS or Android client IDs whose ID tokens your native apps send directly. Separate several with commas.'
       "
       :error="error?.fieldError('additional_audiences')"
+    />
+    </template>
+
+    <BaseCheckbox
+      v-model="draft.createUsers"
+      label="Create users on their first sign-in"
+      hint="Even when self sign-up is off. When off, only existing or invited users can sign in with this provider unless self sign-up is on."
     />
   </form>
 </template>

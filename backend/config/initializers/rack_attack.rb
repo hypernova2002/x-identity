@@ -53,7 +53,7 @@ Rack::Attack.throttle("oauth2-codes/ip", limit: 20, period: 1.minute) do |reques
 end
 
 Rack::Attack.throttle("saml/ip", limit: 60, period: 1.minute) do |request|
-  request.ip if request.path.match?(%r{\A/v1/accounts/[^/]+/projects/[^/]+/saml/(sso|slo|apps/)})
+  request.ip if request.path.match?(%r{\A/v1/accounts/[^/]+/projects/[^/]+/saml/(sso|slo|apps/|sp/)})
 end
 
 Rack::Attack.throttled_responder = lambda do |request|

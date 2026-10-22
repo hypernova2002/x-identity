@@ -72,6 +72,8 @@ module Projects
         project.saml_certificates.delete_all
         OneTimeToken.where(subject_type: "AppClient", subject_id: project.app_clients.select(:id)).delete_all
         OneTimeToken.where(subject_type: "IdentityProvider", subject_id: project.identity_providers.select(:id)).delete_all
+        IdentityProviderGroupMapping.where(identity_provider_id: project.identity_providers.select(:id)).delete_all
+        ConsumedSamlAssertion.where(identity_provider_id: project.identity_providers.select(:id)).delete_all
         project.identity_providers.delete_all
         project.end_users.delete_all
         project.app_clients.delete_all

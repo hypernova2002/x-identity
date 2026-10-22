@@ -11,13 +11,15 @@ import IdentityProviderForm from '@/components/project/IdentityProviderForm.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectAdminService } from '@/services/project'
-import type { IdentityProvider, IdentityProviderKind } from '@/types/api'
-import { emptyProviderDraft, providerDraftFrom, providerInputFrom, type IdentityProviderDraft } from '@/utils/identityProviders'
+import type { Group, IdentityProvider, IdentityProviderKind } from '@/types/api'
+import { emptyProviderDraft, providerDraftFrom, providerInputFrom, withProviderMetadata, type IdentityProviderDraft } from '@/utils/identityProviders'
 import { identityProviderKindOptions } from '@/utils/options'
 
 const { accountUid, project, access } = useProjectContext()
 
 const providers = ref<IdentityProvider[]>([])
+const groups = ref<Group[]>([])
+const details = ref<IdentityProvider | null>(null)
 const addOpen = ref(false)
 const newKind = ref<IdentityProviderKind>('google')
 const editing = ref<IdentityProvider | null>(null)
@@ -39,7 +41,17 @@ const columns = [
 
 const load = useAsyncAction(async () => {
   if (!project.value) return
-  providers.value = (await projectAdminService.listIdentityProviders(accountUid.value, project.value.uid)).items
+  const [loadedProviders, loadedGroups] = await Promise.all([
+    projectAdminService.listIdentityProviders(accountUid.value, project.value.uid),
+    projectAdminService.listGroups(accountUid.value, project.value.uid),
+  ])
+  providers.value = loadedProviders.items
+  groups.value = loadedGroups.items
+})
+
+const importMetadata = useAsyncAction(async (source: { metadata_xml: string } | { metadata_url: string }) => {
+  if (!project.value) return
+  draft.value = withProviderMetadata(draft.value, await projectAdminService.parseSamlProviderMetadata(accountUid.value, project.value.uid, source))
 })
 
 function replace(updated: IdentityProvider) {
@@ -56,12 +68,14 @@ const save = useAsyncAction(async () => {
   replace(saved)
   notice.value = editing.value ? `${saved.name} was saved.` : `${saved.name} was added. End users can sign in with it now.`
   formOpen.value = false
+  if (!editing.value && saved.kind === 'saml') details.value = saved
 })
 
 function openForm(provider: IdentityProvider | null) {
   editing.value = provider
   draft.value = provider ? providerDraftFrom(provider) : emptyProviderDraft(newKind.value)
   save.error.value = null
+  importMetadata.error.value = null
   addOpen.value = false
   formOpen.value = true
 }
@@ -96,7 +110,8 @@ onMounted(() => load.run())
       <span class="font-medium">Callback URL</span>
       <code class="font-mono text-xs break-all">{{ callbackUrl }}</code>
       <span class="text-xs text-text-muted">
-        Register this as the redirect URI in each provider's app settings. Your apps' own redirect URIs go on their app clients.
+        For Google, Apple and OpenID Connect providers: register this as the redirect URI in the provider's app settings. SAML
+        providers each have their own details. Your apps' own redirect URIs go on their app clients.
       </span>
     </div>
 
@@ -116,9 +131,10 @@ onMounted(() => load.run())
       <template #cell-name="{ row }">
         <span class="font-medium">{{ row.name }}</span>
         <span class="block text-xs text-text-muted">{{ kindLabel(row.kind) }}{{ row.kind === 'oidc' && row.issuer ? ` · ${row.issuer}` : '' }}</span>
+        <span v-if="row.domains.length > 0" class="block text-xs text-text-muted">{{ row.domains.join(', ') }}</span>
       </template>
       <template #cell-client_id="{ row }">
-        <code class="font-mono text-xs break-all">{{ row.client_id }}</code>
+        <code class="font-mono text-xs break-all">{{ row.kind === 'saml' ? row.saml_idp_entity_id : row.client_id }}</code>
         <span v-if="row.additional_audiences.length > 0" class="block text-xs text-text-muted">
           + {{ row.additional_audiences.length }} native app {{ row.additional_audiences.length === 1 ? 'client' : 'clients' }}
         </span>
@@ -129,7 +145,9 @@ onMounted(() => load.run())
         </span>
       </template>
       <template #cell-actions="{ row }">
-        <div v-if="access.admin" class="flex flex-wrap justify-end gap-2">
+        <div class="flex flex-wrap justify-end gap-2">
+          <BaseButton v-if="row.kind === 'saml'" label="SP details" variant="secondary" size="sm" @click="details = row" />
+          <template v-if="access.admin">
           <BaseButton label="Edit" variant="secondary" size="sm" :disabled="providerAction.loading.value" @click="openForm(row)" />
           <BaseButton
             :label="row.enabled ? 'Disable' : 'Enable'"
@@ -139,6 +157,7 @@ onMounted(() => load.run())
             @click="providerAction.run(row, 'toggle')"
           />
           <BaseButton label="Remove" variant="ghost" size="sm" :disabled="providerAction.loading.value" @click="pendingDelete = row" />
+          </template>
         </div>
       </template>
     </BaseTable>
@@ -153,10 +172,36 @@ onMounted(() => load.run())
   </BaseDialog>
 
   <BaseDialog v-model:visible="formOpen" :title="formTitle">
-    <IdentityProviderForm v-model="draft" form-id="identity-provider-form" :existing="editing" :error="save.error.value" @submit="save.run()" />
+    <IdentityProviderForm
+      v-model="draft"
+      form-id="identity-provider-form"
+      :existing="editing"
+      :error="save.error.value"
+      :groups="groups"
+      :import-error="importMetadata.error.value"
+      :importing="importMetadata.loading.value"
+      @submit="save.run()"
+      @import-metadata="(source) => importMetadata.run(source)"
+    />
     <template #footer>
       <BaseButton label="Cancel" variant="secondary" @click="formOpen = false" />
       <BaseButton :label="editing ? 'Save' : 'Add provider'" type="submit" form="identity-provider-form" :loading="save.loading.value" />
+    </template>
+  </BaseDialog>
+
+  <BaseDialog :visible="details !== null" :title="`Set up ${details?.name ?? ''} in the identity provider`" @update:visible="(open: boolean) => !open && (details = null)">
+    <p class="text-sm text-text-muted">Give these to the company's identity provider admin, or have them import the metadata URL.</p>
+    <dl v-if="details" class="grid gap-3 text-sm">
+      <dt class="font-medium">Metadata URL and entity ID (audience)</dt>
+      <dd><code class="font-mono text-xs break-all">{{ details.sp_entity_id }}</code></dd>
+      <dt class="font-medium">Assertion consumer service URL</dt>
+      <dd><code class="font-mono text-xs break-all">{{ details.acs_url }}</code></dd>
+      <dt class="font-medium">Single logout URL</dt>
+      <dd><code class="font-mono text-xs break-all">{{ details.sp_slo_url }}</code></dd>
+    </dl>
+    <p class="text-xs text-text-muted">Requests are signed with the project's SAML certificate, shown on the SAML apps page.</p>
+    <template #footer>
+      <BaseButton label="Done" @click="details = null" />
     </template>
   </BaseDialog>
 

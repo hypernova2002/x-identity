@@ -41,7 +41,8 @@ module V1
 
           def id_token
             app_client, input = parse_client_request(::EndUserAuth::ProviderIdTokenRequest)
-            result = ::IdentityProviders::NativeSignIn.new(provider: enabled_provider, app_client: app_client, **client_info).call(**input)
+            provider = current_project.identity_providers.enabled.where.not(kind: "saml").find_by_uid!(params[:uid])
+            result = ::IdentityProviders::NativeSignIn.new(provider: provider, app_client: app_client, **client_info).call(**input)
             render json: SignInResultSerializer.new(result).serializable_hash
           end
 

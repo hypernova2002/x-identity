@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_22_010001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_22_020001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -141,9 +141,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_010001) do
     t.datetime "last_used_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "identity_provider_id"
+    t.string "upstream_name_id"
+    t.string "upstream_name_id_format"
+    t.string "upstream_session_index"
     t.index ["end_user_id"], name: "index_browser_sessions_on_end_user_id"
+    t.index ["identity_provider_id"], name: "index_browser_sessions_on_identity_provider_id"
     t.index ["project_id"], name: "index_browser_sessions_on_project_id"
     t.index ["token_digest"], name: "index_browser_sessions_on_token_digest", unique: true
+  end
+
+  create_table "consumed_saml_assertions", force: :cascade do |t|
+    t.bigint "identity_provider_id", null: false
+    t.string "assertion_id", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.index ["expires_at"], name: "index_consumed_saml_assertions_on_expires_at"
+    t.index ["identity_provider_id", "assertion_id"], name: "index_consumed_saml_assertions_uniqueness", unique: true
   end
 
   create_table "end_user_attribute_definitions", force: :cascade do |t|
@@ -218,13 +232,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_010001) do
     t.index ["uid"], name: "index_groups_on_uid", unique: true
   end
 
+  create_table "identity_provider_group_mappings", force: :cascade do |t|
+    t.bigint "identity_provider_id", null: false
+    t.bigint "group_id", null: false
+    t.string "value", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["group_id"], name: "index_identity_provider_group_mappings_on_group_id"
+    t.index ["identity_provider_id", "value", "group_id"], name: "index_identity_provider_group_mappings_uniqueness", unique: true
+  end
+
   create_table "identity_providers", force: :cascade do |t|
     t.string "uid", null: false
     t.bigint "project_id", null: false
     t.string "kind", null: false
     t.string "name", null: false
     t.boolean "enabled", default: true, null: false
-    t.string "client_id", null: false
+    t.string "client_id"
     t.text "client_secret"
     t.jsonb "additional_audiences", default: [], null: false
     t.string "scopes", default: "openid email profile", null: false
@@ -235,6 +259,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_010001) do
     t.text "apple_private_key"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "saml_idp_entity_id"
+    t.string "saml_sso_url"
+    t.string "saml_slo_url"
+    t.jsonb "saml_idp_certificates", default: [], null: false
+    t.string "saml_name_id_format", default: "email", null: false
+    t.string "saml_email_attribute"
+    t.string "saml_name_attribute"
+    t.string "saml_groups_attribute"
+    t.jsonb "domains", default: [], null: false
+    t.boolean "create_users", default: false, null: false
+    t.boolean "allow_idp_initiated", default: false, null: false
     t.index ["project_id"], name: "index_identity_providers_on_project_id"
     t.index ["uid"], name: "index_identity_providers_on_uid", unique: true
   end

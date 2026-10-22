@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import { useAsyncAction } from './useAsyncAction'
 import { hostedLoginService, type InteractionRef } from '@/services/hostedLogin'
@@ -28,7 +28,13 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
   const recoveryCodes = ref<string[]>([])
   const pendingRedirect = ref<string | null>(null)
   const notice = ref<string | null>(null)
+  /** With home realm discovery, the email comes first; the password is only asked for if no company provider takes it. */
+  const passwordStep = ref(true)
   let signUpPassword = ''
+
+  watch(email, () => {
+    if (details.value?.home_realm_discovery) passwordStep.value = false
+  })
 
   function go(next: HostedLoginStep) {
     notice.value = null
@@ -59,7 +65,16 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
     target.value = interaction
     details.value = await hostedLoginService.details(interaction)
     email.value = details.value.login_hint ?? ''
+    passwordStep.value = !details.value.home_realm_discovery
     if (resume) await showChallenge(resume)
+  })
+
+  /** Sends the user to their company's provider, or on to the password. */
+  const discover = useAsyncAction(async () => {
+    if (!target.value) return
+    const { identity_provider_uid: providerUid } = await hostedLoginService.discover(target.value, email.value)
+    if (providerUid) navigate(hostedLoginService.providerUrl(target.value, providerUid))
+    else passwordStep.value = true
   })
 
   const signIn = useAsyncAction(async (password: string) => {
@@ -130,8 +145,10 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
     enrollment,
     recoveryCodes,
     notice,
+    passwordStep,
     go,
     load,
+    discover,
     signIn,
     answer,
     continueAfterRecoveryCodes,

@@ -2868,6 +2868,9 @@ paths:
                     minLength: 1
                     maxLength: 255
                   maxItems: 10
+                allow_idp_initiated:
+                  anyOf:
+                  - type: boolean
                 apple_key_id:
                   type: string
                   minLength: 10
@@ -2888,22 +2891,92 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 1000
+                create_users:
+                  anyOf:
+                  - type: boolean
                 discovery_url:
                   type: string
                   minLength: 1
                   maxLength: 2048
+                domains:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 253
+                  maxItems: 50
                 enabled:
                   anyOf:
                   - type: boolean
+                group_mappings:
+                  type: array
+                  items:
+                    properties:
+                      group_uid:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                      value:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - group_uid
+                    - value
+                    additionalProperties: false
+                  maxItems: 100
                 kind:
                   enum:
                   - google
                   - apple
                   - oidc
+                  - saml
                 name:
                   type: string
                   minLength: 1
                   maxLength: 100
+                saml_email_attribute:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 255
+                saml_groups_attribute:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 255
+                saml_idp_certificates:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 10000
+                  maxItems: 5
+                saml_idp_entity_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 1024
+                saml_name_attribute:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 255
+                saml_name_id_format:
+                  enum:
+                  - email
+                  - persistent
+                  - unspecified
+                saml_slo_url:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 2048
+                saml_sso_url:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
                 scopes:
                   type: string
                   minLength: 1
@@ -2911,7 +2984,6 @@ paths:
               type: object
               unevaluatedProperties: false
               required:
-              - client_id
               - kind
               - name
               additionalProperties: false
@@ -2934,6 +3006,50 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/identity-providers/parse-saml-metadata":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Read an upstream SAML provider's metadata into settings
+      tags:
+      - Identity providers
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                metadata_url:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
+                metadata_xml:
+                  type: string
+                  minLength: 1
+                  maxLength: 256000
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: the settings found; nothing is saved
+          content:
+            application/json:
+              schema:
+                type: object
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/identity-providers/{uid}":
@@ -2972,6 +3088,9 @@ paths:
                     minLength: 1
                     maxLength: 255
                   maxItems: 10
+                allow_idp_initiated:
+                  anyOf:
+                  - type: boolean
                 apple_key_id:
                   type: string
                   minLength: 10
@@ -2990,17 +3109,86 @@ paths:
                 client_secret:
                   type: string
                   maxLength: 1000
+                create_users:
+                  anyOf:
+                  - type: boolean
                 discovery_url:
                   type: string
                   minLength: 1
                   maxLength: 2048
+                domains:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 253
+                  maxItems: 50
                 enabled:
                   anyOf:
                   - type: boolean
+                group_mappings:
+                  type: array
+                  items:
+                    properties:
+                      group_uid:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                      value:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - group_uid
+                    - value
+                    additionalProperties: false
+                  maxItems: 100
                 name:
                   type: string
                   minLength: 1
                   maxLength: 100
+                saml_email_attribute:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 255
+                saml_groups_attribute:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 255
+                saml_idp_certificates:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 10000
+                  maxItems: 5
+                saml_idp_entity_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 1024
+                saml_name_attribute:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 255
+                saml_name_id_format:
+                  enum:
+                  - email
+                  - persistent
+                  - unspecified
+                saml_slo_url:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 2048
+                saml_sso_url:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
                 scopes:
                   type: string
                   minLength: 1
@@ -3651,6 +3839,32 @@ paths:
       responses:
         '200':
           description: metadata XML
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml/sp/{provider_uid}/metadata":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: provider_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Service provider metadata for an upstream SAML provider
+      tags:
+      - SAML
+      responses:
+        '200':
+          description: metadata XML to import into the customer's identity provider
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{uid}":
@@ -4467,6 +4681,7 @@ components:
           - google
           - apple
           - oidc
+          - saml
         identity_provider_name:
           type: string
         subject:
@@ -4505,6 +4720,7 @@ components:
         - `invalid_state` (400): The sign-in request is unknown or has expired. Start signing in again.
         - `invalid_interaction` (400): This sign-in has expired. Go back to the app and try again.
         - `invalid_id_token` (401): The identity provider's token is invalid or has expired.
+        - `invalid_saml_response` (401): The sign-in response from the identity provider couldn't be verified.
         - `forbidden` (403): You do not have permission to perform this action.
         - `email_not_verified` (403): Verify your email address before signing in.
         - `mfa_required_by_policy` (403): Multi-factor authentication is required by your account's policy and can't be turned off.
@@ -4553,6 +4769,7 @@ components:
               - invalid_state
               - invalid_interaction
               - invalid_id_token
+              - invalid_saml_response
               - forbidden
               - email_not_verified
               - mfa_required_by_policy
@@ -4638,6 +4855,21 @@ components:
       - apple_key_id
       - apple_private_key_set
       - callback_url
+      - saml_idp_entity_id
+      - saml_sso_url
+      - saml_slo_url
+      - saml_idp_certificates
+      - saml_name_id_format
+      - saml_email_attribute
+      - saml_name_attribute
+      - saml_groups_attribute
+      - domains
+      - create_users
+      - allow_idp_initiated
+      - sp_entity_id
+      - acs_url
+      - sp_slo_url
+      - group_mappings
       - created_at
       - updated_at
       properties:
@@ -4650,12 +4882,15 @@ components:
           - google
           - apple
           - oidc
+          - saml
         name:
           type: string
         enabled:
           type: boolean
         client_id:
-          type: string
+          type:
+          - string
+          - 'null'
         client_secret_set:
           type: boolean
           description: Secrets are write-only.
@@ -4687,7 +4922,79 @@ components:
           type: boolean
         callback_url:
           type: string
-          description: Register this as the redirect URI with the provider.
+          description: 'OIDC providers: register this as the redirect URI with the
+            provider.'
+        saml_idp_entity_id:
+          type:
+          - string
+          - 'null'
+        saml_sso_url:
+          type:
+          - string
+          - 'null'
+        saml_slo_url:
+          type:
+          - string
+          - 'null'
+        saml_idp_certificates:
+          type: array
+          items:
+            type: string
+        saml_name_id_format:
+          type: string
+          enum:
+          - email
+          - persistent
+          - unspecified
+        saml_email_attribute:
+          type:
+          - string
+          - 'null'
+        saml_name_attribute:
+          type:
+          - string
+          - 'null'
+        saml_groups_attribute:
+          type:
+          - string
+          - 'null'
+        domains:
+          type: array
+          items:
+            type: string
+        create_users:
+          type: boolean
+        allow_idp_initiated:
+          type: boolean
+        sp_entity_id:
+          type:
+          - string
+          - 'null'
+          description: 'SAML providers: the service provider metadata URL and entity
+            ID to give the IdP.'
+        acs_url:
+          type:
+          - string
+          - 'null'
+        sp_slo_url:
+          type:
+          - string
+          - 'null'
+        group_mappings:
+          type: array
+          items:
+            type: object
+            required:
+            - value
+            - group_uid
+            - group_name
+            properties:
+              value:
+                type: string
+              group_uid:
+                type: string
+              group_name:
+                type: string
         created_at:
           type: string
           format: date-time
@@ -4711,6 +5018,7 @@ components:
           - google
           - apple
           - oidc
+          - saml
         name:
           type: string
       title: IdentityProviderSummary
