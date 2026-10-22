@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Example app</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1 id="app-name">Example app</h1>
+      <p class="muted">An OpenID Connect app for testing x-identity's hosted login.</p>
+      <p class="muted" id="portal" hidden><a id="portal-link">Open the app portal</a> to see every app you can use.</p>
+    </header>
+
+    <main>
+      <p id="error" class="error" role="alert" hidden></p>
+
+      <section id="settings" hidden>
+        <h2>Settings</h2>
+        <form id="settings-form">
+          <label>Issuer <input name="issuer" type="url" required placeholder="http://localhost:3000/v1/accounts/acct_…/projects/proj_…" /></label>
+          <label>Client ID <input name="clientId" required placeholder="cl_…" /></label>
+          <button type="submit">Save</button>
+        </form>
+        <p class="muted">On the app client (public), add:</p>
+        <dl>
+          <dt>Allowed origin</dt>
+          <dd><code id="origin"></code></dd>
+          <dt>Redirect URI and post-logout redirect URI</dt>
+          <dd><code id="redirect-uri"></code></dd>
+          <dt>Launch URL (for the app portal)</dt>
+          <dd><code id="launch-url"></code></dd>
+        </dl>
+        <p class="muted">Then give end users access to it with <strong>Access</strong>.</p>
+      </section>
+
+      <section id="signed-out" hidden>
+        <h2>Not signed in</h2>
+        <div class="actions">
+          <button id="sign-in" type="button">Sign in</button>
+          <button id="edit-settings" type="button" class="secondary">Settings</button>
+        </div>
+      </section>
+
+      <section id="signed-in" hidden>
+        <h2>Signed in as <span id="who"></span></h2>
+        <div class="actions">
+          <button id="refresh" type="button">Refresh tokens</button>
+          <button id="sign-in-again" type="button" class="secondary">Sign in again</button>
+          <button id="log-out" type="button" class="secondary">Log out</button>
+        </div>
+        <p id="status" class="muted"></p>
+        <h3>ID token claims</h3>
+        <pre id="claims"></pre>
+        <h3>Userinfo</h3>
+        <pre id="userinfo"></pre>
+      </section>
+    </main>
+  </body>
+</html>
