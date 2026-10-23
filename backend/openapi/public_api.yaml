@@ -2467,6 +2467,31 @@ paths:
               type: string
             status_eq:
               type: string
+            uid_eq:
+              type: string
+      - name: filter
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            email_verified:
+              type: string
+              enum:
+              - 'true'
+              - 'false'
+            mfa:
+              type: string
+              enum:
+              - 'true'
+              - 'false'
+            invitation_pending:
+              type: string
+              enum:
+              - 'true'
+            group_uid:
+              type: string
       security:
       - BearerAuth: []
       responses:
@@ -2594,6 +2619,40 @@ paths:
       responses:
         '204':
           description: deleted
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/access":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the apps an end user can sign in to, and how they got access
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: apps with the assignments that grant access
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/EndUserAppAccess"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/identities":
@@ -4658,6 +4717,48 @@ components:
           type: string
           format: date-time
       title: EndUser
+    EndUserAppAccess:
+      type: object
+      required:
+      - app_type
+      - uid
+      - name
+      - enabled
+      - via
+      properties:
+        app_type:
+          type: string
+          enum:
+          - app_client
+          - saml_app
+        uid:
+          type: string
+        name:
+          type: string
+        enabled:
+          type: boolean
+        via:
+          type: array
+          description: 'The assignments that give the user access: direct, or through
+            a group.'
+          items:
+            type: object
+            required:
+            - type
+            - assignment_uid
+            properties:
+              type:
+                type: string
+                enum:
+                - direct
+                - group
+              assignment_uid:
+                type: string
+              group_uid:
+                type: string
+              group_name:
+                type: string
+      title: EndUserAppAccess
     EndUserIdentity:
       type: object
       required:

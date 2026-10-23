@@ -18,6 +18,7 @@ import { useTestSignIn } from '@/composables/useTestSignIn'
 import { oidcService } from '@/services/oidc'
 import { projectAdminService } from '@/services/project'
 import type { AppClient } from '@/types/api'
+import { explainSignInError } from '@/utils/signInErrors'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,7 +56,7 @@ const loadClients = useAsyncAction(async () => {
   if (!project.value) return
   const { items } = await projectAdminService.listAppClients(accountUid.value, project.value.uid)
   clients.value = items.filter((client) => client.enabled)
-  clientUid.value = clients.value[0]?.uid ?? ''
+  clientUid.value = clients.value.find((client) => client.uid === route.query.client)?.uid ?? clients.value[0]?.uid ?? ''
 })
 
 function signIn() {
@@ -112,17 +113,30 @@ onMounted(() => {
 <template>
   <BaseAlert variant="info">
     Signs an end user in through the project's public API, the same way your app does. It doesn't affect your console session. The
-    console's origin is always allowed, so this doesn't check an app client's allowed origins.
+    console's origin is always allowed, so this doesn't check an app client's allowed origins. Tokens are shown only on this page
+    and kept in memory, never stored.
   </BaseAlert>
+  <p v-if="selectedClient" class="text-sm text-text-muted">
+    Testing
+    <RouterLink :to="{ name: 'project-app-client', params: { projectUid: project?.uid, clientUid: selectedClient.uid } }" class="font-medium text-primary underline">
+      {{ selectedClient.name }}</RouterLink
+    >. Its sign-ins appear in its Activity tab and the
+    <RouterLink :to="{ name: 'project-audit-log', params: { projectUid: project?.uid }, query: { app_client_uid_eq: selectedClient.uid } }" class="font-medium text-primary underline">
+      audit log</RouterLink
+    >.
+  </p>
 
   <BaseAlert v-if="loadClients.error.value" variant="danger">
     We couldn't load the app clients. {{ loadClients.error.value.message }}
   </BaseAlert>
   <p v-else-if="loadClients.loading.value" class="text-sm text-text-muted" role="status">Loading app clients…</p>
 
-  <BaseCard v-else-if="clients.length === 0" title="No app clients" description="End users sign in through an enabled app client.">
-    <RouterLink :to="{ name: 'project-app-clients' }" class="self-start text-sm font-medium text-primary underline hover:text-primary-hover">
-      Create an app client
+  <BaseCard v-else-if="clients.length === 0" title="No OpenID Connect or API clients" description="End users sign in through an enabled client.">
+    <RouterLink
+      :to="{ name: 'project-applications', params: { projectUid: project?.uid } }"
+      class="self-start text-sm font-medium text-primary underline hover:text-primary-hover"
+    >
+      Add an application
     </RouterLink>
   </BaseCard>
 
@@ -132,6 +146,7 @@ onMounted(() => {
         <BaseAlert v-if="flow.signIn.error.value" variant="danger">
           {{ flow.signIn.error.value.message }}
           <code class="font-mono text-xs">{{ flow.signIn.error.value.code }}</code>
+          <p v-if="flow.signIn.error.value && explainSignInError(flow.signIn.error.value.code)" class="text-sm">{{ explainSignInError(flow.signIn.error.value.code) }}</p>
         </BaseAlert>
 
         <BaseSelect v-model="clientUid" label="App client" :options="clientOptions" />
@@ -172,6 +187,7 @@ onMounted(() => {
         <BaseAlert v-if="hostedLogin.complete.error.value" variant="danger">
           {{ hostedLogin.complete.error.value.message }}
           <code class="font-mono text-xs">{{ hostedLogin.complete.error.value.code }}</code>
+          <p v-if="hostedLogin.complete.error.value && explainSignInError(hostedLogin.complete.error.value.code)" class="text-sm">{{ explainSignInError(hostedLogin.complete.error.value.code) }}</p>
         </BaseAlert>
         <p v-if="hostedLogin.complete.loading.value" class="text-sm text-text-muted" role="status">Finishing hosted sign-in…</p>
         <BaseAlert v-if="selectedClient?.client_type === 'confidential'" variant="info">
@@ -179,9 +195,13 @@ onMounted(() => {
         </BaseAlert>
         <BaseAlert v-else-if="!hostedLoginReady" variant="warning" title="Add this page as a redirect URI">
           Add <code class="font-mono text-xs break-all">{{ hostedRedirectUri }}</code> to the redirect URIs of
-          {{ selectedClient?.name ?? 'the app client' }} on the
-          <RouterLink :to="{ name: 'project-app-clients' }" class="font-medium text-primary underline hover:text-primary-hover">App clients</RouterLink>
-          page.
+          <RouterLink
+            v-if="selectedClient"
+            :to="{ name: 'project-app-client-sign-in', params: { projectUid: project?.uid, clientUid: selectedClient.uid } }"
+            class="font-medium text-primary underline hover:text-primary-hover"
+          >
+            {{ selectedClient.name }}</RouterLink
+          >.
         </BaseAlert>
         <div class="flex flex-wrap gap-2">
           <BaseButton
@@ -201,6 +221,7 @@ onMounted(() => {
         <BaseAlert v-if="flow.answer.error.value && flow.answer.error.value.details.length === 0" variant="danger">
           {{ flow.answer.error.value.message }}
           <code class="font-mono text-xs">{{ flow.answer.error.value.code }}</code>
+          <p v-if="flow.answer.error.value && explainSignInError(flow.answer.error.value.code)" class="text-sm">{{ explainSignInError(flow.answer.error.value.code) }}</p>
         </BaseAlert>
 
         <template v-if="challenge.challenge === 'otp'">
@@ -264,10 +285,12 @@ onMounted(() => {
         <BaseAlert v-if="flow.refresh.error.value" variant="danger">
           Refresh failed: {{ flow.refresh.error.value.message }}
           <code class="font-mono text-xs">{{ flow.refresh.error.value.code }}</code>
+          <p v-if="flow.refresh.error.value && explainSignInError(flow.refresh.error.value.code)" class="text-sm">{{ explainSignInError(flow.refresh.error.value.code) }}</p>
         </BaseAlert>
         <BaseAlert v-if="flow.signOut.error.value" variant="danger">
           Sign-out failed: {{ flow.signOut.error.value.message }}
           <code class="font-mono text-xs">{{ flow.signOut.error.value.code }}</code>
+          <p v-if="flow.signOut.error.value && explainSignInError(flow.signOut.error.value.code)" class="text-sm">{{ explainSignInError(flow.signOut.error.value.code) }}</p>
         </BaseAlert>
 
         <div class="flex flex-wrap gap-2">

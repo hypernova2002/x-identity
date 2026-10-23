@@ -1,8 +1,13 @@
 # Console
 
 The console is the Vue app in `web/`. Console users sign in at `/:alias/sign-in` (or `/sign-in` to
-choose an account). The sidebar has a **project switcher** at the top, the selected project's pages,
-an **Account** section, and **My security**. The console remembers the last project used per account.
+choose an account). The console remembers the last project used per account.
+
+The **topbar** shows the account you're signed in to, an **Account settings** link and your profile
+menu (profile and security, sign out). On project pages the **sidebar** starts with the project
+switcher (switch project keeping the current section, see all projects, create a project) followed
+by the project's pages. Account settings replace the sidebar with the account's own pages and a link
+back to the project. On narrow screens the sidebar opens as a drawer from the menu button.
 
 ## Signing up and signing in
 
@@ -18,27 +23,36 @@ an **Account** section, and **My security**. The console remembers the last proj
 
 ## Project pages
 
-| Page | What it manages | Who can change it |
-| --- | --- | --- |
-| Overview | Name, self sign-up, email link templates (confirm sign-up, reset password, accept invitation), endpoints: issuer, OIDC discovery, JWKS, SAML metadata, app portal URL. Deleting the project. | Project admins (delete: account admins) |
-| Members | Console users with a role in the project. | Project admins |
-| App clients | Clients, their type, allowed origins, redirect URIs, post-logout redirect URIs and launch URL; secret rotation; enabling; **Access** (assignments). | Developers |
-| SAML apps | The project's SAML identity provider details and signing certificates; SAML apps, imported from metadata or entered by hand; **Access**. | Developers (certificates: admins) |
-| End users | Search, create (optionally inviting), enable/disable, reset MFA, sign out everywhere, resend invitations, delete; linked sign-in providers and groups. | Developers |
-| Groups | Groups, members, and whether new users join automatically. | Developers |
-| Attributes | Custom attributes: key, label, type, max length, required, user-editable, included in the ID token. Up to 50. | Project admins |
-| Authentication | The project's [auth configuration](#authentication-settings). | Project admins |
-| Sign-in providers | Google, Apple, OpenID Connect and SAML providers, with the callback URL and each SAML provider's service provider details. | Project admins |
-| Test sign-in | Signs an end user in through the public API or through hosted login, walks through challenges, and decodes the tokens. Refresh and sign-out can be tried too. | Any project member |
-| Audit log | The project's events, filterable by action. | Developers |
+The project sidebar is grouped. Each page has its own URL, so pages can be bookmarked and shared;
+pages renamed in the redesign (`app-clients`, `saml-apps`, `sign-in-providers`) redirect.
+
+| Group | Page | What it manages | Who can change it |
+| --- | --- | --- | --- |
+| | Overview | Project ID, issuer, discovery and portal URLs; common tasks; a setup checklist and "needs attention" items worked out from the project's real state; failed sign-ins and access refusals in the last 24 hours, and recent events (developers). | — |
+| | Applications | OpenID Connect/API clients and SAML apps in one list, searchable and filterable by type. Each app has tabs: Overview, Sign-in (redirect URIs, origins, launch URL) or Configuration (SAML), Access (group and direct assignments), Tokens & claims (OIDC), Credentials (client secret rotation, or the SAML signing certificate), Activity. | Developers (certificates: admins) |
+| Directory | End users | Search by email, name or ID (`eu_…`); filters for status, email verification, MFA, group and pending invitation, kept in the URL. Each user has a page: identity and attributes, linked providers, groups and app access (including access through groups), authentication state and actions, sign out everywhere, activity. Disabling, resetting MFA, signing out and deleting are confirmed first. | Developers |
+| Directory | Groups | Groups, members, and whether new users join automatically. | Developers |
+| Directory | Attributes | Custom attributes: key, label, type, max length, required, user-editable, included in the ID token. Up to 50. | Project admins |
+| Authentication | Settings | The project's [auth configuration](#authentication-settings), in tabs: Sign-in methods, MFA, Security policies, Tokens & sessions, Signing keys (with the JWKS URL and SAML certificates). Each tab saves only its own settings; rarely changed limits are under "Advanced". | Project admins |
+| Authentication | Identity providers | Social (Google, Apple), OpenID Connect and enterprise SAML providers, grouped by kind, with the callback URL. Each provider has a page: configuration, service provider details, domains, linking and provisioning rules, group mapping, single logout, diagnostics. | Project admins |
+| Monitoring & testing | Test sign-in | Signs an end user in through the public API or through hosted login, walks through challenges, and decodes the tokens, which are kept in memory only. Failures are explained without revealing whether an email is registered. Linked from each application. | Any project member |
+| Monitoring & testing | Audit log | The project's events, filterable by action; links from users and apps open it pre-filtered. | Developers |
+| Project settings | General | Name, self sign-up, email link templates (confirm sign-up, reset password, accept invitation). Deleting the project. | Project admins (delete: account admins) |
+| Project settings | Members | Console users with a role in the project. | Project admins |
+
+Leaving a form with unsaved changes asks for confirmation.
+
+The console has no list of an end user's active sessions (the API doesn't provide one); "Sign out
+everywhere" ends them all. SAML sign-ins are recorded against the user rather than the SAML app, so a
+SAML app's Activity tab shows only configuration changes.
 
 ## Account pages
 
 | Page | What it manages | Who can change it |
 | --- | --- | --- |
 | Projects | All projects you can see; creating projects. | Account admins create |
-| Users | Console users, roles, disabling, invitations. | Account admins (granting owner: owners) |
-| Authentication | The account's [auth configuration](#authentication-settings) for console users. | Account admins |
+| Console users and roles | Console users, roles, disabling, invitations. | Account admins (granting owner: owners) |
+| Console sign-in | The account's [auth configuration](#authentication-settings) for console users. | Account admins |
 | Audit log | Account-level events. | Account admins |
 
 **My security** lets each console user change their name, email and password, and set up or turn

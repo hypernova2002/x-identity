@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import BaseActionMenu, { type ActionMenuItem } from '@/components/base/BaseActionMenu.vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
@@ -8,54 +10,134 @@ import BaseCheckbox from '@/components/base/BaseCheckbox.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BasePagination from '@/components/base/BasePagination.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseTable from '@/components/base/BaseTable.vue'
+import type { SelectOption } from '@/components/base/types'
+import StatusBadge from '@/components/console/StatusBadge.vue'
 import CustomAttributeFields from '@/components/project/CustomAttributeFields.vue'
+import EndUserActionDialog from '@/components/project/EndUserActionDialog.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useEndUserActions } from '@/composables/useEndUserActions'
 import { useProjectContext } from '@/composables/useProjectContext'
 import type { Page } from '@/services/http'
-import { projectAdminService } from '@/services/project'
-import type { AttributeDefinition, EndUser, EndUserIdentity } from '@/types/api'
+import { projectAdminService, type EndUserFilters } from '@/services/project'
+import type { AttributeDefinition, EndUser, Group } from '@/types/api'
 import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttributes'
 import { formatDateTime } from '@/utils/format'
 
-type EndUserAction = 'toggle' | 'reset_mfa' | 'sign_out' | 'resend_invitation' | 'delete'
-
+const route = useRoute()
+const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
-const page = ref(1)
-const search = ref('')
-const appliedSearch = ref('')
 const endUsers = ref<Page<EndUser>>({ items: [], total: 0, perPage: 25 })
 const definitions = ref<AttributeDefinition[]>([])
+const groups = ref<Group[]>([])
 const notice = ref<string | null>(null)
 
+// Filters live in the URL, so they survive reloads and the back button.
+const text = (key: string) => (typeof route.query[key] === 'string' ? (route.query[key] as string) : '')
+const search = ref(text('search'))
+const status = ref(text('status'))
+const emailVerified = ref(text('email'))
+const mfa = ref(text('mfa'))
+const invitation = ref(text('invitation'))
+const groupUid = ref(text('group'))
+const page = computed(() => Math.max(1, Number(text('page')) || 1))
+
+const anyOption = (label: string): SelectOption => ({ label, value: '' })
+const statusOptions: SelectOption[] = [anyOption('Any status'), { label: 'Active', value: 'active' }, { label: 'Disabled', value: 'disabled' }]
+const emailOptions: SelectOption[] = [anyOption('Any email'), { label: 'Verified', value: 'true' }, { label: 'Not verified', value: 'false' }]
+const mfaOptions: SelectOption[] = [anyOption('Any MFA'), { label: 'MFA on', value: 'true' }, { label: 'MFA off', value: 'false' }]
+const invitationOptions: SelectOption[] = [anyOption('Any'), { label: 'Invitation pending', value: 'true' }]
+const groupOptions = computed<SelectOption[]>(() => [anyOption('Any group'), ...groups.value.map((group) => ({ label: group.name, value: group.uid }))])
+
+const filtered = computed(() => ['search', 'status', 'email', 'mfa', 'invitation', 'group'].some((key) => text(key) !== ''))
+
+const columns = [
+  { key: 'email', label: 'End user' },
+  { key: 'status', label: 'Status' },
+  { key: 'mfa_enabled', label: 'MFA' },
+  { key: 'groups', label: 'Groups' },
+  { key: 'last_sign_in_at', label: 'Last sign-in' },
+  { key: 'actions', label: 'Actions', srOnly: true },
+]
+
+function filtersFromQuery(): EndUserFilters {
+  const term = text('search').trim()
+  const bool = (value: string) => (value === '' ? undefined : value === 'true')
+  const statusValue = text('status')
+  return {
+    uid_eq: term.startsWith('eu_') ? term : undefined,
+    email_cont: term && !term.startsWith('eu_') ? term : undefined,
+    status_eq: statusValue === 'active' || statusValue === 'disabled' ? statusValue : undefined,
+    email_verified: bool(text('email')),
+    mfa: bool(text('mfa')),
+    invitation_pending: text('invitation') === 'true' || undefined,
+    group_uid: text('group') || undefined,
+  }
+}
+
+const load = useAsyncAction(async () => {
+  if (!project.value) return
+  const [loaded, loadedDefinitions, loadedGroups] = await Promise.all([
+    projectAdminService.listEndUsers(accountUid.value, project.value.uid, page.value, filtersFromQuery()),
+    definitions.value.length > 0 ? null : projectAdminService.listAttributes(accountUid.value, project.value.uid),
+    groups.value.length > 0 ? null : projectAdminService.listGroups(accountUid.value, project.value.uid),
+  ])
+  endUsers.value = loaded
+  if (loadedDefinitions) definitions.value = loadedDefinitions.items
+  if (loadedGroups) groups.value = loadedGroups.items
+})
+
+function applyFilters() {
+  const query = { search: search.value.trim(), status: status.value, email: emailVerified.value, mfa: mfa.value, invitation: invitation.value, group: groupUid.value }
+  router.push({ query: Object.fromEntries(Object.entries(query).filter(([, value]) => value !== '')) })
+}
+
+function clearFilters() {
+  search.value = ''
+  status.value = ''
+  emailVerified.value = ''
+  mfa.value = ''
+  invitation.value = ''
+  groupUid.value = ''
+  router.push({ query: {} })
+}
+
+function setPage(value: number) {
+  router.push({ query: { ...route.query, page: value > 1 ? String(value) : undefined } })
+}
+
+const userLink = (endUser: EndUser) => ({ name: 'project-end-user', params: { projectUid: project.value?.uid, endUserUid: endUser.uid } })
+
+const actions = useEndUserActions(
+  () => (project.value ? { accountUid: accountUid.value, projectUid: project.value.uid } : null),
+  ({ endUser, updated, notice: message }) => {
+    notice.value = message
+    endUsers.value = updated
+      ? { ...endUsers.value, items: endUsers.value.items.map((existing) => (existing.uid === endUser.uid ? updated : existing)) }
+      : { ...endUsers.value, items: endUsers.value.items.filter((existing) => existing.uid !== endUser.uid), total: endUsers.value.total - 1 }
+  },
+)
+
+function menuItems(endUser: EndUser): ActionMenuItem[] {
+  return [
+    ...(endUser.invitation_pending ? [{ label: 'Resend invitation', action: () => actions.request('resend_invitation', endUser) }] : []),
+    { label: 'Sign out everywhere', action: () => actions.request('sign_out', endUser) },
+    ...(endUser.mfa_enabled ? [{ label: 'Reset MFA', danger: true, action: () => actions.request('reset_mfa', endUser) }] : []),
+    endUser.status === 'active'
+      ? { label: 'Disable', danger: true, action: () => actions.request('disable', endUser) }
+      : { label: 'Enable', action: () => actions.request('enable', endUser) },
+    { label: 'Delete', danger: true, action: () => actions.request('delete', endUser) },
+  ]
+}
+
+// Creating an end user, optionally with an invitation to set a password.
 const createOpen = ref(false)
 const newEmail = ref('')
 const newName = ref('')
 const sendInvitation = ref(true)
 const newAttributes = ref<AttributeDraft>({})
-const pendingDelete = ref<EndUser | null>(null)
-const identitiesFor = ref<EndUser | null>(null)
-const identities = ref<EndUserIdentity[]>([])
-
-const columns = [
-  { key: 'email', label: 'End user' },
-  { key: 'status', label: 'Status' },
-  { key: 'groups', label: 'Groups' },
-  { key: 'mfa_enabled', label: 'MFA' },
-  { key: 'last_sign_in_at', label: 'Last sign-in' },
-  { key: 'actions', label: 'Actions', srOnly: true },
-]
-
-const load = useAsyncAction(async () => {
-  if (!project.value) return
-  const [loaded, loadedDefinitions] = await Promise.all([
-    projectAdminService.listEndUsers(accountUid.value, project.value.uid, page.value, { email_cont: appliedSearch.value || undefined }),
-    definitions.value.length > 0 ? null : projectAdminService.listAttributes(accountUid.value, project.value.uid),
-  ])
-  endUsers.value = loaded
-  if (loadedDefinitions) definitions.value = loadedDefinitions.items
-})
 
 const create = useAsyncAction(async () => {
   if (!project.value) return
@@ -65,92 +147,46 @@ const create = useAsyncAction(async () => {
     custom_attributes: toCustomAttributes(definitions.value, newAttributes.value),
     send_invitation: sendInvitation.value,
   })
-  endUsers.value = { ...endUsers.value, items: [created, ...endUsers.value.items], total: endUsers.value.total + 1 }
-  notice.value = sendInvitation.value ? `${created.email} was created and invited to set a password.` : `${created.email} was created.`
   createOpen.value = false
   newEmail.value = ''
   newName.value = ''
   newAttributes.value = {}
+  await router.push(userLink(created))
 })
 
-const endUserAction = useAsyncAction(async (endUser: EndUser, action: EndUserAction) => {
-  if (!project.value) return
-  const ids = [accountUid.value, project.value.uid, endUser.uid] as const
-  notice.value = null
-
-  switch (action) {
-    case 'toggle': {
-      const updated = await projectAdminService.updateEndUser(...ids, { status: endUser.status === 'active' ? 'disabled' : 'active' })
-      endUsers.value = { ...endUsers.value, items: endUsers.value.items.map((existing) => (existing.uid === updated.uid ? updated : existing)) }
-      return
-    }
-    case 'reset_mfa':
-      await projectAdminService.resetEndUserMfa(...ids)
-      endUsers.value = {
-        ...endUsers.value,
-        items: endUsers.value.items.map((existing) => (existing.uid === endUser.uid ? { ...existing, mfa_enabled: false } : existing)),
-      }
-      notice.value = `MFA was turned off for ${endUser.email}.`
-      return
-    case 'sign_out':
-      await projectAdminService.signOutEndUser(...ids)
-      notice.value = `${endUser.email} was signed out everywhere.`
-      return
-    case 'resend_invitation':
-      await projectAdminService.resendInvitation(...ids)
-      notice.value = `A new invitation was sent to ${endUser.email}.`
-      return
-    case 'delete':
-      await projectAdminService.deleteEndUser(...ids)
-      endUsers.value = {
-        ...endUsers.value,
-        items: endUsers.value.items.filter((existing) => existing.uid !== endUser.uid),
-        total: endUsers.value.total - 1,
-      }
-      pendingDelete.value = null
-  }
-})
-
-const loadIdentities = useAsyncAction(async (endUser: EndUser) => {
-  if (!project.value) return
-  identitiesFor.value = endUser
-  identities.value = []
-  unlink.error.value = null
-  identities.value = await projectAdminService.listEndUserIdentities(accountUid.value, project.value.uid, endUser.uid)
-})
-
-const unlink = useAsyncAction(async (identity: EndUserIdentity) => {
-  if (!project.value || !identitiesFor.value) return
-  await projectAdminService.unlinkEndUserIdentity(accountUid.value, project.value.uid, identitiesFor.value.uid, identity.uid)
-  identities.value = identities.value.filter((existing) => existing.uid !== identity.uid)
-})
-
-function applySearch() {
-  appliedSearch.value = search.value.trim()
-  if (page.value === 1) load.run()
-  else page.value = 1
-}
-
-watch(page, () => load.run())
+watch(() => route.query, () => load.run())
 onMounted(() => load.run())
 </script>
 
 <template>
-  <BaseCard title="End users" description="The people who sign in to this project's apps.">
-    <template v-if="access.developer" #footer>
-      <BaseButton label="Create end user" @click="createOpen = true" />
-    </template>
-
-    <form class="flex flex-wrap items-end gap-4" novalidate @submit.prevent="applySearch">
-      <div class="w-full max-w-xs">
-        <BaseInput v-model="search" label="Search by email" type="search" />
-      </div>
-      <BaseButton type="submit" label="Search" variant="secondary" />
-    </form>
+  <BaseCard>
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <form class="flex flex-1 flex-col gap-4" role="search" novalidate @submit.prevent="applyFilters">
+        <div class="flex flex-wrap items-end gap-4">
+          <div class="w-full max-w-sm">
+            <BaseInput v-model="search" label="Search by email or user ID" type="search" hint="A user ID starts with eu_." />
+          </div>
+          <BaseButton type="submit" label="Search" variant="secondary" />
+        </div>
+        <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <BaseSelect v-model="status" label="Status" :options="statusOptions" @update:model-value="applyFilters" />
+          <BaseSelect v-model="emailVerified" label="Email" :options="emailOptions" @update:model-value="applyFilters" />
+          <BaseSelect v-model="mfa" label="MFA" :options="mfaOptions" @update:model-value="applyFilters" />
+          <BaseSelect v-model="invitation" label="Invitation" :options="invitationOptions" @update:model-value="applyFilters" />
+          <BaseSelect v-model="groupUid" label="Group" :options="groupOptions" @update:model-value="applyFilters" />
+        </div>
+      </form>
+      <BaseButton v-if="access.developer" label="Create end user" @click="createOpen = true" />
+    </div>
 
     <BaseAlert v-if="notice" variant="success">{{ notice }}</BaseAlert>
     <BaseAlert v-if="load.error.value" variant="danger">We couldn't load end users. {{ load.error.value.message }}</BaseAlert>
-    <BaseAlert v-if="endUserAction.error.value" variant="danger">{{ endUserAction.error.value.message }}</BaseAlert>
+    <BaseAlert v-if="actions.perform.error.value && !actions.pending.value" variant="danger">{{ actions.perform.error.value.message }}</BaseAlert>
+
+    <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-text-muted">
+      <span role="status">{{ endUsers.total }} {{ endUsers.total === 1 ? 'end user' : 'end users' }}{{ filtered ? ' match' : '' }}</span>
+      <BaseButton v-if="filtered" label="Clear filters" variant="ghost" size="sm" @click="clearFilters" />
+    </div>
 
     <BaseTable
       caption="End users"
@@ -158,69 +194,50 @@ onMounted(() => load.run())
       :rows="endUsers.items"
       :row-key="(endUser) => endUser.uid"
       :loading="load.loading.value"
-      :empty-message="appliedSearch ? 'No end users match this search.' : 'No end users yet. They appear here once they sign up or you create them.'"
+      :empty-message="filtered ? 'No end users match these filters.' : 'No end users yet. They appear here once they sign up, sign in with an identity provider, or you create them.'"
     >
       <template #cell-email="{ row }">
-        <span class="font-medium">{{ row.email }}</span>
+        <RouterLink :to="userLink(row)" class="font-medium text-primary underline-offset-2 hover:underline">{{ row.email }}</RouterLink>
         <span v-if="row.name" class="block text-text-muted">{{ row.name }}</span>
         <code class="block font-mono text-xs text-text-muted">{{ row.uid }}</code>
       </template>
       <template #cell-status="{ row }">
-        <span :class="row.status === 'active' ? 'text-success' : 'text-text-muted'" class="font-medium">
-          {{ row.status === 'active' ? '● Active' : '○ Disabled' }}
+        <span class="flex flex-wrap gap-1">
+          <StatusBadge :tone="row.status === 'active' ? 'success' : 'danger'" :label="row.status === 'active' ? 'Active' : 'Disabled'" />
+          <StatusBadge v-if="row.invitation_pending" tone="info" label="Invitation pending" />
+          <StatusBadge v-else-if="!row.email_verified" tone="warning" label="Email not verified" />
         </span>
-        <span class="block text-xs text-text-muted">
-          {{ row.invitation_pending ? 'Invitation pending' : row.email_verified ? 'Email confirmed' : 'Email not confirmed' }}
-        </span>
+      </template>
+      <template #cell-mfa_enabled="{ row }">
+        <StatusBadge :tone="row.mfa_enabled ? 'success' : 'neutral'" :label="row.mfa_enabled ? 'On' : 'Off'" />
       </template>
       <template #cell-groups="{ row }">
         <span v-if="row.groups.length === 0" class="text-text-muted">None</span>
-        <span v-else class="text-xs">{{ row.groups.map((group) => group.name).join(', ') }}</span>
+        <span v-else class="text-xs">
+          {{ row.groups.slice(0, 2).map((group) => group.name).join(', ') }}<template v-if="row.groups.length > 2"> +{{ row.groups.length - 2 }}</template>
+        </span>
       </template>
-      <template #cell-mfa_enabled="{ row }">{{ row.mfa_enabled ? 'On' : 'Off' }}</template>
-      <template #cell-last_sign_in_at="{ row }">{{ formatDateTime(row.last_sign_in_at) }}</template>
+      <template #cell-last_sign_in_at="{ row }">
+        <span class="text-xs">{{ row.last_sign_in_at ? formatDateTime(row.last_sign_in_at) : 'Never' }}</span>
+      </template>
       <template #cell-actions="{ row }">
-        <div class="flex flex-wrap justify-end gap-2">
-          <BaseButton label="Sign-in providers" variant="secondary" size="sm" @click="loadIdentities.run(row)" />
-          <template v-if="access.developer">
-          <BaseButton
-            :label="row.status === 'active' ? 'Disable' : 'Enable'"
-            variant="secondary"
-            size="sm"
-            :disabled="endUserAction.loading.value"
-            @click="endUserAction.run(row, 'toggle')"
-          />
-          <BaseButton
-            v-if="row.invitation_pending"
-            label="Resend invitation"
-            variant="secondary"
-            size="sm"
-            :disabled="endUserAction.loading.value"
-            @click="endUserAction.run(row, 'resend_invitation')"
-          />
-          <BaseButton
-            v-if="row.mfa_enabled"
-            label="Reset MFA"
-            variant="secondary"
-            size="sm"
-            :disabled="endUserAction.loading.value"
-            @click="endUserAction.run(row, 'reset_mfa')"
-          />
-          <BaseButton
-            label="Sign out everywhere"
-            variant="ghost"
-            size="sm"
-            :disabled="endUserAction.loading.value"
-            @click="endUserAction.run(row, 'sign_out')"
-          />
-          <BaseButton label="Delete" variant="ghost" size="sm" :disabled="endUserAction.loading.value" @click="pendingDelete = row" />
-          </template>
+        <div class="flex items-center justify-end gap-2">
+          <RouterLink :to="userLink(row)" class="text-sm font-medium text-primary underline">View</RouterLink>
+          <BaseActionMenu v-if="access.developer" :items="menuItems(row)" :label="`More actions for ${row.email}`" />
         </div>
       </template>
     </BaseTable>
 
-    <BasePagination v-model:page="page" :total="endUsers.total" :per-page="endUsers.perPage" :disabled="load.loading.value" />
+    <BasePagination :page="page" :total="endUsers.total" :per-page="endUsers.perPage" :disabled="load.loading.value" @update:page="setPage" />
   </BaseCard>
+
+  <EndUserActionDialog
+    :pending="actions.pending.value"
+    :loading="actions.perform.loading.value"
+    :error="actions.perform.error.value"
+    @confirm="actions.confirm()"
+    @cancel="actions.pending.value = null"
+  />
 
   <BaseDialog v-model:visible="createOpen" title="Create end user">
     <form id="create-end-user" class="flex flex-col gap-4" novalidate @submit.prevent="create.run()">
@@ -231,63 +248,12 @@ onMounted(() => load.run())
       <BaseCheckbox
         v-model="sendInvitation"
         label="Email an invitation to set a password"
-        hint="The invitation contains a code and, if configured, a link to your app."
+        hint="The invitation contains a code and, if configured, a link to your app. New users join groups set to take them automatically."
       />
     </form>
     <template #footer>
       <BaseButton label="Cancel" variant="secondary" @click="createOpen = false" />
       <BaseButton label="Create" type="submit" form="create-end-user" :loading="create.loading.value" />
-    </template>
-  </BaseDialog>
-
-  <BaseDialog
-    :visible="identitiesFor !== null"
-    :title="`Sign-in providers for ${identitiesFor?.email ?? ''}`"
-    @update:visible="(open: boolean) => !open && (identitiesFor = null)"
-  >
-    <BaseAlert v-if="loadIdentities.error.value" variant="danger">{{ loadIdentities.error.value.message }}</BaseAlert>
-    <BaseAlert v-if="unlink.error.value" variant="danger">{{ unlink.error.value.message }}</BaseAlert>
-    <p v-if="loadIdentities.loading.value" class="text-sm text-text-muted" role="status">Loading…</p>
-    <p v-else-if="identities.length === 0" class="text-sm text-text-muted">
-      Not linked to any sign-in provider. This user signs in with email and password.
-    </p>
-    <ul v-else class="flex flex-col divide-y divide-border">
-      <li v-for="identity in identities" :key="identity.uid" class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-        <div class="flex flex-col">
-          <span class="font-medium">{{ identity.identity_provider_name }}</span>
-          <span class="text-text-muted">{{ identity.email ?? 'No email shared' }}</span>
-          <span class="text-xs text-text-muted">
-            ID <code class="font-mono">{{ identity.subject }}</code> · last sign-in {{ formatDateTime(identity.last_sign_in_at) }}
-          </span>
-        </div>
-        <BaseButton
-          v-if="access.developer"
-          label="Unlink"
-          variant="ghost"
-          size="sm"
-          :loading="unlink.loading.value"
-          @click="unlink.run(identity)"
-        />
-      </li>
-    </ul>
-    <template #footer>
-      <BaseButton label="Done" @click="identitiesFor = null" />
-    </template>
-  </BaseDialog>
-
-  <BaseDialog :visible="pendingDelete !== null" title="Delete end user?" @update:visible="(open: boolean) => !open && (pendingDelete = null)">
-    <p class="text-sm">
-      This permanently deletes <strong>{{ pendingDelete?.email }}</strong> and signs them out everywhere. To keep the user but
-      stop them signing in, disable them instead.
-    </p>
-    <template #footer>
-      <BaseButton label="Cancel" variant="secondary" @click="pendingDelete = null" />
-      <BaseButton
-        label="Delete end user"
-        variant="danger"
-        :loading="endUserAction.loading.value"
-        @click="pendingDelete && endUserAction.run(pendingDelete, 'delete')"
-      />
     </template>
   </BaseDialog>
 </template>

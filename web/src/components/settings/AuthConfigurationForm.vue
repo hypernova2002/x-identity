@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -9,6 +9,7 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import type { AuthConfiguration, MfaRequirement, OtpType, SigningAlgorithm } from '@/types/api'
+import { AUTH_SETTINGS_FIELDS, EMAIL_CODE_FIELDS, pickFields, type AuthSettingsField, type AuthSettingsSection } from '@/utils/authSettings'
 import { formatDuration } from '@/utils/format'
 import { mfaRequirementOptions, otpMethodOptions, signingAlgorithmOptions } from '@/utils/options'
 
@@ -34,15 +35,24 @@ type NumberField =
   | 'otp_hotp_look_ahead'
 
 const OPTIONAL_FIELDS: NumberField[] = ['password_max_age_seconds', 'session_idle_timeout_seconds']
+const ALL_SECTIONS: AuthSettingsSection[] = ['sign-in', 'mfa', 'policies', 'tokens', 'signing']
 
-const props = defineProps<{
-  load: () => Promise<AuthConfiguration>
-  save: (changes: Partial<AuthConfiguration>) => Promise<AuthConfiguration>
-  readonly?: boolean
-  emailVerificationHint: string
-  showEmailCodeLimits?: boolean
-  showSsoSession?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    load: () => Promise<AuthConfiguration>
+    save: (changes: Partial<AuthConfiguration>) => Promise<AuthConfiguration>
+    readonly?: boolean
+    emailVerificationHint: string
+    showEmailCodeLimits?: boolean
+    showSsoSession?: boolean
+    /** The sections to show; saving sends only their fields, so other settings are never reset. */
+    sections?: AuthSettingsSection[]
+  }>(),
+  { readonly: false, showEmailCodeLimits: false, showSsoSession: false, sections: () => ['sign-in', 'mfa', 'policies', 'tokens', 'signing'] },
+)
+
+/** Whether the form has changes that aren't saved yet. */
+const dirty = defineModel<boolean>('dirty', { default: false })
 
 const mfaRequirement = ref<MfaRequirement>('optional')
 const signingAlgorithm = ref<SigningAlgorithm>('ES256')
@@ -75,8 +85,17 @@ const numbers = ref<Record<NumberField, string>>({
   otp_hotp_look_ahead: '',
 })
 const otpMethod = ref<OtpType>('totp')
-const unusualOtpFormat = computed(() => numbers.value.otp_digits.trim() !== '6' || numbers.value.otp_step_seconds.trim() !== '30')
 const saved = ref(false)
+const lastSaved = ref<Partial<AuthConfiguration>>({})
+
+const unusualOtpFormat = computed(() => numbers.value.otp_digits.trim() !== '6' || numbers.value.otp_step_seconds.trim() !== '30')
+const shown = (section: AuthSettingsSection) => props.sections.includes(section)
+
+const visibleFields = computed<AuthSettingsField[]>(() =>
+  ALL_SECTIONS.filter(shown)
+    .flatMap((section) => AUTH_SETTINGS_FIELDS[section])
+    .filter((field) => (props.showEmailCodeLimits || !EMAIL_CODE_FIELDS.includes(field)) && (props.showSsoSession || field !== 'sso_session_ttl_seconds')),
+)
 
 function apply(configuration: AuthConfiguration) {
   mfaRequirement.value = configuration.mfa_requirement
@@ -92,6 +111,7 @@ function apply(configuration: AuthConfiguration) {
   for (const field of Object.keys(numbers.value) as NumberField[]) {
     numbers.value[field] = configuration[field] === null ? '' : String(configuration[field])
   }
+  lastSaved.value = pickFields(currentValues(), visibleFields.value)
 }
 
 /** The hint under a duration field: what the entered seconds amount to, and the allowed range. */
@@ -107,26 +127,44 @@ function numberValue(field: NumberField): number | null {
   return Number(raw)
 }
 
-const load = useAsyncAction(async () => {
-  apply(await props.load())
-})
-
-const save = useAsyncAction(async () => {
-  saved.value = false
-
-  const changes: Partial<AuthConfiguration> = {
+function currentValues(): Partial<AuthConfiguration> {
+  const values: Partial<AuthConfiguration> = {
     mfa_requirement: mfaRequirement.value,
     otp_method: otpMethod.value,
     signing_algorithm: signingAlgorithm.value,
     ...flags.value,
   }
   for (const field of Object.keys(numbers.value) as NumberField[]) {
-    Object.assign(changes, { [field]: numberValue(field) })
+    Object.assign(values, { [field]: numberValue(field) })
   }
+  return values
+}
 
-  apply(await props.save(changes))
+watch(
+  [mfaRequirement, otpMethod, signingAlgorithm, flags, numbers],
+  () => {
+    const current = pickFields(currentValues(), visibleFields.value)
+    dirty.value = JSON.stringify(current) !== JSON.stringify(lastSaved.value)
+  },
+  { deep: true },
+)
+
+const load = useAsyncAction(async () => {
+  apply(await props.load())
+})
+
+const save = useAsyncAction(async () => {
+  saved.value = false
+  apply(await props.save(pickFields(currentValues(), visibleFields.value)))
+  dirty.value = false
   saved.value = true
 })
+
+function discard() {
+  load.run()
+  saved.value = false
+  save.error.value = null
+}
 
 onMounted(() => load.run())
 </script>
@@ -143,22 +181,66 @@ onMounted(() => load.run())
       {{ save.error.value.message }} Check the highlighted fields.
     </BaseAlert>
 
-    <BaseCard title="Multi-factor authentication">
+    <template v-if="shown('sign-in')">
+      <BaseCard title="Email verification">
+        <BaseCheckbox
+          v-model="flags.require_email_verification"
+          label="Require a verified email before signing in"
+          :hint="emailVerificationHint"
+        />
+      </BaseCard>
+
+      <BaseCard
+        v-if="showEmailCodeLimits"
+        title="Email codes"
+        description="Limits on wrong 6-digit codes from confirmation, password reset and invitation emails. Codes never disable a user; once a limit is reached, codes are refused until the window has passed."
+      >
+        <details class="group rounded-md border border-border">
+          <summary class="cursor-pointer px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary">
+            Advanced: guessing limits
+          </summary>
+          <div class="grid gap-4 border-t border-border p-3 sm:grid-cols-2">
+            <BaseInput
+              v-model="numbers.email_code_max_attempts"
+              label="Wrong guesses per code"
+              type="number"
+              hint="3–10. The code then stops working."
+              :error="save.error.value?.fieldError('email_code_max_attempts')"
+            />
+            <BaseInput
+              v-model="numbers.email_code_max_failures_per_email"
+              label="Wrong codes per address"
+              type="number"
+              hint="3–100 within the window, across every code sent to the address."
+              :error="save.error.value?.fieldError('email_code_max_failures_per_email')"
+            />
+            <BaseInput
+              v-model="numbers.email_code_max_failures_per_code"
+              label="Tries of the same code"
+              type="number"
+              hint="2–100 within the window, across all addresses. Stops one guess being tried on many accounts."
+              :error="save.error.value?.fieldError('email_code_max_failures_per_code')"
+            />
+            <BaseInput
+              v-model="numbers.email_code_failure_window_seconds"
+              label="Window (seconds)"
+              type="number"
+              :hint="durationHint('email_code_failure_window_seconds', '300–86400 seconds.')"
+              :error="save.error.value?.fieldError('email_code_failure_window_seconds')"
+            />
+          </div>
+        </details>
+      </BaseCard>
+    </template>
+
+    <BaseCard v-if="shown('mfa')" title="Multi-factor authentication policy">
       <BaseSelect
         v-model="mfaRequirement"
         label="Requirement"
         :options="mfaRequirementOptions"
-        hint="When required, users without an authenticator app are asked to set one up at their next sign-in."
+        hint="When required, users without an authenticator are asked to set one up at their next sign-in."
         :error="save.error.value?.fieldError('mfa_requirement')"
       />
-      <BaseInput
-        v-model="numbers.mfa_max_failed_attempts"
-        label="Wrong codes before the user is disabled"
-        type="number"
-        hint="3–20 consecutive wrong authenticator or recovery codes. Admins can re-enable disabled users."
-        :error="save.error.value?.fieldError('mfa_max_failed_attempts')"
-      />
-
       <BaseSelect
         v-model="otpMethod"
         label="Method"
@@ -166,7 +248,6 @@ onMounted(() => load.run())
         hint="Everyone sets up this method. Users who already set up the other one keep using it."
         :error="save.error.value?.fieldError('otp_method')"
       />
-
       <div class="grid gap-4 sm:grid-cols-2">
         <BaseInput
           v-model="numbers.otp_digits"
@@ -182,125 +263,96 @@ onMounted(() => load.run())
           :hint="durationHint('otp_step_seconds', '30–900 seconds.', 'Time-based codes only; applies to new setups only.')"
           :error="save.error.value?.fieldError('otp_step_seconds')"
         />
-        <BaseInput
-          v-model="numbers.otp_drift_steps"
-          label="Clock drift allowed (steps)"
-          type="number"
-          hint="0–2 codes either side of the current one, for clocks that are slightly off."
-          :error="save.error.value?.fieldError('otp_drift_steps')"
-        />
-        <BaseInput
-          v-model="numbers.otp_hotp_look_ahead"
-          label="Hardware token look-ahead"
-          type="number"
-          hint="1–20 codes ahead, for tokens pressed without signing in."
-          :error="save.error.value?.fieldError('otp_hotp_look_ahead')"
-        />
       </div>
       <BaseAlert v-if="unusualOtpFormat" variant="warning" title="Check your users' apps">
         Google Authenticator and Microsoft Authenticator only support 6-digit codes that change every 30 seconds. With other
         values they may show codes that never work.
       </BaseAlert>
-    </BaseCard>
-
-    <BaseCard
-      v-if="showEmailCodeLimits"
-      title="Email codes"
-      description="Limits on wrong 6-digit codes from confirmation, password reset and invitation emails. Codes never disable a user; once a limit is reached, codes are refused until the window has passed."
-    >
-      <div class="grid gap-4 sm:grid-cols-2">
-        <BaseInput
-          v-model="numbers.email_code_max_attempts"
-          label="Wrong guesses per code"
-          type="number"
-          hint="3–10. The code then stops working."
-          :error="save.error.value?.fieldError('email_code_max_attempts')"
-        />
-        <BaseInput
-          v-model="numbers.email_code_max_failures_per_email"
-          label="Wrong codes per address"
-          type="number"
-          hint="3–100 within the window, across every code sent to the address."
-          :error="save.error.value?.fieldError('email_code_max_failures_per_email')"
-        />
-        <BaseInput
-          v-model="numbers.email_code_max_failures_per_code"
-          label="Tries of the same code"
-          type="number"
-          hint="2–100 within the window, across all addresses. Stops one guess being tried on many accounts."
-          :error="save.error.value?.fieldError('email_code_max_failures_per_code')"
-        />
-        <BaseInput
-          v-model="numbers.email_code_failure_window_seconds"
-          label="Window (seconds)"
-          type="number"
-          :hint="durationHint('email_code_failure_window_seconds', '300–86400 seconds.')"
-          :error="save.error.value?.fieldError('email_code_failure_window_seconds')"
-        />
-      </div>
-    </BaseCard>
-
-    <BaseCard title="Email verification">
-      <BaseCheckbox
-        v-model="flags.require_email_verification"
-        label="Require a verified email before signing in"
-        :hint="emailVerificationHint"
+      <BaseInput
+        v-model="numbers.mfa_max_failed_attempts"
+        label="Wrong codes before the user is disabled"
+        type="number"
+        hint="3–20 consecutive wrong authenticator or recovery codes. Admins can re-enable disabled users."
+        :error="save.error.value?.fieldError('mfa_max_failed_attempts')"
       />
+      <details class="rounded-md border border-border">
+        <summary class="cursor-pointer px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary">
+          Advanced: code tolerance
+        </summary>
+        <div class="grid gap-4 border-t border-border p-3 sm:grid-cols-2">
+          <BaseInput
+            v-model="numbers.otp_drift_steps"
+            label="Clock drift allowed (steps)"
+            type="number"
+            hint="0–2 codes either side of the current one, for clocks that are slightly off."
+            :error="save.error.value?.fieldError('otp_drift_steps')"
+          />
+          <BaseInput
+            v-model="numbers.otp_hotp_look_ahead"
+            label="Hardware token look-ahead"
+            type="number"
+            hint="1–20 codes ahead, for tokens pressed without signing in."
+            :error="save.error.value?.fieldError('otp_hotp_look_ahead')"
+          />
+        </div>
+      </details>
     </BaseCard>
 
-    <BaseCard title="Password rules">
+    <template v-if="shown('policies')">
+      <BaseCard title="Password rules">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <BaseInput
+            v-model="numbers.password_min_length"
+            label="Minimum length"
+            type="number"
+            hint="8–128 characters."
+            :error="save.error.value?.fieldError('password_min_length')"
+          />
+          <BaseInput
+            v-model="numbers.password_max_age_seconds"
+            label="Maximum age (seconds)"
+            type="number"
+            :hint="durationHint('password_max_age_seconds', '1 to 365 days.', 'Leave empty to never expire passwords.')"
+            :error="save.error.value?.fieldError('password_max_age_seconds')"
+          />
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <BaseCheckbox v-model="flags.password_require_uppercase" label="Require an uppercase letter" />
+          <BaseCheckbox v-model="flags.password_require_lowercase" label="Require a lowercase letter" />
+          <BaseCheckbox v-model="flags.password_require_number" label="Require a number" />
+          <BaseCheckbox v-model="flags.password_require_symbol" label="Require a symbol" />
+        </div>
+      </BaseCard>
+
+      <BaseCard title="Lockout" description="Locks an email address after repeated failed sign-in or verification attempts.">
+        <div class="grid gap-4 sm:grid-cols-3">
+          <BaseInput
+            v-model="numbers.lockout_threshold"
+            label="Failed attempts"
+            type="number"
+            hint="3–100."
+            :error="save.error.value?.fieldError('lockout_threshold')"
+          />
+          <BaseInput
+            v-model="numbers.lockout_window_seconds"
+            label="Within (seconds)"
+            type="number"
+            :hint="durationHint('lockout_window_seconds', '60–86400 seconds.')"
+            :error="save.error.value?.fieldError('lockout_window_seconds')"
+          />
+          <BaseInput
+            v-model="numbers.lockout_duration_seconds"
+            label="Lock for (seconds)"
+            type="number"
+            :hint="durationHint('lockout_duration_seconds', '60–86400 seconds.')"
+            :error="save.error.value?.fieldError('lockout_duration_seconds')"
+          />
+        </div>
+      </BaseCard>
+    </template>
+
+    <BaseCard v-if="shown('tokens')" title="Sessions and tokens">
       <div class="grid gap-4 sm:grid-cols-2">
-        <BaseInput
-          v-model="numbers.password_min_length"
-          label="Minimum length"
-          type="number"
-          hint="8–128 characters."
-          :error="save.error.value?.fieldError('password_min_length')"
-        />
-        <BaseInput
-          v-model="numbers.password_max_age_seconds"
-          label="Maximum age (seconds)"
-          type="number"
-          :hint="durationHint('password_max_age_seconds', '1 to 365 days.', 'Leave empty to never expire passwords.')"
-          :error="save.error.value?.fieldError('password_max_age_seconds')"
-        />
-      </div>
-      <div class="grid gap-4 sm:grid-cols-2">
-        <BaseCheckbox v-model="flags.password_require_uppercase" label="Require an uppercase letter" />
-        <BaseCheckbox v-model="flags.password_require_lowercase" label="Require a lowercase letter" />
-        <BaseCheckbox v-model="flags.password_require_number" label="Require a number" />
-        <BaseCheckbox v-model="flags.password_require_symbol" label="Require a symbol" />
-      </div>
-    </BaseCard>
-
-    <BaseCard title="Lockout" description="Locks an email address after repeated failed sign-in or verification attempts.">
-      <div class="grid gap-4 sm:grid-cols-3">
-        <BaseInput
-          v-model="numbers.lockout_threshold"
-          label="Failed attempts"
-          type="number"
-          hint="3–100."
-          :error="save.error.value?.fieldError('lockout_threshold')"
-        />
-        <BaseInput
-          v-model="numbers.lockout_window_seconds"
-          label="Within (seconds)"
-          type="number"
-          :hint="durationHint('lockout_window_seconds', '60–86400 seconds.')"
-          :error="save.error.value?.fieldError('lockout_window_seconds')"
-        />
-        <BaseInput
-          v-model="numbers.lockout_duration_seconds"
-          label="Lock for (seconds)"
-          type="number"
-          :hint="durationHint('lockout_duration_seconds', '60–86400 seconds.')"
-          :error="save.error.value?.fieldError('lockout_duration_seconds')"
-        />
-      </div>
-    </BaseCard>
-
-    <BaseCard title="Sessions and tokens">
-      <div class="grid gap-4 sm:grid-cols-3">
         <BaseInput
           v-model="numbers.access_token_ttl_seconds"
           label="Access token lifetime (seconds)"
@@ -312,7 +364,7 @@ onMounted(() => load.run())
           v-model="numbers.refresh_token_ttl_seconds"
           label="Session lifetime (seconds)"
           type="number"
-          :hint="durationHint('refresh_token_ttl_seconds', '1 to 365 days.', 'Users sign in again after this.')"
+          :hint="durationHint('refresh_token_ttl_seconds', '1 to 365 days.', 'Refresh tokens stop working after this; users sign in again.')"
           :error="save.error.value?.fieldError('refresh_token_ttl_seconds')"
         />
         <BaseInput
@@ -331,9 +383,13 @@ onMounted(() => load.run())
           :error="save.error.value?.fieldError('sso_session_ttl_seconds')"
         />
       </div>
+      <p class="text-xs text-text-muted">
+        Refresh tokens always rotate on use; reusing an old one signs out that whole session. Logging out ends the hosted login session
+        and the user's SAML app sessions.
+      </p>
     </BaseCard>
 
-    <BaseCard title="Token signing">
+    <BaseCard v-if="shown('signing')" title="Token signing">
       <div class="grid gap-4 sm:grid-cols-2">
         <BaseSelect
           v-model="signingAlgorithm"
@@ -353,6 +409,10 @@ onMounted(() => load.run())
     </BaseCard>
 
     </fieldset>
-    <BaseButton v-if="!readonly" type="submit" label="Save settings" :loading="save.loading.value" class="self-start" />
+    <div v-if="!readonly" class="flex flex-wrap items-center gap-2">
+      <BaseButton type="submit" label="Save changes" :loading="save.loading.value" :disabled="!dirty" />
+      <BaseButton v-if="dirty" label="Discard changes" variant="secondary" @click="discard" />
+      <span v-if="dirty" class="text-sm text-text-muted" role="status">Unsaved changes</span>
+    </div>
   </form>
 </template>

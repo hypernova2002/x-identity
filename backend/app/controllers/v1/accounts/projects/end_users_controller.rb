@@ -2,12 +2,13 @@ module V1
   module Accounts
     module Projects
       class EndUsersController < ManagementController
-        FILTERS = %i[email_cont name_cont status_eq].freeze
+        FILTERS = %i[email_cont name_cont status_eq uid_eq].freeze
+        BOOLEAN = { "true" => true, "false" => false }.freeze
 
-        before_action :set_end_user, only: %i[show update destroy reset_mfa sign_out resend_invitation identities unlink_identity]
+        before_action :set_end_user, only: %i[show update destroy reset_mfa sign_out resend_invitation identities unlink_identity access]
 
         def index
-          end_users = current_project.end_users.ransack(params.fetch(:q, {}).permit(*FILTERS)).result
+          end_users = filtered(current_project.end_users.ransack(params.fetch(:q, {}).permit(*FILTERS)).result)
           end_users = paginated(end_users.includes(:otp_credential, :identities, :groups).order(:created_at, :id))
           render json: EndUserSerializer.new(end_users).serializable_hash
         end
@@ -46,6 +47,11 @@ module V1
           head :accepted
         end
 
+        # The apps the end user can sign in to, and whether directly or through which groups.
+        def access
+          render json: ::Apps::UserAccess.new(@end_user).call
+        end
+
         def identities
           render json: EndUserIdentitySerializer.new(@end_user.identities.includes(:identity_provider).order(:created_at, :id)).serializable_hash
         end
@@ -58,6 +64,16 @@ module V1
         end
 
         private
+
+        # Filters the ransack search can't express: email verification, MFA, pending invitations and groups.
+        def filtered(scope)
+          filters = params.fetch(:filter, {}).permit(:email_verified, :mfa, :invitation_pending, :group_uid)
+          scope = scope.with_verified_email(BOOLEAN.fetch(filters[:email_verified])) if BOOLEAN.key?(filters[:email_verified])
+          scope = scope.with_mfa(BOOLEAN.fetch(filters[:mfa])) if BOOLEAN.key?(filters[:mfa])
+          scope = scope.invitation_pending if filters[:invitation_pending] == "true"
+          scope = scope.in_group(current_project.groups.find_by_uid!(filters[:group_uid])) if filters[:group_uid].present?
+          scope
+        end
 
         def set_end_user
           @end_user = current_project.end_users.find_by_uid!(params[:uid])

@@ -258,6 +258,15 @@ export type HostedSignInResult =
   | { challenge: SignInChallengeName; session: string; recovery_codes?: string[] }
   | { redirect_to: string; recovery_codes?: string[] }
 
+/** An app an end user can sign in to, and the assignments that give them access. */
+export interface EndUserAppAccess {
+  app_type: AppKind
+  uid: string
+  name: string
+  enabled: boolean
+  via: ({ type: 'direct'; assignment_uid: string } | { type: 'group'; assignment_uid: string; group_uid: string; group_name: string })[]
+}
+
 export interface EndUserIdentity {
   uid: string
   identity_provider_uid: string

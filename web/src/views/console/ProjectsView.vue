@@ -1,26 +1,22 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
-import BaseDialog from '@/components/base/BaseDialog.vue'
 import BasePagination from '@/components/base/BasePagination.vue'
 import BaseTable from '@/components/base/BaseTable.vue'
-import CreateProjectForm from '@/components/console/CreateProjectForm.vue'
+import CreateProjectDialog from '@/components/console/CreateProjectDialog.vue'
 import PageHeader from '@/components/console/PageHeader.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { projectService } from '@/services/account'
 import type { Page } from '@/services/http'
-import { useProjectStore } from '@/stores/project'
 import { useSessionStore } from '@/stores/session'
 import type { Project } from '@/types/api'
 import { formatDateTime } from '@/utils/format'
 
 const route = useRoute()
-const router = useRouter()
-const projectStore = useProjectStore()
 const { account, isAccountAdmin } = storeToRefs(useSessionStore())
 
 const page = ref(1)
@@ -39,16 +35,10 @@ const { loading, error, run: load } = useAsyncAction(async () => {
 
 watch(page, () => load())
 onMounted(() => load())
-
-function openProject(project: Project) {
-  createOpen.value = false
-  projectStore.upsert(project)
-  router.push({ name: 'project', params: { projectUid: project.uid } })
-}
 </script>
 
 <template>
-  <PageHeader title="Projects" description="Each project has its own end users, app clients, settings and members.">
+  <PageHeader title="Projects" description="Each project is a separate directory of end users, with its own applications, settings and members.">
     <template v-if="isAccountAdmin" #actions>
       <BaseButton label="Create project" @click="createOpen = true" />
     </template>
@@ -84,7 +74,5 @@ function openProject(project: Project) {
 
   <BasePagination v-model:page="page" :total="projects.total" :per-page="projects.perPage" :disabled="loading" />
 
-  <BaseDialog v-if="account" v-model:visible="createOpen" title="Create project">
-    <CreateProjectForm :account-uid="account.uid" @created="openProject" />
-  </BaseDialog>
+  <CreateProjectDialog v-model:visible="createOpen" />
 </template>

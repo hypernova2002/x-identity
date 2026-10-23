@@ -100,7 +100,7 @@ onMounted(() => load.run())
 </script>
 
 <template>
-  <PageHeader title="Users" description="People who can sign in to this account's console." />
+  <PageHeader title="Console users" description="People who manage this account in the console, and their account roles. Project end users are managed in each project's Directory." />
 
   <BaseAlert v-if="load.error.value" variant="danger">We couldn't load users. {{ load.error.value.message }}</BaseAlert>
   <BaseAlert v-if="userAction.error.value" variant="danger">{{ userAction.error.value.message }}</BaseAlert>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -15,6 +16,7 @@ import type { Page } from '@/services/http'
 import { projectAdminService } from '@/services/project'
 import type { EndUser, Group } from '@/types/api'
 
+const route = useRoute()
 const { accountUid, project, access } = useProjectContext()
 
 const groups = ref<Group[]>([])
@@ -41,6 +43,9 @@ const columns = [
 const load = useAsyncAction(async () => {
   if (!project.value) return
   groups.value = (await projectAdminService.listGroups(accountUid.value, project.value.uid)).items
+  // Links from users, applications and providers open a group's members.
+  const linked = groups.value.find((group) => group.uid === route.query.group)
+  if (linked) openMembers(linked)
 })
 
 function openForm(group: Group | null) {
@@ -172,7 +177,12 @@ onMounted(() => load.run())
     <p v-if="!loadMembers.loading.value && members.items.length === 0" class="text-sm text-text-muted">No members yet.</p>
     <ul v-else class="flex flex-col divide-y divide-border">
       <li v-for="member in members.items" :key="member.uid" class="flex items-center justify-between gap-2 py-2 text-sm">
-        <span>{{ member.email }}<span v-if="member.name" class="ml-2 text-text-muted">{{ member.name }}</span></span>
+        <span>
+          <RouterLink :to="{ name: 'project-end-user', params: { projectUid: project?.uid, endUserUid: member.uid } }" class="font-medium text-primary underline-offset-2 hover:underline">
+            {{ member.email }}
+          </RouterLink>
+          <span v-if="member.name" class="ml-2 text-text-muted">{{ member.name }}</span>
+        </span>
         <BaseButton v-if="access.developer" label="Remove" variant="ghost" size="sm" :loading="removeMember.loading.value" @click="removeMember.run(member)" />
       </li>
     </ul>

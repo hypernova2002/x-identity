@@ -1,24 +1,20 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { RouterLink, RouterView, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
-import BaseButton from '@/components/base/BaseButton.vue'
-import ProjectSwitcher from '@/components/console/ProjectSwitcher.vue'
+import BaseDrawer from '@/components/base/BaseDrawer.vue'
+import ConsoleSidebar from '@/components/console/ConsoleSidebar.vue'
+import UserMenu from '@/components/console/UserMenu.vue'
 import { useProjectStore } from '@/stores/project'
 import { useSessionStore } from '@/stores/session'
 
-interface NavItem {
-  label: string
-  to: RouteLocationRaw
-}
-
 const route = useRoute()
-const router = useRouter()
-const session = useSessionStore()
 const projectStore = useProjectStore()
-const { me, isAccountAdmin } = storeToRefs(session)
-const { project, projectsLoaded, access } = storeToRefs(projectStore)
+const { me } = storeToRefs(useSessionStore())
+const { project, projectsLoaded } = storeToRefs(projectStore)
+
+const navigationOpen = ref(false)
 
 /** The project in the URL, or else the one the sidebar offers to open. */
 const currentProjectUid = computed(() => {
@@ -27,47 +23,12 @@ const currentProjectUid = computed(() => {
   return project.value?.uid ?? (projectsLoaded.value ? projectStore.defaultProjectUid() : null)
 })
 
-const projectNavigation = computed<NavItem[]>(() => {
-  const projectUid = currentProjectUid.value
-  if (!projectUid) return []
+const inAccount = computed(() => route.meta.context === 'account')
 
-  const item = (label: string, name: string): NavItem => ({ label, to: { name, params: { projectUid } } })
-  const showAuditLog = project.value?.uid === projectUid && access.value.developer
-  return [
-    item('Overview', 'project'),
-    item('Members', 'project-members'),
-    item('App clients', 'project-app-clients'),
-    item('SAML apps', 'project-saml-apps'),
-    item('End users', 'project-end-users'),
-    item('Groups', 'project-groups'),
-    item('Attributes', 'project-attributes'),
-    item('Authentication', 'project-authentication'),
-    item('Sign-in providers', 'project-sign-in-providers'),
-    item('Test sign-in', 'project-test-sign-in'),
-    ...(showAuditLog ? [item('Audit log', 'project-audit-log')] : []),
-  ]
-})
-
-const accountNavigation = computed<NavItem[]>(() => [
-  { label: 'Projects', to: { name: 'projects' } },
-  ...(isAccountAdmin.value
-    ? [
-        { label: 'Users', to: { name: 'users' } },
-        { label: 'Authentication', to: { name: 'auth-settings' } },
-        { label: 'Audit log', to: { name: 'audit-log' } },
-      ]
-    : []),
-])
-
-const linkClass =
-  'block rounded-md border-l-4 border-transparent px-3 py-2 text-sm text-text hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-[current=page]:border-primary aria-[current=page]:bg-primary-subtle aria-[current=page]:font-semibold aria-[current=page]:text-primary-active'
-
-async function signOut() {
-  const slug = session.account?.slug
-  await session.signOut()
-  projectStore.clear()
-  await router.push(slug ? `/${slug}/sign-in` : '/sign-in')
-}
+watch(
+  () => route.fullPath,
+  () => (navigationOpen.value = false),
+)
 
 onMounted(() => {
   if (!projectsLoaded.value) projectStore.loadProjects().catch(() => null)
@@ -75,45 +36,64 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col md:flex-row">
-    <aside class="flex flex-col gap-6 border-b border-border bg-bg-subtle p-4 md:w-64 md:border-r md:border-b-0">
-      <div class="flex flex-col gap-1">
-        <p class="text-lg font-semibold">x-identity</p>
-        <p class="text-sm text-text-muted">{{ me?.account.name }}</p>
+  <div class="flex h-dvh flex-col">
+    <a
+      href="#main"
+      class="sr-only rounded-md bg-bg px-3 py-2 text-sm font-medium text-primary focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:outline-2 focus:outline-primary"
+    >
+      Skip to content
+    </a>
+
+    <header class="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-bg px-4">
+      <button
+        type="button"
+        class="inline-flex size-10 items-center justify-center rounded-md text-text hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-border md:hidden"
+        aria-label="Open navigation"
+        :aria-expanded="navigationOpen"
+        @click="navigationOpen = true"
+      >
+        <svg aria-hidden="true" viewBox="0 0 20 20" class="size-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+          <path d="M3 5h14M3 10h14M3 15h14" />
+        </svg>
+      </button>
+
+      <RouterLink
+        :to="{ name: 'console-home' }"
+        class="rounded-md text-base font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        x-identity
+      </RouterLink>
+      <p v-if="me" class="hidden min-w-0 items-center gap-2 text-sm sm:flex">
+        <span aria-hidden="true" class="text-text-disabled">/</span>
+        <span class="text-text-muted">Account</span>
+        <span class="truncate font-medium" :title="me.account.name">{{ me.account.name }}</span>
+      </p>
+
+      <div class="ml-auto flex shrink-0 items-center gap-2">
+        <RouterLink
+          :to="{ name: 'projects' }"
+          class="hidden h-10 items-center rounded-md px-3 text-sm font-medium text-text hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-border aria-[current=true]:bg-primary-subtle aria-[current=true]:text-primary-active sm:inline-flex"
+          :aria-current="inAccount ? 'true' : undefined"
+        >
+          Account settings
+        </RouterLink>
+        <UserMenu />
       </div>
+    </header>
 
-      <ProjectSwitcher :current-project-uid="currentProjectUid" />
+    <div class="flex min-h-0 flex-1">
+      <aside id="console-navigation" aria-label="Console navigation" class="hidden w-64 shrink-0 overflow-y-auto border-r border-border bg-bg-subtle md:flex">
+        <ConsoleSidebar :current-project-uid="currentProjectUid" />
+      </aside>
+      <BaseDrawer v-model:visible="navigationOpen" :title="inAccount ? 'Account' : 'Project'">
+        <ConsoleSidebar :current-project-uid="currentProjectUid" />
+      </BaseDrawer>
 
-      <nav v-if="projectNavigation.length > 0" aria-label="Project">
-        <ul class="flex flex-wrap gap-1 md:flex-col">
-          <li v-for="item in projectNavigation" :key="item.label">
-            <RouterLink :to="item.to" :class="linkClass">{{ item.label }}</RouterLink>
-          </li>
-        </ul>
-      </nav>
-
-      <nav aria-labelledby="account-navigation-heading" class="flex flex-col gap-1">
-        <h2 id="account-navigation-heading" class="px-3 text-xs font-semibold tracking-wide text-text-muted uppercase">Account</h2>
-        <ul class="flex flex-wrap gap-1 md:flex-col">
-          <li v-for="item in accountNavigation" :key="item.label">
-            <RouterLink :to="item.to" :class="linkClass">{{ item.label }}</RouterLink>
-          </li>
-        </ul>
-      </nav>
-
-      <div class="mt-auto flex flex-col gap-2 border-t border-border pt-4">
-        <p class="text-sm">
-          <span class="font-medium">{{ me?.name }}</span>
-          <span class="block text-text-muted">{{ me?.email }} · {{ me?.role }}</span>
-        </p>
-        <RouterLink :to="{ name: 'security' }" :class="linkClass">My security</RouterLink>
-        <BaseButton label="Sign out" variant="secondary" size="sm" @click="signOut" />
-      </div>
-    </aside>
-    <main class="flex-1 p-6">
-      <div class="mx-auto flex max-w-5xl flex-col gap-8">
-        <RouterView />
-      </div>
-    </main>
+      <main id="main" tabindex="-1" class="min-w-0 flex-1 overflow-y-auto px-4 py-6 md:px-8">
+        <div class="mx-auto flex max-w-6xl flex-col gap-6">
+          <RouterView />
+        </div>
+      </main>
+    </div>
   </div>
 </template>

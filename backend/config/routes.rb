@@ -154,6 +154,7 @@ Rails.application.routes.draw do
             post "sign-out", action: :sign_out
             post "invitation", action: :resend_invitation
             get "identities", action: :identities
+            get "access", action: :access
             delete "identities/:identity_uid", action: :unlink_identity
           end
         end

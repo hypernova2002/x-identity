@@ -20,10 +20,21 @@ const authenticated = { authenticated: true } as const
 
 export interface AuditEventFilters {
   action_start?: string
+  action_eq?: string
+  target_uid_eq?: string
+  actor_uid_eq?: string
+  app_client_uid_eq?: string
+  occurred_at_gteq?: string
+  per_page?: number
 }
 
 export function auditEventQuery(page: number, filters: AuditEventFilters) {
-  return { page, 'q[action_start]': filters.action_start }
+  const { per_page: perPage, ...conditions } = filters
+  return {
+    page,
+    per_page: perPage,
+    ...Object.fromEntries(Object.entries(conditions).map(([key, value]) => [`q[${key}]`, value])),
+  }
 }
 
 export const meService = {

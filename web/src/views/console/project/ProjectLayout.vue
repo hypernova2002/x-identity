@@ -13,7 +13,6 @@ const projectStore = useProjectStore()
 const { project } = storeToRefs(projectStore)
 
 const projectUid = computed(() => String(route.params.projectUid))
-const sectionTitle = computed(() => route.meta.title ?? 'Overview')
 const loaded = computed(() => project.value?.uid === projectUid.value)
 
 const loading = useAsyncAction((uid: string) => projectStore.select(uid))
@@ -30,7 +29,7 @@ watch(projectUid, (uid) => loading.run(uid), { immediate: true })
   <p v-else-if="!loaded" class="text-sm text-text-muted" role="status">Loading project…</p>
 
   <template v-if="loaded && project">
-    <PageHeader :title="sectionTitle" :description="project.name" />
+    <PageHeader v-if="!route.meta.ownHeader" :title="route.meta.title ?? project.name" :description="route.meta.description" />
     <RouterView :key="project.uid" />
   </template>
 </template>

@@ -24,8 +24,17 @@ class EndUser < ApplicationRecord
   after_create :join_default_groups
 
   def self.ransackable_attributes(_auth_object = nil)
-    %w[email name status]
+    %w[uid email name status]
   end
+
+  scope :with_verified_email, ->(verified) { verified ? where.not(email_verified_at: nil) : where(email_verified_at: nil) }
+  scope :with_mfa, lambda { |enabled|
+    with_credential = OtpCredential.confirmed.where(subject_type: "EndUser").select(:subject_id)
+    enabled ? where(id: with_credential) : where.not(id: with_credential)
+  }
+  # Created by an admin or invited, and hasn't set a password or linked a provider yet.
+  scope :invitation_pending, -> { where(password_digest: nil).where.not(id: EndUserIdentity.select(:end_user_id)) }
+  scope :in_group, ->(group) { where(id: group.group_memberships.select(:end_user_id)) }
 
   # @return [Realms::ProjectRealm]
   def realm

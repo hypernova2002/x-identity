@@ -1,12 +1,23 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { projectRoutes } from './projectRoutes'
 import { useSessionStore } from '@/stores/session'
+import type { AuthSettingsSection } from '@/utils/authSettings'
 
 declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     requiresAdmin?: boolean
     title?: string
+    /** Shown under the title by the project layout. */
+    description?: string
+    /** Which sidebar entry is current, including on detail pages below it. */
+    navItem?: string
+    /** Detail pages render their own header, with breadcrumbs and actions. */
+    ownHeader?: boolean
+    authSection?: AuthSettingsSection
+    /** Account pages swap the project sidebar for the account's own navigation. */
+    context?: 'account'
   }
 }
 
@@ -56,95 +67,28 @@ const router = createRouter({
         {
           path: 'projects/:projectUid',
           component: () => import('../views/console/project/ProjectLayout.vue'),
-          children: [
-            {
-              path: '',
-              name: 'project',
-              component: () => import('../views/console/project/ProjectOverviewView.vue'),
-              meta: { title: 'Overview' },
-            },
-            {
-              path: 'members',
-              name: 'project-members',
-              component: () => import('../views/console/project/ProjectMembersView.vue'),
-              meta: { title: 'Members' },
-            },
-            {
-              path: 'app-clients',
-              name: 'project-app-clients',
-              component: () => import('../views/console/project/ProjectAppClientsView.vue'),
-              meta: { title: 'App clients' },
-            },
-            {
-              path: 'saml-apps',
-              name: 'project-saml-apps',
-              component: () => import('../views/console/project/ProjectSamlAppsView.vue'),
-              meta: { title: 'SAML apps' },
-            },
-            {
-              path: 'groups',
-              name: 'project-groups',
-              component: () => import('../views/console/project/ProjectGroupsView.vue'),
-              meta: { title: 'Groups' },
-            },
-            {
-              path: 'end-users',
-              name: 'project-end-users',
-              component: () => import('../views/console/project/ProjectEndUsersView.vue'),
-              meta: { title: 'End users' },
-            },
-            {
-              path: 'attributes',
-              name: 'project-attributes',
-              component: () => import('../views/console/project/ProjectAttributesView.vue'),
-              meta: { title: 'Attributes' },
-            },
-            {
-              path: 'authentication',
-              name: 'project-authentication',
-              component: () => import('../views/console/project/ProjectAuthSettingsView.vue'),
-              meta: { title: 'Authentication' },
-            },
-            {
-              path: 'sign-in-providers',
-              name: 'project-sign-in-providers',
-              component: () => import('../views/console/project/ProjectSignInProvidersView.vue'),
-              meta: { title: 'Sign-in providers' },
-            },
-            {
-              path: 'test-sign-in',
-              name: 'project-test-sign-in',
-              component: () => import('../views/console/project/ProjectTestSignInView.vue'),
-              meta: { title: 'Test sign-in' },
-            },
-            {
-              path: 'audit-log',
-              name: 'project-audit-log',
-              component: () => import('../views/console/project/ProjectAuditLogView.vue'),
-              meta: { title: 'Audit log' },
-            },
-          ],
+          children: projectRoutes,
         },
-        { path: 'projects', name: 'projects', component: () => import('../views/console/ProjectsView.vue') },
+        { path: 'projects', name: 'projects', component: () => import('../views/console/ProjectsView.vue'), meta: { navItem: 'account-projects', context: 'account' } },
         {
           path: 'account/users',
           name: 'users',
           component: () => import('../views/console/UsersView.vue'),
-          meta: { requiresAdmin: true },
+          meta: { requiresAdmin: true, navItem: 'account-users', context: 'account' },
         },
         {
           path: 'account/authentication',
           name: 'auth-settings',
           component: () => import('../views/console/AuthSettingsView.vue'),
-          meta: { requiresAdmin: true },
+          meta: { requiresAdmin: true, navItem: 'account-authentication', context: 'account' },
         },
         {
           path: 'account/audit-log',
           name: 'audit-log',
           component: () => import('../views/console/AuditLogView.vue'),
-          meta: { requiresAdmin: true },
+          meta: { requiresAdmin: true, navItem: 'account-audit-log', context: 'account' },
         },
-        { path: 'security', name: 'security', component: () => import('../views/console/SecurityView.vue') },
+        { path: 'security', name: 'security', component: () => import('../views/console/SecurityView.vue'), meta: { navItem: 'security' } },
       ],
     },
     {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -17,9 +18,22 @@ const props = defineProps<{
   showAppClient?: boolean
 }>()
 
+const route = useRoute()
+const router = useRouter()
+
+/** Links from other pages narrow the log to one target, actor or app client. */
+const LINKED_FILTERS = { target_uid_eq: 'Target', actor_uid_eq: 'Actor', app_client_uid_eq: 'App client' } as const
+type LinkedFilter = keyof typeof LINKED_FILTERS
+
+const linkedFilters = computed(() =>
+  (Object.keys(LINKED_FILTERS) as LinkedFilter[])
+    .filter((key) => typeof route.query[key] === 'string')
+    .map((key) => ({ key, label: LINKED_FILTERS[key], value: route.query[key] as string })),
+)
+
 const page = ref(1)
-const actionFilter = ref('')
-const appliedFilter = ref('')
+const actionFilter = ref(typeof route.query.action_start === 'string' ? route.query.action_start : '')
+const appliedFilter = ref(actionFilter.value)
 const events = ref<Page<AuditEvent>>({ items: [], total: 0, perPage: 25 })
 
 const columns = [
@@ -32,8 +46,15 @@ const columns = [
 ]
 
 const { loading, error, run: load } = useAsyncAction(async () => {
-  events.value = await props.fetchPage(page.value, { action_start: appliedFilter.value || undefined })
+  const linked = Object.fromEntries(linkedFilters.value.map((filter) => [filter.key, filter.value]))
+  events.value = await props.fetchPage(page.value, { ...linked, action_start: appliedFilter.value || undefined })
 })
+
+async function clearLinkedFilters() {
+  await router.replace({ query: {} })
+  if (page.value === 1) load()
+  else page.value = 1
+}
 
 function applyFilter() {
   appliedFilter.value = actionFilter.value.trim()
@@ -53,6 +74,13 @@ onMounted(() => load())
     <BaseButton type="submit" label="Filter" variant="secondary" />
   </form>
 
+  <div v-if="linkedFilters.length > 0" class="flex flex-wrap items-center gap-2 text-sm" role="status">
+    <span v-for="filter in linkedFilters" :key="filter.key" class="rounded-full border border-border bg-bg-subtle px-3 py-1">
+      {{ filter.label }}: <code class="font-mono text-xs">{{ filter.value }}</code>
+    </span>
+    <BaseButton label="Show all events" variant="ghost" size="sm" @click="clearLinkedFilters" />
+  </div>
+
   <BaseAlert v-if="error" variant="danger">We couldn't load the audit log. {{ error.message }}</BaseAlert>
 
   <BaseTable
@@ -61,7 +89,7 @@ onMounted(() => load())
     :rows="events.items"
     :row-key="(event) => event.uid"
     :loading="loading"
-    :empty-message="appliedFilter ? 'No events match this filter.' : 'No events recorded yet.'"
+    :empty-message="appliedFilter || linkedFilters.length > 0 ? 'No events match these filters.' : 'No events recorded yet.'"
   >
     <template #cell-occurred_at="{ row }">{{ formatDateTime(row.occurred_at) }}</template>
     <template #cell-action="{ row }"><code class="font-mono text-xs">{{ row.action }}</code></template>

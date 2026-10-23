@@ -12,6 +12,7 @@ import type {
   AuthConfiguration,
   CustomAttributes,
   EndUser,
+  EndUserAppAccess,
   EndUserIdentity,
   EndUserStatus,
   Group,
@@ -34,6 +35,27 @@ function base(accountUid: string, projectUid: string) {
 
 export interface EndUserFilters {
   email_cont?: string
+  uid_eq?: string
+  status_eq?: EndUserStatus
+  email_verified?: boolean
+  mfa?: boolean
+  invitation_pending?: boolean
+  group_uid?: string
+}
+
+const flag = (value: boolean | undefined) => (value === undefined ? undefined : String(value))
+
+function endUserQuery(page: number, filters: EndUserFilters) {
+  return {
+    page,
+    'q[email_cont]': filters.email_cont,
+    'q[uid_eq]': filters.uid_eq,
+    'q[status_eq]': filters.status_eq,
+    'filter[email_verified]': flag(filters.email_verified),
+    'filter[mfa]': flag(filters.mfa),
+    'filter[invitation_pending]': filters.invitation_pending ? 'true' : undefined,
+    'filter[group_uid]': filters.group_uid,
+  }
 }
 
 export interface NewAppClient {
@@ -249,8 +271,23 @@ export const projectAdminService = {
   listEndUsers: (accountUid: string, projectUid: string, page: number, filters: EndUserFilters) =>
     apiPage<EndUser>(`${base(accountUid, projectUid)}/end-users`, {
       ...authenticated,
-      query: { page, 'q[email_cont]': filters.email_cont },
+      query: endUserQuery(page, filters),
     }),
+
+  getEndUser: (accountUid: string, projectUid: string, endUserUid: string) =>
+    apiRequest<EndUser>(`${base(accountUid, projectUid)}/end-users/${endUserUid}`, authenticated),
+
+  getEndUserAccess: (accountUid: string, projectUid: string, endUserUid: string) =>
+    apiRequest<EndUserAppAccess[]>(`${base(accountUid, projectUid)}/end-users/${endUserUid}/access`, authenticated),
+
+  getAppClient: (accountUid: string, projectUid: string, clientUid: string) =>
+    apiRequest<AppClient>(`${base(accountUid, projectUid)}/app-clients/${clientUid}`, authenticated),
+
+  getSamlApp: (accountUid: string, projectUid: string, appUid: string) =>
+    apiRequest<SamlApp>(`${base(accountUid, projectUid)}/saml-apps/${appUid}`, authenticated),
+
+  getIdentityProvider: (accountUid: string, projectUid: string, providerUid: string) =>
+    apiRequest<IdentityProvider>(`${base(accountUid, projectUid)}/identity-providers/${providerUid}`, authenticated),
 
   createEndUser: (accountUid: string, projectUid: string, endUser: NewEndUser) =>
     apiRequest<EndUser>(`${base(accountUid, projectUid)}/end-users`, { ...authenticated, method: 'POST', body: endUser }),
