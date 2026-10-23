@@ -3,13 +3,14 @@ import { storeToRefs } from 'pinia'
 
 import AuditLogPanel from '@/components/audit/AuditLogPanel.vue'
 import PageHeader from '@/components/console/PageHeader.vue'
-import { accountService, type AuditEventFilters } from '@/services/account'
+import { accountService } from '@/services/account'
+import type { ListParams } from '@/services/list'
 import { useSessionStore } from '@/stores/session'
 
 const { account } = storeToRefs(useSessionStore())
 
-function fetchPage(page: number, filters: AuditEventFilters) {
-  return accountService.listAuditEvents(account.value!.uid, page, filters)
+function fetchPage(params: ListParams) {
+  return accountService.listAuditEvents(account.value!.uid, params)
 }
 </script>
 

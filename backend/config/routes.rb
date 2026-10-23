@@ -134,6 +134,7 @@ Rails.application.routes.draw do
         resources :identity_providers, path: "identity-providers", param: :uid, only: %i[index show create update destroy] do
           post "parse-saml-metadata", on: :collection, action: :parse_saml_metadata
         end
+        resources :applications, only: :index
         resources :app_clients, path: "app-clients", param: :uid, only: %i[index show create update destroy] do
           post "rotate-secret", on: :member, action: :rotate_secret
           resources :assignments, controller: "app_assignments", param: :uid, only: %i[index create destroy], defaults: { app_kind: "app_client" }

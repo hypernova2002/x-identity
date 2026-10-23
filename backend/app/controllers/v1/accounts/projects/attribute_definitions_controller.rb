@@ -2,10 +2,17 @@ module V1
   module Accounts
     module Projects
       class AttributeDefinitionsController < ManagementController
+        LIST = ListQuery.new(
+          search: "key_or_label_i_cont",
+          filters: %i[data_type_eq required_eq user_editable_eq include_in_token_eq],
+          sorts: { "label" => :label, "key" => :key, "data_type" => :data_type, "created_at" => :created_at },
+          default_sort: "created_at"
+        )
+
         before_action :set_definition, only: %i[update destroy]
 
         def index
-          definitions = paginated(current_project.end_user_attribute_definitions.order(:created_at, :id))
+          definitions = listed(current_project.end_user_attribute_definitions, LIST)
           render json: AttributeDefinitionSerializer.new(definitions).serializable_hash
         end
 

@@ -16,19 +16,7 @@ RSpec.describe "End users (admin)", type: :openapi do
       get "List and search the project's end users" do
         tags "End users"
         security [ { BearerAuth: [] } ]
-        parameter name: :q, in: :query, style: :deepObject, explode: true, schema: {
-          type: :object,
-          properties: { email_cont: { type: :string }, name_cont: { type: :string }, status_eq: { type: :string }, uid_eq: { type: :string } }
-        }
-        parameter name: :filter, in: :query, style: :deepObject, explode: true, schema: {
-          type: :object,
-          properties: {
-            email_verified: { type: :string, enum: %w[true false] },
-            mfa: { type: :string, enum: %w[true false] },
-            invitation_pending: { type: :string, enum: %w[true] },
-            group_uid: { type: :string }
-          }
-        }
+        ListParameters.build(search: "Email, name or uid", sorts: %w[email name status created_at last_sign_in_at], filters: { status_eq: { type: :string }, uid_eq: { type: :string }, with_verified_email: { type: :string, enum: %w[true false] }, with_mfa: { type: :string, enum: %w[true false] }, invitation_pending: { type: :string, enum: %w[true] }, in_group: { type: :string, description: "Group uid" } }).each { |list_parameter| parameter(**list_parameter) }
 
         response 200, "end users, paginated with Total, Per-Page and Link headers" do
           schema type: :array, items: Schemas::EndUser
@@ -57,11 +45,11 @@ RSpec.describe "End users (admin)", type: :openapi do
 
     let(:path_params) { project_path_params(project) }
 
-    it "searches by email" do
-      create(:end_user, project: project, email: "casey@shop.test")
-      create(:end_user, project: project, email: "robin@shop.test")
+    it "searches by email, name or uid" do
+      create(:end_user, project: project, email: "casey@shop.test", name: "Casey")
+      create(:end_user, project: project, email: "robin@shop.test", name: "Robin")
 
-      assert_api_response :get, 200, headers: auth_headers_for(viewer), params: { q: { email_cont: "casey" } }, path_params: path_params do
+      assert_api_response :get, 200, headers: auth_headers_for(viewer), params: { q: { search: "casey" } }, path_params: path_params do
         expect(parsed_body.pluck("email")).to eq([ "casey@shop.test" ])
       end
     end
@@ -109,21 +97,33 @@ RSpec.describe "End users (admin)", type: :openapi do
     end
 
     it "filters by email verification, MFA and pending invitations" do
-      expect(emails_for(filter: { email_verified: "false" })).to contain_exactly("unverified@shop.test", "invited@shop.test")
-      expect(emails_for(filter: { mfa: "true" })).to eq([ "mfa@shop.test" ])
-      expect(emails_for(filter: { invitation_pending: "true" })).to eq([ "invited@shop.test" ])
+      expect(emails_for(q: { with_verified_email: "false" })).to contain_exactly("unverified@shop.test", "invited@shop.test")
+      expect(emails_for(q: { with_mfa: "true" })).to eq([ "mfa@shop.test" ])
+      expect(emails_for(q: { invitation_pending: "true" })).to eq([ "invited@shop.test" ])
     end
 
     it "filters by group and finds users by uid" do
       group = create(:group, project: project)
       group.group_memberships.create!(end_user: with_mfa)
 
-      expect(emails_for(filter: { group_uid: group.uid })).to eq([ "mfa@shop.test" ])
+      expect(emails_for(q: { in_group: group.uid })).to eq([ "mfa@shop.test" ])
       expect(emails_for(q: { uid_eq: verified.uid })).to eq([ "verified@shop.test" ])
     end
 
+    it "sorts in either direction" do
+      expect(emails_for(sort: "email")).to eq(%w[invited@shop.test mfa@shop.test unverified@shop.test verified@shop.test])
+      expect(emails_for(sort: "-email").first).to eq("verified@shop.test")
+    end
+
+    it "refuses a sort it doesn't support" do
+      get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/end-users", params: { sort: "password_digest" }, headers: auth_headers_for(viewer)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.dig("error", "details")).to eq([ { "field" => "sort", "message" => "Sort by one of: email, name, status, created_at, last_sign_in_at." } ])
+    end
+
     it "ignores values it doesn't understand" do
-      expect(emails_for(filter: { mfa: "maybe" }).size).to eq(4)
+      expect(emails_for(q: { with_mfa: "maybe" }).size).to eq(4)
     end
   end
 

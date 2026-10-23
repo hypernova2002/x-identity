@@ -16,6 +16,7 @@ RSpec.describe "Groups and app assignments", type: :openapi do
       get "List the project's groups" do
         tags "Groups"
         security [ { BearerAuth: [] } ]
+        ListParameters.build(search: "Name", sorts: %w[name member_count created_at], filters: { default_for_new_users_eq: { type: :string, enum: %w[true false] } }).each { |list_parameter| parameter(**list_parameter) }
 
         response 200, "groups, with member counts" do
           schema type: :array, items: Schemas::Group
@@ -86,6 +87,25 @@ RSpec.describe "Groups and app assignments", type: :openapi do
       assert_api_response(:get, 200, headers: auth_headers_for(viewer), path_params: project_path_params(project)) do
         expect(parsed_body.find { |row| row["name"] == "Staff" }["member_count"]).to eq(2)
       end
+    end
+
+    it "sorts by member count, a value computed in the query" do
+      big = create(:group, project: project, name: "Big")
+      create(:group, project: project, name: "Empty")
+      2.times { big.group_memberships.create!(end_user: create(:end_user, project: project, in_all_end_users_group: false)) }
+
+      get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/groups", params: { sort: "-member_count" }, headers: auth_headers_for(viewer)
+
+      expect(response.parsed_body.first["name"]).to eq("Big")
+    end
+
+    it "searches by name and filters groups new users join" do
+      create(:group, project: project, name: "Customers", default_for_new_users: true)
+      create(:group, project: project, name: "Staff")
+
+      get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/groups", params: { q: { default_for_new_users_eq: "true", search: "cust" } }, headers: auth_headers_for(viewer)
+
+      expect(response.parsed_body.pluck("name")).to eq([ "Customers" ])
     end
 
     it "is managed by developers and admins, not viewers" do

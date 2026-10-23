@@ -24,7 +24,7 @@ class Project < ApplicationRecord
   validate :email_link_urls_are_templates
 
   def self.ransackable_attributes(_auth_object = nil)
-    %w[uid]
+    %w[uid name created_at]
   end
 
   # @return [Realms::ProjectRealm]

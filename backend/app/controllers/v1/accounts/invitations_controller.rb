@@ -1,12 +1,19 @@
 module V1
   module Accounts
     class InvitationsController < AuthenticatedController
-      include Paginated
+      include Listing
+
+      LIST = ListQuery.new(
+        search: "email_i_cont",
+        filters: %i[role_eq],
+        sorts: { "email" => :email, "role" => :role, "expires_at" => :expires_at, "created_at" => :created_at },
+        default_sort: "created_at"
+      )
 
       before_action :require_account_admin!
 
       def index
-        invitations = paginated(current_account.invitations.pending.includes(:invited_by).order(:created_at, :id))
+        invitations = listed(current_account.invitations.pending.includes(:invited_by), LIST)
         render json: InvitationSerializer.new(invitations).serializable_hash
       end
 

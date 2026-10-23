@@ -1,5 +1,16 @@
 import { apiPage, apiRequest } from './http'
-import { auditEventQuery, type AuditEventFilters } from './account'
+import { LOOKUP, listQuery, type ListParams } from './list'
+import {
+  appAssignmentSchema,
+  appClientSchema,
+  applicationSchema,
+  attributeDefinitionSchema,
+  auditEventSchema,
+  endUserSchema,
+  groupSchema,
+  identityProviderSchema,
+  samlAppSchema,
+} from './schemas'
 import type {
   AppClient,
   AppClientType,
@@ -8,7 +19,6 @@ import type {
   AppAssignment,
   AppKind,
   AttributeDefinition,
-  AuditEvent,
   AuthConfiguration,
   CustomAttributes,
   EndUser,
@@ -31,31 +41,6 @@ const authenticated = { authenticated: true } as const
 
 function base(accountUid: string, projectUid: string) {
   return `/v1/accounts/${accountUid}/projects/${projectUid}`
-}
-
-export interface EndUserFilters {
-  email_cont?: string
-  uid_eq?: string
-  status_eq?: EndUserStatus
-  email_verified?: boolean
-  mfa?: boolean
-  invitation_pending?: boolean
-  group_uid?: string
-}
-
-const flag = (value: boolean | undefined) => (value === undefined ? undefined : String(value))
-
-function endUserQuery(page: number, filters: EndUserFilters) {
-  return {
-    page,
-    'q[email_cont]': filters.email_cont,
-    'q[uid_eq]': filters.uid_eq,
-    'q[status_eq]': filters.status_eq,
-    'filter[email_verified]': flag(filters.email_verified),
-    'filter[mfa]': flag(filters.mfa),
-    'filter[invitation_pending]': filters.invitation_pending ? 'true' : undefined,
-    'filter[group_uid]': filters.group_uid,
-  }
 }
 
 export interface NewAppClient {
@@ -143,11 +128,14 @@ export const projectAdminService = {
       body: changes,
     }),
 
-  listAuditEvents: (accountUid: string, projectUid: string, page: number, filters: AuditEventFilters) =>
-    apiPage<AuditEvent>(`${base(accountUid, projectUid)}/audit-events`, { ...authenticated, query: auditEventQuery(page, filters) }),
+  listAuditEvents: (accountUid: string, projectUid: string, params: ListParams) =>
+    apiPage(`${base(accountUid, projectUid)}/audit-events`, auditEventSchema, { ...authenticated, query: listQuery(params) }),
+
+  listApplications: (accountUid: string, projectUid: string, params: ListParams) =>
+    apiPage(`${base(accountUid, projectUid)}/applications`, applicationSchema, { ...authenticated, query: listQuery(params) }),
 
   listAppClients: (accountUid: string, projectUid: string) =>
-    apiPage<AppClient>(`${base(accountUid, projectUid)}/app-clients`, { ...authenticated, query: { per_page: 100 } }),
+    apiPage(`${base(accountUid, projectUid)}/app-clients`, appClientSchema, { ...authenticated, query: listQuery(LOOKUP) }),
 
   createAppClient: (accountUid: string, projectUid: string, client: NewAppClient) =>
     apiRequest<AppClientWithSecret>(`${base(accountUid, projectUid)}/app-clients`, { ...authenticated, method: 'POST', body: client }),
@@ -164,8 +152,8 @@ export const projectAdminService = {
   deleteAppClient: (accountUid: string, projectUid: string, clientUid: string) =>
     apiRequest<null>(`${base(accountUid, projectUid)}/app-clients/${clientUid}`, { ...authenticated, method: 'DELETE' }),
 
-  listIdentityProviders: (accountUid: string, projectUid: string) =>
-    apiPage<IdentityProvider>(`${base(accountUid, projectUid)}/identity-providers`, { ...authenticated, query: { per_page: 100 } }),
+  listIdentityProviders: (accountUid: string, projectUid: string, params: ListParams = LOOKUP) =>
+    apiPage(`${base(accountUid, projectUid)}/identity-providers`, identityProviderSchema, { ...authenticated, query: listQuery(params) }),
 
   createIdentityProvider: (accountUid: string, projectUid: string, kind: IdentityProviderKind, input: IdentityProviderInput) =>
     apiRequest<IdentityProvider>(`${base(accountUid, projectUid)}/identity-providers`, {
@@ -200,8 +188,11 @@ export const projectAdminService = {
       method: 'DELETE',
     }),
 
-  listGroups: (accountUid: string, projectUid: string) =>
-    apiPage<Group>(`${base(accountUid, projectUid)}/groups`, { ...authenticated, query: { per_page: 100 } }),
+  listGroups: (accountUid: string, projectUid: string, params: ListParams = LOOKUP) =>
+    apiPage(`${base(accountUid, projectUid)}/groups`, groupSchema, { ...authenticated, query: listQuery(params) }),
+
+  getGroup: (accountUid: string, projectUid: string, groupUid: string) =>
+    apiRequest<Group>(`${base(accountUid, projectUid)}/groups/${groupUid}`, authenticated),
 
   createGroup: (accountUid: string, projectUid: string, input: GroupInput) =>
     apiRequest<Group>(`${base(accountUid, projectUid)}/groups`, { ...authenticated, method: 'POST', body: input }),
@@ -213,7 +204,7 @@ export const projectAdminService = {
     apiRequest<null>(`${base(accountUid, projectUid)}/groups/${groupUid}`, { ...authenticated, method: 'DELETE' }),
 
   listGroupMembers: (accountUid: string, projectUid: string, groupUid: string, page: number) =>
-    apiPage<EndUser>(`${base(accountUid, projectUid)}/groups/${groupUid}/members`, { ...authenticated, query: { page } }),
+    apiPage(`${base(accountUid, projectUid)}/groups/${groupUid}/members`, endUserSchema, { ...authenticated, query: listQuery({ page }) }),
 
   addGroupMember: (accountUid: string, projectUid: string, groupUid: string, endUserUid: string) =>
     apiRequest<null>(`${base(accountUid, projectUid)}/groups/${groupUid}/members`, {
@@ -226,7 +217,7 @@ export const projectAdminService = {
     apiRequest<null>(`${base(accountUid, projectUid)}/groups/${groupUid}/members/${endUserUid}`, { ...authenticated, method: 'DELETE' }),
 
   listAssignments: (accountUid: string, projectUid: string, kind: AppKind, appUid: string) =>
-    apiPage<AppAssignment>(`${base(accountUid, projectUid)}/${appPath(kind)}/${appUid}/assignments`, { ...authenticated, query: { per_page: 100 } }),
+    apiPage(`${base(accountUid, projectUid)}/${appPath(kind)}/${appUid}/assignments`, appAssignmentSchema, { ...authenticated, query: listQuery(LOOKUP) }),
 
   assign: (accountUid: string, projectUid: string, kind: AppKind, appUid: string, principalType: PrincipalType, principalUid: string) =>
     apiRequest<AppAssignment>(`${base(accountUid, projectUid)}/${appPath(kind)}/${appUid}/assignments`, {
@@ -242,7 +233,7 @@ export const projectAdminService = {
     }),
 
   listSamlApps: (accountUid: string, projectUid: string) =>
-    apiPage<SamlApp>(`${base(accountUid, projectUid)}/saml-apps`, { ...authenticated, query: { per_page: 100 } }),
+    apiPage(`${base(accountUid, projectUid)}/saml-apps`, samlAppSchema, { ...authenticated, query: listQuery(LOOKUP) }),
 
   createSamlApp: (accountUid: string, projectUid: string, input: SamlAppInput) =>
     apiRequest<SamlApp>(`${base(accountUid, projectUid)}/saml-apps`, { ...authenticated, method: 'POST', body: input }),
@@ -268,11 +259,8 @@ export const projectAdminService = {
   removeSamlCertificate: (accountUid: string, projectUid: string, certificateUid: string) =>
     apiRequest<null>(`${base(accountUid, projectUid)}/saml-certificates/${certificateUid}`, { ...authenticated, method: 'DELETE' }),
 
-  listEndUsers: (accountUid: string, projectUid: string, page: number, filters: EndUserFilters) =>
-    apiPage<EndUser>(`${base(accountUid, projectUid)}/end-users`, {
-      ...authenticated,
-      query: endUserQuery(page, filters),
-    }),
+  listEndUsers: (accountUid: string, projectUid: string, params: ListParams) =>
+    apiPage(`${base(accountUid, projectUid)}/end-users`, endUserSchema, { ...authenticated, query: listQuery(params) }),
 
   getEndUser: (accountUid: string, projectUid: string, endUserUid: string) =>
     apiRequest<EndUser>(`${base(accountUid, projectUid)}/end-users/${endUserUid}`, authenticated),
@@ -307,8 +295,8 @@ export const projectAdminService = {
   resendInvitation: (accountUid: string, projectUid: string, endUserUid: string) =>
     apiRequest<null>(`${base(accountUid, projectUid)}/end-users/${endUserUid}/invitation`, { ...authenticated, method: 'POST' }),
 
-  listAttributes: (accountUid: string, projectUid: string) =>
-    apiPage<AttributeDefinition>(`${base(accountUid, projectUid)}/attributes`, { ...authenticated, query: { per_page: 100 } }),
+  listAttributes: (accountUid: string, projectUid: string, params: ListParams = LOOKUP) =>
+    apiPage(`${base(accountUid, projectUid)}/attributes`, attributeDefinitionSchema, { ...authenticated, query: listQuery(params) }),
 
   createAttribute: (accountUid: string, projectUid: string, definition: NewAttributeDefinition) =>
     apiRequest<AttributeDefinition>(`${base(accountUid, projectUid)}/attributes`, { ...authenticated, method: 'POST', body: definition }),

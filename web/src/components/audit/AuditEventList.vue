@@ -4,16 +4,17 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
-import type { AuditEventFilters } from '@/services/account'
 import type { Page } from '@/services/http'
+import type { ListParams } from '@/services/list'
 import type { AuditEvent } from '@/types/api'
 import { formatDateTime } from '@/utils/format'
 
 /** A short list of the latest matching events, linking to the full audit log. */
 const props = withDefaults(
   defineProps<{
-    fetchPage: (page: number, filters: AuditEventFilters) => Promise<Page<AuditEvent>>
-    filters: AuditEventFilters
+    fetchPage: (params: ListParams) => Promise<Page<AuditEvent>>
+    /** `q` predicates of the audit log, e.g. `target_uid_eq`. */
+    filters: Record<string, string>
     emptyMessage: string
     fullLog?: RouteLocationRaw
     limit?: number
@@ -24,7 +25,7 @@ const props = withDefaults(
 const events = ref<Page<AuditEvent>>({ items: [], total: 0, perPage: 0 })
 
 const load = useAsyncAction(async () => {
-  events.value = await props.fetchPage(1, { ...props.filters, per_page: props.limit })
+  events.value = await props.fetchPage({ perPage: props.limit, filters: props.filters })
 })
 
 onMounted(() => load.run())

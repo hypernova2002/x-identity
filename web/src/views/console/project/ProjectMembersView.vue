@@ -4,9 +4,11 @@ import { computed, onMounted, ref } from 'vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
+import BaseDataTable from '@/components/base/BaseDataTable.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
-import BaseTable from '@/components/base/BaseTable.vue'
+import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectService, userService } from '@/services/account'
 import type { ProjectMember, ProjectRole, User } from '@/types/api'
@@ -24,15 +26,23 @@ const candidateOptions = computed(() =>
     .map((user) => ({ label: `${user.name} (${user.email})`, value: user.uid })),
 )
 
-const columns = [
-  { key: 'name', label: 'Name' },
-  { key: 'email', label: 'Email' },
-  { key: 'role', label: 'Project role' },
+const columns: DataTableColumn[] = [
+  { key: 'name', label: 'Name', sortKey: 'name' },
+  { key: 'email', label: 'Email', sortKey: 'email' },
+  { key: 'role', label: 'Project role', sortKey: 'role' },
   { key: 'actions', label: 'Actions', srOnly: true },
 ]
+const filters: DataTableFilter[] = [{ type: 'select', key: 'role_eq', label: 'Project role', options: projectRoleOptions }]
+
+const list = useListView((params) => projectService.listMembers(accountUid.value, project.value!.uid, params), {
+  defaultSort: 'created_at',
+  filterKeys: filters.map((filter) => filter.key),
+  syncRoute: true,
+})
+const listState = list.state
 
 const loadUsers = useAsyncAction(async () => {
-  if (access.value.admin) accountUsers.value = (await userService.list(accountUid.value, 1)).items
+  if (access.value.admin) accountUsers.value = (await userService.list(accountUid.value)).items
 })
 
 const addMember = useAsyncAction(async () => {
@@ -40,6 +50,7 @@ const addMember = useAsyncAction(async () => {
   const member = await projectService.addMember(accountUid.value, project.value.uid, newMemberUid.value, newMemberRole.value)
   members.value = [...members.value, member]
   newMemberUid.value = ''
+  await list.reload()
 })
 
 const memberAction = useAsyncAction(async (member: ProjectMember, role: ProjectRole | null) => {
@@ -51,6 +62,7 @@ const memberAction = useAsyncAction(async (member: ProjectMember, role: ProjectR
     const updated = await projectService.updateMember(accountUid.value, project.value.uid, member.user_uid, role)
     members.value = members.value.map((existing) => (existing.user_uid === updated.user_uid ? updated : existing))
   }
+  await list.reload()
 })
 
 onMounted(() => loadUsers.run())
@@ -62,12 +74,20 @@ onMounted(() => loadUsers.run())
     description="Admins manage everything in the project; developers manage app clients and end users; viewers can only look. Account owners and admins can always access every project."
   >
     <BaseAlert v-if="memberAction.error.value" variant="danger">{{ memberAction.error.value.message }}</BaseAlert>
-    <BaseTable
+    <BaseDataTable
+      v-model:state="listState"
       caption="Project members"
+      search-label="Search by name or email"
       :columns="columns"
-      :rows="members"
+      :filters="filters"
+      :rows="list.rows.value"
       :row-key="(member) => member.user_uid"
+      :total="list.total.value"
+      :per-page="list.perPage.value"
+      :loading="list.loading.value"
+      :error="list.error.value"
       empty-message="No one has been added to this project yet."
+      @retry="list.reload"
     >
       <template #cell-role="{ row }">
         <BaseSelect
@@ -91,7 +111,7 @@ onMounted(() => loadUsers.run())
           @click="memberAction.run(row, null)"
         />
       </template>
-    </BaseTable>
+    </BaseDataTable>
 
     <form v-if="access.admin" class="flex flex-col gap-4 border-t border-border pt-4" novalidate @submit.prevent="addMember.run()">
       <h3 class="font-semibold">Add a member</h3>

@@ -2,7 +2,6 @@ module V1
   module Accounts
     # The account's own audit log. Events inside a project are in that project's log.
     class AuditEventsController < AuthenticatedController
-      include Paginated
       include AuditLogListing
 
       before_action :require_account_admin!

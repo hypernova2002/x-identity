@@ -11,6 +11,10 @@ class User < ApplicationRecord
 
   enum :role, { owner: "owner", admin: "admin", member: "member" }, validate: true
 
+  def self.ransackable_attributes(_auth_object = nil)
+    %w[name email role status]
+  end
+
   validates :name, presence: true, length: { maximum: 100 }
   validates :email,
     presence: true,

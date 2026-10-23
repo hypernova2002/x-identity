@@ -34,13 +34,19 @@ pages renamed in the redesign (`app-clients`, `saml-apps`, `sign-in-providers`) 
 | Directory | Groups | Groups, members, and whether new users join automatically. | Developers |
 | Directory | Attributes | Custom attributes: key, label, type, max length, required, user-editable, included in the ID token. Up to 50. | Project admins |
 | Authentication | Settings | The project's [auth configuration](#authentication-settings), in tabs: Sign-in methods, MFA, Security policies, Tokens & sessions, Signing keys (with the JWKS URL and SAML certificates). Each tab saves only its own settings; rarely changed limits are under "Advanced". | Project admins |
-| Authentication | Identity providers | Social (Google, Apple), OpenID Connect and enterprise SAML providers, grouped by kind, with the callback URL. Each provider has a page: configuration, service provider details, domains, linking and provisioning rules, group mapping, single logout, diagnostics. | Project admins |
+| Authentication | Identity providers | Social (Google, Apple), OpenID Connect and enterprise SAML providers in one list, filterable by type, with the callback URL. Each provider has a page: configuration, service provider details, domains, linking and provisioning rules, group mapping, single logout, diagnostics. | Project admins |
 | Monitoring & testing | Test sign-in | Signs an end user in through the public API or through hosted login, walks through challenges, and decodes the tokens, which are kept in memory only. Failures are explained without revealing whether an email is registered. Linked from each application. | Any project member |
 | Monitoring & testing | Audit log | The project's events, filterable by action; links from users and apps open it pre-filtered. | Developers |
 | Project settings | General | Name, self sign-up, email link templates (confirm sign-up, reset password, accept invitation). Deleting the project. | Project admins (delete: account admins) |
 | Project settings | Members | Console users with a role in the project. | Project admins |
 
 Leaving a form with unsaved changes asks for confirmation.
+
+Every list (projects, console users, invitations, members, end users, groups, attributes, identity
+providers, applications, audit logs) is searched, filtered, sorted and paged by the server. Search
+and text filters apply as you type; dropdown and date filters apply at once; any change goes back to
+page 1. The list's state is kept in the URL, so it survives reloads and can be shared. Date filters
+cover whole days in UTC.
 
 The console has no list of an end user's active sessions (the API doesn't provide one); "Sign out
 everywhere" ends them all. SAML sign-ins are recorded against the user rather than the SAML app, so a

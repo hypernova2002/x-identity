@@ -117,6 +117,19 @@ export interface Group {
 }
 
 export type AppKind = 'app_client' | 'saml_app'
+
+/** An app client or SAML app, as listed together on the Applications page. */
+export interface Application {
+  app_type: AppKind
+  uid: string
+  name: string
+  enabled: boolean
+  /** App clients only. */
+  client_type: AppClientType | null
+  /** SAML apps only. */
+  entity_id: string | null
+  created_at: string
+}
 export type PrincipalType = 'end_user' | 'group'
 
 export interface AppAssignment {

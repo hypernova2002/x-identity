@@ -34,7 +34,7 @@ export const useProjectStore = defineStore('project', () => {
   })
 
   async function loadProjects() {
-    projects.value = (await projectService.list(accountUid.value, 1)).items
+    projects.value = (await projectService.list(accountUid.value)).items
     projectsLoaded.value = true
   }
 

@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 export interface ApiErrorDetail {
   field: string
   message: string
@@ -37,7 +39,7 @@ export interface AuthHandlers {
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
-  query?: Record<string, string | number | undefined>
+  query?: Record<string, string | number | readonly string[] | undefined>
   authenticated?: boolean
 }
 
@@ -82,7 +84,8 @@ function buildUrl(path: string, query: RequestOptions['query']): string {
 
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== '') search.set(key, String(value))
+    if (Array.isArray(value)) value.forEach((item) => search.append(`${key}[]`, item))
+    else if (value !== undefined && value !== '') search.set(key, String(value))
   }
   const queryString = search.toString()
   return queryString === '' ? url : `${url}?${queryString}`
@@ -135,9 +138,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return body as T
 }
 
-export async function apiPage<T>(path: string, options: RequestOptions = {}): Promise<Page<T>> {
+/** A page of a list endpoint. Items are checked against `schema`, so a changed API fails loudly here. */
+export async function apiPage<T>(path: string, schema: z.ZodType<T>, options: RequestOptions = {}): Promise<Page<T>> {
   const { response, body } = await sendWithRefresh(path, options)
-  const items = (body ?? []) as T[]
+  const parsed = z.array(schema).safeParse(body ?? [])
+  if (!parsed.success) throw new ApiError('invalid_response', 'The server sent a list we couldn\'t read. Try again, or reload the page.', response.status)
+  const items = parsed.data
 
   return {
     items,

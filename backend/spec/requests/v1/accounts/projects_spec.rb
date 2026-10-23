@@ -16,6 +16,7 @@ RSpec.describe "Projects", type: :openapi do
       get "List projects you can see" do
         tags "Projects"
         security [ { BearerAuth: [] } ]
+        ListParameters.build(search: "Name", sorts: %w[name created_at], filters: { created_at_gteq: { type: :string, format: "date-time" }, created_at_lteq: { type: :string, format: "date-time" } }).each { |list_parameter| parameter(**list_parameter) }
 
         response 200, "projects" do
           schema type: :array, items: Schemas::Project
@@ -149,6 +150,28 @@ RSpec.describe "Projects", type: :openapi do
 
     it "lets account admins delete the project" do
       assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: path_params
+    end
+  end
+
+  describe "searching and sorting" do
+    def names(params)
+      get "/v1/accounts/#{account.uid}/projects", params: params, headers: auth_headers_for(admin)
+      response.parsed_body.pluck("name")
+    end
+
+    it "searches by name and sorts either way" do
+      create(:project, account: account, name: "Staging")
+
+      expect(names(q: { search: "stag" })).to eq([ "Staging" ])
+      expect(names(sort: "-name")).to eq(%w[Staging Production])
+    end
+
+    it "still shows members only their projects" do
+      create(:project, account: account, name: "Secret")
+
+      get "/v1/accounts/#{account.uid}/projects", params: { q: { search: "Secret" } }, headers: auth_headers_for(member)
+
+      expect(response.parsed_body).to be_empty
     end
   end
 end

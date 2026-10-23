@@ -1,25 +1,26 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseCheckbox from '@/components/base/BaseCheckbox.vue'
+import BaseDataTable from '@/components/base/BaseDataTable.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
-import BaseTable from '@/components/base/BaseTable.vue'
+import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectAdminService } from '@/services/project'
 import type { AttributeDataType, AttributeDefinition } from '@/types/api'
-import { attributeDataTypeOptions } from '@/utils/options'
+import { attributeDataTypeOptions, yesNoOptions } from '@/utils/options'
 
 type Flag = 'required' | 'user_editable' | 'include_in_token'
 
 const { accountUid, project, access } = useProjectContext()
 
-const definitions = ref<AttributeDefinition[]>([])
 const createOpen = ref(false)
 const key = ref('')
 const label = ref('')
@@ -30,9 +31,9 @@ const userEditable = ref(true)
 const includeInToken = ref(false)
 const pendingDelete = ref<AttributeDefinition | null>(null)
 
-const columns = [
-  { key: 'label', label: 'Attribute' },
-  { key: 'data_type', label: 'Type' },
+const columns: DataTableColumn[] = [
+  { key: 'label', label: 'Attribute', sortKey: 'label' },
+  { key: 'data_type', label: 'Type', sortKey: 'data_type' },
   { key: 'required', label: 'Required' },
   { key: 'user_editable', label: 'End users can edit' },
   { key: 'include_in_token', label: 'In ID token' },
@@ -41,14 +42,23 @@ const columns = [
 
 const typeLabels = Object.fromEntries(attributeDataTypeOptions.map((option) => [option.value, option.label]))
 
-const load = useAsyncAction(async () => {
-  if (!project.value) return
-  definitions.value = (await projectAdminService.listAttributes(accountUid.value, project.value.uid)).items
+const filters: DataTableFilter[] = [
+  { type: 'select', key: 'data_type_eq', label: 'Type', options: attributeDataTypeOptions },
+  { type: 'select', key: 'required_eq', label: 'Required', options: yesNoOptions },
+  { type: 'select', key: 'user_editable_eq', label: 'End users can edit', options: yesNoOptions },
+  { type: 'select', key: 'include_in_token_eq', label: 'In ID token', options: yesNoOptions },
+]
+
+const list = useListView((params) => projectAdminService.listAttributes(accountUid.value, project.value!.uid, params), {
+  defaultSort: 'created_at',
+  filterKeys: filters.map((filter) => filter.key),
+  syncRoute: true,
 })
+const listState = list.state
 
 const create = useAsyncAction(async () => {
   if (!project.value) return
-  const definition = await projectAdminService.createAttribute(accountUid.value, project.value.uid, {
+  await projectAdminService.createAttribute(accountUid.value, project.value.uid, {
     key: key.value.trim(),
     label: label.value,
     data_type: dataType.value,
@@ -57,27 +67,26 @@ const create = useAsyncAction(async () => {
     user_editable: userEditable.value,
     include_in_token: includeInToken.value,
   })
-  definitions.value = [...definitions.value, definition]
   createOpen.value = false
   key.value = ''
   label.value = ''
   maxLength.value = ''
+  await list.reload()
 })
 
 const update = useAsyncAction(async (definition: AttributeDefinition, flag: Flag, value: boolean) => {
   if (!project.value) return
-  const updated = await projectAdminService.updateAttribute(accountUid.value, project.value.uid, definition.uid, { [flag]: value })
-  definitions.value = definitions.value.map((existing) => (existing.uid === updated.uid ? updated : existing))
+  await projectAdminService.updateAttribute(accountUid.value, project.value.uid, definition.uid, { [flag]: value })
+  await list.reload()
 })
 
 const destroy = useAsyncAction(async (definition: AttributeDefinition) => {
   if (!project.value) return
   await projectAdminService.deleteAttribute(accountUid.value, project.value.uid, definition.uid)
-  definitions.value = definitions.value.filter((existing) => existing.uid !== definition.uid)
   pendingDelete.value = null
+  await list.reload()
 })
 
-onMounted(() => load.run())
 </script>
 
 <template>
@@ -85,21 +94,26 @@ onMounted(() => load.run())
     title="Attributes"
     description="Extra profile fields for this project's end users. Values are checked on sign-up, profile updates and admin changes."
   >
-    <template v-if="access.admin" #footer>
-      <BaseButton label="Add attribute" @click="createOpen = true" />
-    </template>
-
-    <BaseAlert v-if="load.error.value" variant="danger">We couldn't load attributes. {{ load.error.value.message }}</BaseAlert>
     <BaseAlert v-if="update.error.value" variant="danger">{{ update.error.value.message }}</BaseAlert>
 
-    <BaseTable
+    <BaseDataTable
+      v-model:state="listState"
       caption="Attributes"
+      search-label="Search by key or label"
       :columns="columns"
-      :rows="definitions"
+      :filters="filters"
+      :rows="list.rows.value"
       :row-key="(definition) => definition.uid"
-      :loading="load.loading.value"
+      :total="list.total.value"
+      :per-page="list.perPage.value"
+      :loading="list.loading.value"
+      :error="list.error.value"
       empty-message="No custom attributes yet. End users have an email and name."
+      @retry="list.reload"
     >
+      <template v-if="access.admin" #actions>
+        <BaseButton label="Add attribute" @click="createOpen = true" />
+      </template>
       <template #cell-label="{ row }">
         <span class="font-medium">{{ row.label }}</span>
         <code class="block font-mono text-xs text-text-muted">{{ row.key }}</code>
@@ -119,7 +133,7 @@ onMounted(() => load.run())
       <template #cell-actions="{ row }">
         <BaseButton v-if="access.admin" label="Delete" variant="ghost" size="sm" @click="pendingDelete = row" />
       </template>
-    </BaseTable>
+    </BaseDataTable>
   </BaseCard>
 
   <BaseDialog v-model:visible="createOpen" title="Add attribute">

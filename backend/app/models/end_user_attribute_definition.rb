@@ -5,6 +5,10 @@ class EndUserAttributeDefinition < ApplicationRecord
 
   self.uid_prefix = "attr"
 
+  def self.ransackable_attributes(_auth_object = nil)
+    %w[key label data_type required user_editable include_in_token]
+  end
+
   MAX_PER_PROJECT = 50
   MAX_STRING_LENGTH = 2048
   RESERVED_KEYS = %w[

@@ -15,7 +15,7 @@ import IdentityProviderForm from '@/components/project/IdentityProviderForm.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { useProviderEditor } from '@/composables/useProviderEditor'
-import type { AuditEventFilters } from '@/services/account'
+import type { ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
 import type { Group, IdentityProvider } from '@/types/api'
 import { identityProviderKindOptions } from '@/utils/options'
@@ -63,8 +63,8 @@ const destroy = useAsyncAction(async () => {
   await router.push({ name: 'project-identity-providers', params: { projectUid: project.value.uid } })
 })
 
-function fetchAudit(page: number, filters: AuditEventFilters) {
-  return projectAdminService.listAuditEvents(accountUid.value, project.value!.uid, page, filters)
+function fetchAudit(params: ListParams) {
+  return projectAdminService.listAuditEvents(accountUid.value, project.value!.uid, params)
 }
 
 watch(providerUid, () => load.run())

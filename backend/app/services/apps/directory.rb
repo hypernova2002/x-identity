@@ -1,0 +1,89 @@
+module Apps
+  # A project's app clients and SAML apps as one list, searched, filtered, sorted and paged in the
+  # database. It answers `count`, `offset` and `limit` like a relation, so it paginates like one.
+  #
+  # Requests use `q[search]` (name or uid), `q[app_type_eq]` (`app_client` or `saml_app`),
+  # `q[enabled_eq]` and `sort` (`name`, `type` or `created_at`, `-` for descending).
+  class Directory
+    include Enumerable
+
+    Row = Data.define(:app_type, :uid, :name, :enabled, :client_type, :entity_id, :created_at)
+
+    SORTS = { "name" => :name, "type" => :app_type, "created_at" => :created_at }.freeze
+    TABLE = Arel::Table.new(:applications)
+
+    # @param project [Project]
+    # @param params [ActionController::Parameters]
+    # @raise [ApiError] `validation_failed` when the sort key isn't one of {SORTS}
+    def initialize(project, params, offset: 0, limit: nil)
+      @project = project
+      @params = params
+      @query = params.fetch(:q, {}).permit(:search, :app_type_eq, :enabled_eq)
+      @sort = params[:sort].presence || "name"
+      @offset = offset
+      @limit = limit
+      sort_column
+    end
+
+    # @return [Directory]
+    def offset(value)
+      self.class.new(@project, @params, offset: value, limit: @limit)
+    end
+
+    # @return [Directory]
+    def limit(value)
+      self.class.new(@project, @params, offset: @offset, limit: value)
+    end
+
+    # @return [Integer] how many applications match, across all pages
+    def count(*)
+      connection.select_value(filtered.project(Arel.star.count)).to_i
+    end
+
+    def each(&)
+      rows.each(&)
+    end
+
+    private
+
+    def rows
+      manager = filtered.project(Arel.star).order(TABLE[sort_column].public_send(direction), TABLE[:app_type].asc, TABLE[:id].public_send(direction))
+      manager.skip(@offset).take(@limit)
+      result = connection.select_all(manager)
+      result.cast_values.map { |values| Row.new(**result.columns.zip(Array(values)).to_h.symbolize_keys.slice(*Row.members)) }
+    end
+
+    def filtered
+      manager = Arel::SelectManager.new(source)
+      if @query[:search].present?
+        term = "%#{ActiveRecord::Base.sanitize_sql_like(@query[:search])}%"
+        manager.where(TABLE[:name].matches(term).or(TABLE[:uid].matches(term)))
+      end
+      manager.where(TABLE[:app_type].eq(@query[:app_type_eq])) if @query[:app_type_eq].present?
+      manager.where(TABLE[:enabled].eq(ActiveModel::Type::Boolean.new.cast(@query[:enabled_eq]))) if @query[:enabled_eq].present?
+      manager
+    end
+
+    def source
+      clients = @project.app_clients.managed.select(
+        Arel.sql("'app_client'").as("app_type"), :id, :uid, :name, :enabled, :client_type, Arel.sql("NULL").as("entity_id"), :created_at
+      )
+      saml_apps = @project.saml_apps.select(
+        Arel.sql("'saml_app'").as("app_type"), :id, :uid, :name, :enabled, Arel.sql("NULL").as("client_type"), :entity_id, :created_at
+      )
+      Arel::Nodes::TableAlias.new(Arel.sql("(#{clients.to_sql} UNION ALL #{saml_apps.to_sql})"), "applications")
+    end
+
+    def sort_column
+      SORTS.fetch(@sort.delete_prefix("-")) { raise ApiError.validation(sort: "Sort by one of: #{SORTS.keys.join(', ')}.") }
+    end
+
+    def direction
+      @sort.start_with?("-") ? :desc : :asc
+    end
+
+    def connection
+      ApplicationRecord.connection
+    end
+  end
+end

@@ -60,6 +60,14 @@ The request specs describe every endpoint (with openapi-ruby) and generate
 `backend/openapi/public_api.yaml`. Regenerate it after changing endpoints. In development, Swagger
 UI is served at `/api-docs` on the backend.
 
+List endpoints share one request format, implemented by `ListQuery`: `page`, `per_page` (capped at
+100), `sort=<key>` or `sort=-<key>`, `q[search]` and `q[<predicate>]` filters. Each controller
+allow-lists its search, filters and sort keys; an unknown sort is a `validation_failed` error, and
+rows are always ordered by `id` last. Models allow-list their searchable attributes
+(`ransackable_attributes`) and associations; `ApplicationRecord` allows none by default. In the
+console, list responses are validated with zod schemas (`web/src/services/schemas.ts`), and every
+list uses `BaseDataTable` with `useListView`.
+
 ## Code reference
 
 Backend classes and methods are documented with YARD comments. `yard` serves them, reloading on

@@ -2,10 +2,21 @@ module V1
   module Accounts
     module Projects
       class GroupsController < ManagementController
+        LIST = ListQuery.new(
+          search: "name_i_cont",
+          filters: %i[default_for_new_users_eq],
+          sorts: {
+            "name" => :name,
+            "member_count" => "(SELECT COUNT(*) FROM group_memberships WHERE group_memberships.group_id = groups.id)",
+            "created_at" => :created_at
+          },
+          default_sort: "name"
+        )
+
         before_action :set_group, only: %i[show update destroy]
 
         def index
-          groups = paginated(current_project.groups.ransack(params.fetch(:q, {}).permit(:name_cont)).result.order(:name, :id))
+          groups = listed(current_project.groups, LIST)
           member_counts = GroupMembership.where(group_id: groups.map(&:id)).group(:group_id).count
           render json: GroupSerializer.new(groups, params: { member_counts: member_counts }).serializable_hash
         end

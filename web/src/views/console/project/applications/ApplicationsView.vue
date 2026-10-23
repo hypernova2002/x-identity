@@ -1,100 +1,59 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
-import BaseCard from '@/components/base/BaseCard.vue'
+import BaseDataTable from '@/components/base/BaseDataTable.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
-import BaseTable from '@/components/base/BaseTable.vue'
-import type { SelectOption } from '@/components/base/types'
+import type { DataTableColumn, DataTableFilter, SelectOption } from '@/components/base/types'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import SamlAppForm from '@/components/project/SamlAppForm.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectAdminService } from '@/services/project'
-import type { AppClient, AppClientType, AppClientWithSecret, SamlApp } from '@/types/api'
+import type { AppClientType, AppClientWithSecret, AppKind, Application } from '@/types/api'
 import { formatDateTime } from '@/utils/format'
-import { appClientTypeOptions } from '@/utils/options'
+import { appClientTypeOptions, yesNoOptions } from '@/utils/options'
 import { emptySamlAppDraft, samlAppInputFrom, withMetadata, type SamlAppDraft } from '@/utils/samlApps'
 
-type Protocol = 'all' | 'oidc' | 'saml'
-
-interface Row {
-  kind: 'oidc' | 'saml'
-  uid: string
-  name: string
-  enabled: boolean
-  detail: string
-  createdAt: string
-}
-
-const route = useRoute()
 const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
-const clients = ref<AppClient[]>([])
-const samlApps = ref<SamlApp[]>([])
-const search = ref('')
-const protocol = ref<Protocol>(['oidc', 'saml'].includes(String(route.query.type)) ? (route.query.type as Protocol) : 'all')
-
-const protocolOptions: SelectOption<Protocol>[] = [
-  { label: 'All applications', value: 'all' },
-  { label: 'OpenID Connect and API clients', value: 'oidc' },
-  { label: 'SAML applications', value: 'saml' },
+const typeOptions: SelectOption<AppKind>[] = [
+  { label: 'OpenID Connect or API client', value: 'app_client' },
+  { label: 'SAML application', value: 'saml_app' },
 ]
 const newKindOptions: SelectOption<'oidc' | 'saml'>[] = [
   { label: 'OpenID Connect or API client: your own apps, using hosted login, an OIDC library or the sign-in API', value: 'oidc' },
   { label: 'SAML application: apps that only support SAML 2.0, such as many SaaS tools', value: 'saml' },
 ]
 
-const rows = computed<Row[]>(() => {
-  const all: Row[] = [
-    ...clients.value.map((client) => ({
-      kind: 'oidc' as const,
-      uid: client.uid,
-      name: client.name,
-      enabled: client.enabled,
-      detail: client.client_type === 'public' ? 'Public client (no secret)' : 'Confidential client',
-      createdAt: client.created_at,
-    })),
-    ...samlApps.value.map((app) => ({ kind: 'saml' as const, uid: app.uid, name: app.name, enabled: app.enabled, detail: app.entity_id, createdAt: app.created_at })),
-  ]
-  const term = search.value.trim().toLowerCase()
-  return all
-    .filter((row) => protocol.value === 'all' || row.kind === protocol.value)
-    .filter((row) => !term || row.name.toLowerCase().includes(term) || row.uid.toLowerCase().includes(term))
-    .sort((a, b) => a.name.localeCompare(b.name))
-})
-
-const columns = [
-  { key: 'name', label: 'Application' },
-  { key: 'kind', label: 'Type' },
+const columns: DataTableColumn[] = [
+  { key: 'name', label: 'Application', sortKey: 'name' },
+  { key: 'app_type', label: 'Type', sortKey: 'type' },
   { key: 'enabled', label: 'Status' },
-  { key: 'createdAt', label: 'Created' },
+  { key: 'created_at', label: 'Created', sortKey: 'created_at' },
+]
+const filters: DataTableFilter[] = [
+  { type: 'select', key: 'app_type_eq', label: 'Type', options: typeOptions },
+  { type: 'select', key: 'enabled_eq', label: 'Enabled', options: yesNoOptions },
 ]
 
-const detailRoute = (row: Pick<Row, 'kind' | 'uid'>) =>
-  row.kind === 'saml'
+const list = useListView((params) => projectAdminService.listApplications(accountUid.value, project.value!.uid, params), {
+  defaultSort: 'name',
+  filterKeys: filters.map((filter) => filter.key),
+  syncRoute: true,
+})
+const listState = list.state
+
+const detailRoute = (row: Pick<Application, 'app_type' | 'uid'>) =>
+  row.app_type === 'saml_app'
     ? { name: 'project-saml-app', params: { projectUid: project.value?.uid, samlAppUid: row.uid } }
     : { name: 'project-app-client', params: { projectUid: project.value?.uid, clientUid: row.uid } }
-
-function setProtocol(value: Protocol) {
-  protocol.value = value
-  router.replace({ query: value === 'all' ? {} : { type: value } })
-}
-
-const load = useAsyncAction(async () => {
-  if (!project.value) return
-  const [loadedClients, loadedSamlApps] = await Promise.all([
-    projectAdminService.listAppClients(accountUid.value, project.value.uid),
-    projectAdminService.listSamlApps(accountUid.value, project.value.uid),
-  ])
-  clients.value = loadedClients.items
-  samlApps.value = loadedSamlApps.items
-})
 
 // Adding an application: choose the kind, then fill in its form.
 const addOpen = ref(false)
@@ -127,7 +86,7 @@ const createClient = useAsyncAction(async () => {
   })
   addOpen.value = false
   if (client.client_secret) created.value = client
-  else await router.push(detailRoute({ kind: 'oidc', uid: client.uid }))
+  else await router.push(detailRoute({ app_type: 'app_client', uid: client.uid }))
 })
 
 const importMetadata = useAsyncAction(async (source: { metadata_xml: string } | { metadata_url: string }) => {
@@ -142,51 +101,42 @@ const createSamlApp = useAsyncAction(async () => {
   await router.push({ name: 'project-saml-app-access', params: { projectUid: project.value.uid, samlAppUid: app.uid } })
 })
 
-onMounted(() => load.run())
 </script>
 
 <template>
-  <BaseCard>
-    <div class="flex flex-wrap items-end justify-between gap-4">
-      <form class="flex flex-wrap items-end gap-4" role="search" @submit.prevent>
-        <div class="w-full max-w-xs">
-          <BaseInput v-model="search" label="Search by name or ID" type="search" />
-        </div>
-        <div class="w-full max-w-xs">
-          <BaseSelect :model-value="protocol" label="Type" :options="protocolOptions" @update:model-value="setProtocol" />
-        </div>
-      </form>
-      <BaseButton v-if="access.developer" label="Add application" @click="startAdding" />
-    </div>
-
-    <BaseAlert v-if="load.error.value" variant="danger">We couldn't load applications. {{ load.error.value.message }}</BaseAlert>
-
-    <BaseTable
-      caption="Applications"
-      :columns="columns"
-      :rows="rows"
-      :row-key="(row) => `${row.kind}-${row.uid}`"
-      :loading="load.loading.value"
-      :empty-message="
-        search || protocol !== 'all'
-          ? 'No applications match these filters.'
-          : 'No applications yet. Add one for each app that signs this project\'s end users in.'
-      "
-    >
-      <template #cell-name="{ row }">
-        <RouterLink :to="detailRoute(row)" class="font-medium text-primary underline-offset-2 hover:underline">{{ row.name }}</RouterLink>
-        <code class="block font-mono text-xs break-all text-text-muted">{{ row.uid }}</code>
-      </template>
-      <template #cell-kind="{ row }">
-        <StatusBadge tone="info" :label="row.kind === 'saml' ? 'SAML' : 'OpenID Connect / API'" />
-        <span class="mt-1 block text-xs break-all text-text-muted">{{ row.detail }}</span>
-      </template>
-      <template #cell-enabled="{ row }">
-        <StatusBadge :tone="row.enabled ? 'success' : 'neutral'" :label="row.enabled ? 'Enabled' : 'Disabled'" />
-      </template>
-      <template #cell-createdAt="{ row }"><span class="text-xs">{{ formatDateTime(row.createdAt) }}</span></template>
-    </BaseTable>
-  </BaseCard>
+  <BaseDataTable
+    v-model:state="listState"
+    caption="Applications"
+    search-label="Search by name or ID"
+    :columns="columns"
+    :filters="filters"
+    :rows="list.rows.value"
+    :row-key="(row) => `${row.app_type}-${row.uid}`"
+    :total="list.total.value"
+    :per-page="list.perPage.value"
+    :loading="list.loading.value"
+    :error="list.error.value"
+    empty-message="No applications yet. Add one for each app that signs this project's end users in."
+    @retry="list.reload"
+  >
+    <template v-if="access.developer" #actions>
+      <BaseButton label="Add application" @click="startAdding" />
+    </template>
+    <template #cell-name="{ row }">
+      <RouterLink :to="detailRoute(row)" class="font-medium text-primary underline-offset-2 hover:underline">{{ row.name }}</RouterLink>
+      <code class="block font-mono text-xs break-all text-text-muted">{{ row.uid }}</code>
+    </template>
+    <template #cell-app_type="{ row }">
+      <StatusBadge tone="info" :label="row.app_type === 'saml_app' ? 'SAML' : 'OpenID Connect / API'" />
+      <span class="mt-1 block text-xs break-all text-text-muted">
+        {{ row.app_type === 'saml_app' ? row.entity_id : row.client_type === 'public' ? 'Public client (no secret)' : 'Confidential client' }}
+      </span>
+    </template>
+    <template #cell-enabled="{ row }">
+      <StatusBadge :tone="row.enabled ? 'success' : 'neutral'" :label="row.enabled ? 'Enabled' : 'Disabled'" />
+    </template>
+    <template #cell-created_at="{ row }"><span class="text-xs">{{ formatDateTime(row.created_at) }}</span></template>
+  </BaseDataTable>
 
   <p class="text-sm text-text-muted">
     External systems that end users sign in <em>with</em> (Google, Apple, companies' identity providers) are configured under
@@ -243,7 +193,7 @@ onMounted(() => load.run())
       Keep it on your server only; never put it in a browser or mobile app. You can rotate it later.
     </BaseAlert>
     <template #footer>
-      <BaseButton v-if="created" label="I've copied it" @click="router.push(detailRoute({ kind: 'oidc', uid: created.uid }))" />
+      <BaseButton v-if="created" label="I've copied it" @click="router.push(detailRoute({ app_type: 'app_client', uid: created.uid }))" />
     </template>
   </BaseDialog>
 </template>

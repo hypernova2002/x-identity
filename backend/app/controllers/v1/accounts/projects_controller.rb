@@ -1,12 +1,19 @@
 module V1
   module Accounts
     class ProjectsController < AuthenticatedController
-      include Paginated
+      include Listing
+
+      LIST = ListQuery.new(
+        search: "name_i_cont",
+        filters: %i[created_at_gteq created_at_lteq],
+        sorts: { "name" => :name, "created_at" => :created_at },
+        default_sort: "created_at"
+      )
 
       before_action :set_project, only: %i[show update destroy]
 
       def index
-        projects = paginated(ProjectPolicy::Scope.new(current_user).resolve.order(:created_at, :id))
+        projects = listed(ProjectPolicy::Scope.new(current_user).resolve, LIST)
         render json: ProjectSerializer.new(projects).serializable_hash
       end
 

@@ -1,13 +1,20 @@
 module V1
   module Accounts
     class UsersController < AuthenticatedController
-      include Paginated
+      include Listing
+
+      LIST = ListQuery.new(
+        search: "name_or_email_i_cont",
+        filters: %i[role_eq status_eq],
+        sorts: { "name" => :name, "email" => :email, "role" => :role, "last_sign_in_at" => :last_sign_in_at, "created_at" => :created_at },
+        default_sort: "created_at"
+      )
 
       before_action :require_account_admin!, except: :index
       before_action :set_user, only: %i[show update destroy]
 
       def index
-        users = paginated(current_account.users.includes(:otp_credential).order(:created_at, :id))
+        users = listed(current_account.users.includes(:otp_credential), LIST)
         render json: UserSerializer.new(users).serializable_hash
       end
 

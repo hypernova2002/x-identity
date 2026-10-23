@@ -87,11 +87,13 @@ paths:
         schema:
           type: object
           properties:
+            search:
+              type: string
+              description: Action prefix, e.g. `end_user.`
             action_eq:
               type: string
             action_start:
               type: string
-              description: Action prefix, e.g. `user.`
             actor_uid_eq:
               type: string
             target_uid_eq:
@@ -104,6 +106,25 @@ paths:
             occurred_at_lteq:
               type: string
               format: date-time
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - occurred_at
+          - "-occurred_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
       security:
       - BearerAuth: []
       responses:
@@ -798,6 +819,44 @@ paths:
       summary: List pending invitations
       tags:
       - Invitations
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Email
+            role_eq:
+              type: string
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - email
+          - "-email"
+          - role
+          - "-role"
+          - expires_at
+          - "-expires_at"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
       security:
       - BearerAuth: []
       responses:
@@ -1143,6 +1202,44 @@ paths:
       summary: List projects you can see
       tags:
       - Projects
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Name
+            created_at_gteq:
+              type: string
+              format: date-time
+            created_at_lteq:
+              type: string
+              format: date-time
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - name
+          - "-name"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
       security:
       - BearerAuth: []
       responses:
@@ -1472,6 +1569,85 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/applications":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the project's app clients and SAML apps together
+      tags:
+      - Applications
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Name or uid
+            app_type_eq:
+              type: string
+              enum:
+              - app_client
+              - saml_app
+            enabled_eq:
+              type: string
+              enum:
+              - 'true'
+              - 'false'
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - name
+          - "-name"
+          - type
+          - "-type"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: applications, paginated with Total, Per-Page and Link headers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Application"
+        '422':
+          description: an unsupported sort
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/attributes":
     parameters:
     - name: account_uid
@@ -1488,6 +1664,59 @@ paths:
       summary: List the project's custom end-user attributes
       tags:
       - End-user attributes
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Key or label
+            data_type_eq:
+              type: string
+            required_eq:
+              type: string
+              enum:
+              - 'true'
+              - 'false'
+            user_editable_eq:
+              type: string
+              enum:
+              - 'true'
+              - 'false'
+            include_in_token_eq:
+              type: string
+              enum:
+              - 'true'
+              - 'false'
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - label
+          - "-label"
+          - key
+          - "-key"
+          - data_type
+          - "-data_type"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
       security:
       - BearerAuth: []
       responses:
@@ -1595,6 +1824,9 @@ paths:
         schema:
           type: object
           properties:
+            search:
+              type: string
+              description: Action prefix, e.g. `end_user.`
             action_eq:
               type: string
             action_start:
@@ -1611,6 +1843,25 @@ paths:
             occurred_at_lteq:
               type: string
               format: date-time
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - occurred_at
+          - "-occurred_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
       security:
       - BearerAuth: []
       responses:
@@ -2461,27 +2712,19 @@ paths:
         schema:
           type: object
           properties:
-            email_cont:
+            search:
               type: string
-            name_cont:
-              type: string
+              description: Email, name or uid
             status_eq:
               type: string
             uid_eq:
               type: string
-      - name: filter
-        in: query
-        style: deepObject
-        explode: true
-        schema:
-          type: object
-          properties:
-            email_verified:
+            with_verified_email:
               type: string
               enum:
               - 'true'
               - 'false'
-            mfa:
+            with_mfa:
               type: string
               enum:
               - 'true'
@@ -2490,8 +2733,36 @@ paths:
               type: string
               enum:
               - 'true'
-            group_uid:
+            in_group:
               type: string
+              description: Group uid
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - email
+          - "-email"
+          - name
+          - "-name"
+          - status
+          - "-status"
+          - created_at
+          - "-created_at"
+          - last_sign_in_at
+          - "-last_sign_in_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
       security:
       - BearerAuth: []
       responses:
@@ -2750,6 +3021,45 @@ paths:
       summary: List the project's groups
       tags:
       - Groups
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Name
+            default_for_new_users_eq:
+              type: string
+              enum:
+              - 'true'
+              - 'false'
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - name
+          - "-name"
+          - member_count
+          - "-member_count"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
       security:
       - BearerAuth: []
       responses:
@@ -2895,6 +3205,51 @@ paths:
       summary: List the project's identity providers
       tags:
       - Identity providers
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Name
+            kind_eq:
+              type: string
+            kind_in:
+              type: array
+              items:
+                type: string
+            enabled_eq:
+              type: string
+              enum:
+              - 'true'
+              - 'false'
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - name
+          - "-name"
+          - kind
+          - "-kind"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
       security:
       - BearerAuth: []
       responses:
@@ -3484,6 +3839,44 @@ paths:
       summary: List project members
       tags:
       - Projects
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Name or email
+            role_eq:
+              type: string
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - name
+          - "-name"
+          - email
+          - "-email"
+          - role
+          - "-role"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
       security:
       - BearerAuth: []
       responses:
@@ -4049,6 +4442,36 @@ paths:
       tags:
       - Users
       parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Name or email
+            role_eq:
+              type: string
+            status_eq:
+              type: string
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - name
+          - "-name"
+          - email
+          - "-email"
+          - role
+          - "-role"
+          - last_sign_in_at
+          - "-last_sign_in_at"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
       - name: page
         in: query
         schema:
@@ -4387,6 +4810,46 @@ components:
           - 'null'
           description: Confidential clients only. Shown once; store it securely.
       title: AppClientWithSecret
+    Application:
+      type: object
+      required:
+      - app_type
+      - uid
+      - name
+      - enabled
+      - client_type
+      - entity_id
+      - created_at
+      properties:
+        app_type:
+          type: string
+          enum:
+          - app_client
+          - saml_app
+        uid:
+          type: string
+        name:
+          type: string
+        enabled:
+          type: boolean
+        client_type:
+          type:
+          - string
+          - 'null'
+          enum:
+          - public
+          - confidential
+          -
+          description: App clients only.
+        entity_id:
+          type:
+          - string
+          - 'null'
+          description: SAML apps only.
+        created_at:
+          type: string
+          format: date-time
+      title: Application
     AttributeDefinition:
       type: object
       required:

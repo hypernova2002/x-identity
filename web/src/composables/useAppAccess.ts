@@ -36,7 +36,7 @@ export function useAppAccess() {
   const searchEndUsers = useAsyncAction(async (email: string) => {
     if (!target.value) return
     const { accountUid, projectUid } = target.value
-    endUserMatches.value = (await projectAdminService.listEndUsers(accountUid, projectUid, 1, { email_cont: email.trim() || undefined })).items
+    endUserMatches.value = (await projectAdminService.listEndUsers(accountUid, projectUid, { search: email })).items
   })
 
   const assign = useAsyncAction(async (principalType: PrincipalType, principalUid: string) => {

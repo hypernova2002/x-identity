@@ -16,6 +16,7 @@ RSpec.describe "Identity providers", type: :openapi do
       get "List the project's identity providers" do
         tags "Identity providers"
         security [ { BearerAuth: [] } ]
+        ListParameters.build(search: "Name", sorts: %w[name kind created_at], filters: { kind_eq: { type: :string }, kind_in: { type: :array, items: { type: :string } }, enabled_eq: { type: :string, enum: %w[true false] } }).each { |list_parameter| parameter(**list_parameter) }
 
         response 200, "identity providers, without their secrets" do
           schema type: :array, items: Schemas::IdentityProvider
@@ -138,6 +139,26 @@ RSpec.describe "Identity providers", type: :openapi do
       assert_api_response(:delete, 204, headers: auth_headers_for(admin), path_params: path_params)
 
       expect(EndUserIdentity.count).to eq(0)
+    end
+  end
+
+  describe "searching, filtering and sorting providers" do
+    def names(params)
+      get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/identity-providers", params: params, headers: auth_headers_for(developer)
+      response.parsed_body.pluck("name")
+    end
+
+    before do
+      create(:identity_provider, project: project)
+      create(:identity_provider, :saml, project: project, enabled: false)
+    end
+
+    it "filters by kind and status, and sorts" do
+      expect(names(q: { kind_eq: "saml" })).to eq([ "Acme SSO" ])
+      expect(names(q: { kind_in: %w[google apple] })).to eq([ "Google" ])
+      expect(names(q: { enabled_eq: "false" })).to eq([ "Acme SSO" ])
+      expect(names(q: { search: "goo" })).to eq([ "Google" ])
+      expect(names(sort: "-name")).to eq([ "Google", "Acme SSO" ])
     end
   end
 end

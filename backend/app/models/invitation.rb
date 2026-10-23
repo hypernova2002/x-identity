@@ -10,6 +10,10 @@ class Invitation < ApplicationRecord
 
   enum :role, { owner: "owner", admin: "admin", member: "member" }, validate: true
 
+  def self.ransackable_attributes(_auth_object = nil)
+    %w[email role]
+  end
+
   normalizes :email, with: ->(email) { EmailAddress.normalize(email) }
 
   validates :email, presence: true, length: { maximum: 254 }, format: { with: URI::MailTo::EMAIL_REGEXP }

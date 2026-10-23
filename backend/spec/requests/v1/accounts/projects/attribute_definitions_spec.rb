@@ -15,6 +15,7 @@ RSpec.describe "End-user attributes", type: :openapi do
     get "List the project's custom end-user attributes" do
       tags "End-user attributes"
       security [ { BearerAuth: [] } ]
+      ListParameters.build(search: "Key or label", sorts: %w[label key data_type created_at], filters: { data_type_eq: { type: :string }, required_eq: { type: :string, enum: %w[true false] }, user_editable_eq: { type: :string, enum: %w[true false] }, include_in_token_eq: { type: :string, enum: %w[true false] } }).each { |list_parameter| parameter(**list_parameter) }
 
       response 200, "attributes" do
         schema type: :array, items: Schemas::AttributeDefinition
@@ -63,5 +64,25 @@ RSpec.describe "End-user attributes", type: :openapi do
     delete "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/attributes/#{definition.uid}", headers: auth_headers_for(admin)
 
     expect(end_user.reload.custom_attributes).to eq("other" => "kept")
+  end
+
+  describe "searching, filtering and sorting" do
+    def keys(params)
+      get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/attributes", params: params, headers: auth_headers_for(admin)
+      response.parsed_body.pluck("key")
+    end
+
+    before do
+      create(:end_user_attribute_definition, project: project, key: "tier", label: "Plan tier", required: true)
+      create(:end_user_attribute_definition, project: project, key: "region", label: "Region", data_type: "string", include_in_token: true)
+    end
+
+    it "searches keys and labels, filters by flags and sorts" do
+      expect(keys(q: { search: "plan" })).to eq([ "tier" ])
+      expect(keys(q: { required_eq: "true" })).to eq([ "tier" ])
+      expect(keys(q: { include_in_token_eq: "true" })).to eq([ "region" ])
+      expect(keys(sort: "label")).to eq(%w[tier region])
+      expect(keys(sort: "-key")).to eq(%w[tier region])
+    end
   end
 end

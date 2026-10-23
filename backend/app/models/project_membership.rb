@@ -4,6 +4,14 @@ class ProjectMembership < ApplicationRecord
 
   enum :role, { admin: "admin", developer: "developer", viewer: "viewer" }, validate: true
 
+  def self.ransackable_attributes(_auth_object = nil)
+    %w[role]
+  end
+
+  def self.ransackable_associations(_auth_object = nil)
+    %w[user]
+  end
+
   validates :user_id, uniqueness: { scope: :project_id }
   validate :user_belongs_to_project_account
 

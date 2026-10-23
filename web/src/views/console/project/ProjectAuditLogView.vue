@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import AuditLogPanel from '@/components/audit/AuditLogPanel.vue'
 import { useProjectContext } from '@/composables/useProjectContext'
-import type { AuditEventFilters } from '@/services/account'
+import type { ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
 
 const { accountUid, project } = useProjectContext()
 
-function fetchPage(page: number, filters: AuditEventFilters) {
-  return projectAdminService.listAuditEvents(accountUid.value, project.value!.uid, page, filters)
+function fetchPage(params: ListParams) {
+  return projectAdminService.listAuditEvents(accountUid.value, project.value!.uid, params)
 }
 </script>
 

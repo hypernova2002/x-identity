@@ -8,6 +8,7 @@ import type {
   OtpType,
   ProjectRole,
   SigningAlgorithm,
+  UserStatus,
 } from '@/types/api'
 
 export const identityProviderKindOptions: SelectOption<IdentityProviderKind>[] = [
@@ -56,4 +57,15 @@ export const attributeDataTypeOptions: SelectOption<AttributeDataType>[] = [
 export const otpMethodOptions: SelectOption<OtpType>[] = [
   { label: 'Authenticator app (time-based codes)', value: 'totp' },
   { label: 'Hardware token (counter-based codes)', value: 'hotp' },
+]
+
+export const userStatusOptions: SelectOption<UserStatus>[] = [
+  { label: 'Active', value: 'active' },
+  { label: 'Disabled', value: 'disabled' },
+]
+
+/** For filters on true/false fields, which the API takes as strings. */
+export const yesNoOptions: SelectOption<'true' | 'false'>[] = [
+  { label: 'Yes', value: 'true' },
+  { label: 'No', value: 'false' },
 ]

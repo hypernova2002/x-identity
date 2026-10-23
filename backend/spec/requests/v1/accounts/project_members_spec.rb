@@ -17,6 +17,7 @@ RSpec.describe "Project members", type: :openapi do
       get "List project members" do
         tags "Projects"
         security [ { BearerAuth: [] } ]
+        ListParameters.build(search: "Name or email", sorts: %w[name email role created_at], filters: { role_eq: { type: :string } }).each { |list_parameter| parameter(**list_parameter) }
 
         response 200, "members" do
           schema type: :array, items: Schemas::ProjectMember
@@ -114,6 +115,26 @@ RSpec.describe "Project members", type: :openapi do
       assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: path_params
 
       expect(ProjectMembership.exists?(membership.id)).to be(false)
+    end
+  end
+
+  describe "searching and sorting members" do
+    def emails(params)
+      get "/v1/accounts/#{account.uid}/projects/#{project.uid}/members", params: params, headers: auth_headers_for(admin)
+      response.parsed_body.pluck("email")
+    end
+
+    before do
+      create(:project_membership, project: project, role: "developer", user: create(:user, account: account, name: "Zed Dev", email: "zed@acme.test"))
+      create(:project_membership, project: project, role: "viewer", user: create(:user, account: account, name: "Ann View", email: "ann@acme.test"))
+    end
+
+    it "searches the user's name and email, filters by role and sorts by name" do
+      expect(emails(q: { search: "zed" })).to eq([ "zed@acme.test" ])
+      expect(emails(q: { search: "ann@" })).to eq([ "ann@acme.test" ])
+      expect(emails(q: { role_eq: "developer" })).to eq([ "zed@acme.test" ])
+      expect(emails(sort: "name")).to eq(%w[ann@acme.test zed@acme.test])
+      expect(emails(sort: "-email")).to eq(%w[zed@acme.test ann@acme.test])
     end
   end
 end

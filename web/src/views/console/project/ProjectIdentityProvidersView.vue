@@ -5,22 +5,23 @@ import { RouterLink, useRouter } from 'vue-router'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
+import BaseDataTable from '@/components/base/BaseDataTable.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
-import BaseTable from '@/components/base/BaseTable.vue'
+import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import IdentityProviderForm from '@/components/project/IdentityProviderForm.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { useProviderEditor } from '@/composables/useProviderEditor'
 import { projectAdminService } from '@/services/project'
-import type { Group, IdentityProvider, IdentityProviderKind } from '@/types/api'
-import { identityProviderKindOptions } from '@/utils/options'
+import type { Group, IdentityProviderKind } from '@/types/api'
+import { identityProviderKindOptions, yesNoOptions } from '@/utils/options'
 
 const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
-const providers = ref<IdentityProvider[]>([])
 const groups = ref<Group[]>([])
 const chooseOpen = ref(false)
 const newKind = ref<IdentityProviderKind>('google')
@@ -29,41 +30,34 @@ const editor = useProviderEditor(() => (project.value ? { accountUid: accountUid
 const callbackUrl = computed(() => (project.value ? `${project.value.token_issuer}/auth/providers/callback` : ''))
 const kindLabel = (kind: IdentityProviderKind) => identityProviderKindOptions.find((option) => option.value === kind)?.label ?? kind
 
-const sections = computed(() => [
-  {
-    key: 'social',
-    title: 'Social identity providers',
-    description: 'Google and Apple accounts.',
-    rows: providers.value.filter((provider) => provider.kind === 'google' || provider.kind === 'apple'),
-  },
-  {
-    key: 'oidc',
-    title: 'OpenID Connect providers',
-    description: 'Any other provider that supports OpenID Connect discovery.',
-    rows: providers.value.filter((provider) => provider.kind === 'oidc'),
-  },
-  {
-    key: 'saml',
-    title: 'Enterprise SAML providers',
-    description: 'A company\'s own identity provider (Okta, Entra ID, ADFS…), trusted for its email domains.',
-    rows: providers.value.filter((provider) => provider.kind === 'saml'),
-  },
-])
+const categories: Record<IdentityProviderKind, string> = {
+  google: 'Social',
+  apple: 'Social',
+  oidc: 'OpenID Connect',
+  saml: 'Enterprise SAML',
+}
 
-const columns = [
-  { key: 'name', label: 'Provider' },
+const columns: DataTableColumn[] = [
+  { key: 'name', label: 'Provider', sortKey: 'name' },
+  { key: 'kind', label: 'Type', sortKey: 'kind' },
   { key: 'identifier', label: 'Identifier' },
   { key: 'enabled', label: 'Status' },
 ]
+const filters: DataTableFilter[] = [
+  { type: 'select', key: 'kind_eq', label: 'Type', options: identityProviderKindOptions },
+  { type: 'select', key: 'enabled_eq', label: 'Enabled', options: yesNoOptions },
+]
 
-const load = useAsyncAction(async () => {
+const list = useListView((params) => projectAdminService.listIdentityProviders(accountUid.value, project.value!.uid, params), {
+  defaultSort: 'created_at',
+  filterKeys: filters.map((filter) => filter.key),
+  syncRoute: true,
+})
+const listState = list.state
+
+const loadGroups = useAsyncAction(async () => {
   if (!project.value) return
-  const [loadedProviders, loadedGroups] = await Promise.all([
-    projectAdminService.listIdentityProviders(accountUid.value, project.value.uid),
-    projectAdminService.listGroups(accountUid.value, project.value.uid),
-  ])
-  providers.value = loadedProviders.items
-  groups.value = loadedGroups.items
+  groups.value = (await projectAdminService.listGroups(accountUid.value, project.value.uid)).items
 })
 
 function startAdding() {
@@ -76,7 +70,7 @@ async function create() {
   if (saved && project.value) await router.push({ name: 'project-identity-provider', params: { projectUid: project.value.uid, providerUid: saved.uid } })
 }
 
-onMounted(() => load.run())
+onMounted(() => loadGroups.run())
 </script>
 
 <template>
@@ -90,36 +84,43 @@ onMounted(() => load.run())
       <BaseButton v-if="access.admin" label="Add identity provider" @click="chooseOpen = true" />
     </div>
     <BaseAlert v-if="!access.admin" variant="info">Only project and account admins can change identity providers.</BaseAlert>
-    <BaseAlert v-if="load.error.value" variant="danger">We couldn't load identity providers. {{ load.error.value.message }}</BaseAlert>
   </BaseCard>
 
-  <BaseCard v-for="section in sections" :key="section.key" :title="section.title" :description="section.description">
-    <BaseTable
-      :caption="section.title"
-      :columns="columns"
-      :rows="section.rows"
-      :row-key="(provider) => provider.uid"
-      :loading="load.loading.value"
-      :empty-message="`No ${section.title.toLowerCase()} yet.`"
-    >
-      <template #cell-name="{ row }">
-        <RouterLink
-          :to="{ name: 'project-identity-provider', params: { projectUid: project?.uid, providerUid: row.uid } }"
-          class="font-medium text-primary underline-offset-2 hover:underline"
-        >
-          {{ row.name }}
-        </RouterLink>
-        <span class="block text-xs text-text-muted">{{ kindLabel(row.kind) }}</span>
-        <span v-if="row.domains.length > 0" class="block text-xs text-text-muted">Domains: {{ row.domains.join(', ') }}</span>
-      </template>
-      <template #cell-identifier="{ row }">
-        <code class="font-mono text-xs break-all">{{ row.kind === 'saml' ? row.saml_idp_entity_id : row.client_id }}</code>
-      </template>
-      <template #cell-enabled="{ row }">
-        <StatusBadge :tone="row.enabled ? 'success' : 'neutral'" :label="row.enabled ? 'Enabled' : 'Disabled'" />
-      </template>
-    </BaseTable>
-  </BaseCard>
+  <BaseDataTable
+    v-model:state="listState"
+    caption="Identity providers"
+    search-label="Search by name"
+    :columns="columns"
+    :filters="filters"
+    :rows="list.rows.value"
+    :row-key="(provider) => provider.uid"
+    :total="list.total.value"
+    :per-page="list.perPage.value"
+    :loading="list.loading.value"
+    :error="list.error.value"
+    empty-message="No identity providers yet. End users sign in with a password or email code."
+    @retry="list.reload"
+  >
+    <template #cell-name="{ row }">
+      <RouterLink
+        :to="{ name: 'project-identity-provider', params: { projectUid: project?.uid, providerUid: row.uid } }"
+        class="font-medium text-primary underline-offset-2 hover:underline"
+      >
+        {{ row.name }}
+      </RouterLink>
+      <span v-if="row.domains.length > 0" class="block text-xs text-text-muted">Domains: {{ row.domains.join(', ') }}</span>
+    </template>
+    <template #cell-kind="{ row }">
+      {{ kindLabel(row.kind) }}
+      <span class="block text-xs text-text-muted">{{ categories[row.kind] }}</span>
+    </template>
+    <template #cell-identifier="{ row }">
+      <code class="font-mono text-xs break-all">{{ row.kind === 'saml' ? row.saml_idp_entity_id : row.client_id }}</code>
+    </template>
+    <template #cell-enabled="{ row }">
+      <StatusBadge :tone="row.enabled ? 'success' : 'neutral'" :label="row.enabled ? 'Enabled' : 'Disabled'" />
+    </template>
+  </BaseDataTable>
 
   <p class="text-sm text-text-muted">
     Applications that sign users in <em>through</em> this project are under

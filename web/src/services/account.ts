@@ -1,41 +1,10 @@
 import { apiPage, apiRequest } from './http'
-import type {
-  Account,
-  AccountRole,
-  AuditEvent,
-  AuthConfiguration,
-  Invitation,
-  Me,
-  MfaEnrollment,
-  Project,
-  ProjectMember,
-  ProjectRole,
-  ProjectSettings,
-  User,
-  UserStatus,
-} from '@/types/api'
+import { LOOKUP, listQuery, type ListParams } from './list'
+import { auditEventSchema, invitationSchema, projectMemberSchema, projectSchema, userSchema } from './schemas'
+import type { Account, AccountRole, AuthConfiguration, Invitation, Me, MfaEnrollment, Project, ProjectMember, ProjectRole, ProjectSettings, User, UserStatus } from '@/types/api'
 
 const base = (accountUid: string) => `/v1/accounts/${accountUid}`
 const authenticated = { authenticated: true } as const
-
-export interface AuditEventFilters {
-  action_start?: string
-  action_eq?: string
-  target_uid_eq?: string
-  actor_uid_eq?: string
-  app_client_uid_eq?: string
-  occurred_at_gteq?: string
-  per_page?: number
-}
-
-export function auditEventQuery(page: number, filters: AuditEventFilters) {
-  const { per_page: perPage, ...conditions } = filters
-  return {
-    page,
-    per_page: perPage,
-    ...Object.fromEntries(Object.entries(conditions).map(([key, value]) => [`q[${key}]`, value])),
-  }
-}
 
 export const meService = {
   get: (accountUid: string) => apiRequest<Me>(`${base(accountUid)}/me`, authenticated),
@@ -85,15 +54,13 @@ export const accountService = {
   updateAuthConfiguration: (accountUid: string, changes: Partial<AuthConfiguration>) =>
     apiRequest<AuthConfiguration>(`${base(accountUid)}/auth-configuration`, { ...authenticated, method: 'PUT', body: changes }),
 
-  listAuditEvents: (accountUid: string, page: number, filters: AuditEventFilters) =>
-    apiPage<AuditEvent>(`${base(accountUid)}/audit-events`, {
-      ...authenticated,
-      query: auditEventQuery(page, filters),
-    }),
+  listAuditEvents: (accountUid: string, params: ListParams) =>
+    apiPage(`${base(accountUid)}/audit-events`, auditEventSchema, { ...authenticated, query: listQuery(params) }),
 }
 
 export const userService = {
-  list: (accountUid: string, page: number) => apiPage<User>(`${base(accountUid)}/users`, { ...authenticated, query: { page } }),
+  list: (accountUid: string, params: ListParams = LOOKUP) =>
+    apiPage(`${base(accountUid)}/users`, userSchema, { ...authenticated, query: listQuery(params) }),
 
   update: (accountUid: string, userUid: string, changes: { role?: AccountRole; status?: UserStatus }) =>
     apiRequest<User>(`${base(accountUid)}/users/${userUid}`, { ...authenticated, method: 'PATCH', body: changes }),
@@ -101,8 +68,8 @@ export const userService = {
   remove: (accountUid: string, userUid: string) =>
     apiRequest<null>(`${base(accountUid)}/users/${userUid}`, { ...authenticated, method: 'DELETE' }),
 
-  listInvitations: (accountUid: string) =>
-    apiPage<Invitation>(`${base(accountUid)}/invitations`, { ...authenticated, query: { per_page: 100 } }),
+  listInvitations: (accountUid: string, params: ListParams = LOOKUP) =>
+    apiPage(`${base(accountUid)}/invitations`, invitationSchema, { ...authenticated, query: listQuery(params) }),
 
   invite: (accountUid: string, email: string, role: AccountRole) =>
     apiRequest<Invitation>(`${base(accountUid)}/invitations`, { ...authenticated, method: 'POST', body: { email, role } }),
@@ -112,8 +79,8 @@ export const userService = {
 }
 
 export const projectService = {
-  list: (accountUid: string, page: number) =>
-    apiPage<Project>(`${base(accountUid)}/projects`, { ...authenticated, query: { page } }),
+  list: (accountUid: string, params: ListParams = LOOKUP) =>
+    apiPage(`${base(accountUid)}/projects`, projectSchema, { ...authenticated, query: listQuery(params) }),
 
   get: (accountUid: string, projectUid: string) =>
     apiRequest<Project>(`${base(accountUid)}/projects/${projectUid}`, authenticated),
@@ -127,8 +94,8 @@ export const projectService = {
   remove: (accountUid: string, projectUid: string) =>
     apiRequest<null>(`${base(accountUid)}/projects/${projectUid}`, { ...authenticated, method: 'DELETE' }),
 
-  listMembers: (accountUid: string, projectUid: string) =>
-    apiPage<ProjectMember>(`${base(accountUid)}/projects/${projectUid}/members`, { ...authenticated, query: { per_page: 100 } }),
+  listMembers: (accountUid: string, projectUid: string, params: ListParams = LOOKUP) =>
+    apiPage(`${base(accountUid)}/projects/${projectUid}/members`, projectMemberSchema, { ...authenticated, query: listQuery(params) }),
 
   addMember: (accountUid: string, projectUid: string, userUid: string, role: ProjectRole) =>
     apiRequest<ProjectMember>(`${base(accountUid)}/projects/${projectUid}/members`, {

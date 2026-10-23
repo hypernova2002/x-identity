@@ -16,8 +16,7 @@ RSpec.describe "Users", type: :openapi do
       get "List the account's users" do
         tags "Users"
         security [ { BearerAuth: [] } ]
-        parameter name: :page, in: :query, schema: { type: :integer, minimum: 1 }
-        parameter name: :per_page, in: :query, schema: { type: :integer, minimum: 1 }, description: "Values above #{Paginated::MAX_PER_PAGE} are capped."
+        ListParameters.build(search: "Name or email", sorts: %w[name email role last_sign_in_at created_at], filters: { role_eq: { type: :string }, status_eq: { type: :string } }).each { |list_parameter| parameter(**list_parameter) }
 
         response 200, "users, paginated with Total, Per-Page and Link headers" do
           schema type: :array, items: Schemas::User
@@ -154,6 +153,26 @@ RSpec.describe "Users", type: :openapi do
       update_user(admin, member, 200, { role: "admin" })
 
       expect(account.audit_events.last).to have_attributes(action: "user.role_changed", metadata: { "from" => "member", "to" => "admin" })
+    end
+  end
+
+  describe "searching and sorting" do
+    def emails(params)
+      get "/v1/accounts/#{account.uid}/users", params: params, headers: auth_headers_for(owner)
+      response.parsed_body.pluck("email")
+    end
+
+    before do
+      create(:user, :admin, account: account, name: "Robin Admin", email: "robin@acme.test")
+      create(:user, account: account, name: "Casey Member", email: "casey@acme.test")
+    end
+
+    it "searches names and emails, filters by role and sorts" do
+      expect(emails(q: { search: "robin" })).to eq([ "robin@acme.test" ])
+      expect(emails(q: { search: "casey@" })).to eq([ "casey@acme.test" ])
+      expect(emails(q: { role_eq: "member" })).to eq([ "casey@acme.test" ])
+      expect(emails(sort: "name")).to eq([ "casey@acme.test", "robin@acme.test", owner.email ])
+      expect(emails(sort: "-name")).to eq([ owner.email, "robin@acme.test", "casey@acme.test" ])
     end
   end
 end

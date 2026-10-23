@@ -6,20 +6,22 @@ import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseCheckbox from '@/components/base/BaseCheckbox.vue'
+import BaseDataTable from '@/components/base/BaseDataTable.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BasePagination from '@/components/base/BasePagination.vue'
-import BaseTable from '@/components/base/BaseTable.vue'
+import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
 import type { Page } from '@/services/http'
 import { projectAdminService } from '@/services/project'
 import type { EndUser, Group } from '@/types/api'
+import { yesNoOptions } from '@/utils/options'
 
 const route = useRoute()
 const { accountUid, project, access } = useProjectContext()
 
-const groups = ref<Group[]>([])
 const editing = ref<Group | null>(null)
 const formOpen = ref(false)
 const name = ref('')
@@ -33,19 +35,27 @@ const membersPage = ref(1)
 const memberEmail = ref('')
 const memberMatches = ref<EndUser[]>([])
 
-const columns = [
-  { key: 'name', label: 'Group' },
-  { key: 'member_count', label: 'Members' },
+const columns: DataTableColumn[] = [
+  { key: 'name', label: 'Group', sortKey: 'name' },
+  { key: 'member_count', label: 'Members', sortKey: 'member_count' },
   { key: 'default_for_new_users', label: 'New users' },
   { key: 'actions', label: 'Actions', srOnly: true },
 ]
+const filters: DataTableFilter[] = [
+  { type: 'select', key: 'default_for_new_users_eq', label: 'New users join', options: yesNoOptions },
+]
 
-const load = useAsyncAction(async () => {
-  if (!project.value) return
-  groups.value = (await projectAdminService.listGroups(accountUid.value, project.value.uid)).items
-  // Links from users, applications and providers open a group's members.
-  const linked = groups.value.find((group) => group.uid === route.query.group)
-  if (linked) openMembers(linked)
+const list = useListView((params) => projectAdminService.listGroups(accountUid.value, project.value!.uid, params), {
+  defaultSort: 'name',
+  filterKeys: filters.map((filter) => filter.key),
+  syncRoute: true,
+})
+const listState = list.state
+
+/** Links from users, applications and providers open a group's members. */
+const openLinked = useAsyncAction(async () => {
+  if (!project.value || typeof route.query.group !== 'string') return
+  openMembers(await projectAdminService.getGroup(accountUid.value, project.value.uid, route.query.group))
 })
 
 function openForm(group: Group | null) {
@@ -60,18 +70,17 @@ function openForm(group: Group | null) {
 const save = useAsyncAction(async () => {
   if (!project.value) return
   const input = { name: name.value, description: description.value.trim() || null, default_for_new_users: defaultForNewUsers.value }
-  const saved = editing.value
-    ? await projectAdminService.updateGroup(accountUid.value, project.value.uid, editing.value.uid, input)
-    : await projectAdminService.createGroup(accountUid.value, project.value.uid, input)
-  groups.value = editing.value ? groups.value.map((group) => (group.uid === saved.uid ? saved : group)) : [...groups.value, saved]
+  if (editing.value) await projectAdminService.updateGroup(accountUid.value, project.value.uid, editing.value.uid, input)
+  else await projectAdminService.createGroup(accountUid.value, project.value.uid, input)
   formOpen.value = false
+  await list.reload()
 })
 
 const destroy = useAsyncAction(async (group: Group) => {
   if (!project.value) return
   await projectAdminService.deleteGroup(accountUid.value, project.value.uid, group.uid)
-  groups.value = groups.value.filter((existing) => existing.uid !== group.uid)
   pendingDelete.value = null
+  await list.reload()
 })
 
 const loadMembers = useAsyncAction(async () => {
@@ -87,54 +96,52 @@ function openMembers(group: Group) {
   loadMembers.run()
 }
 
-function setMemberCount(change: number) {
-  if (!membersOf.value) return
-  const uid = membersOf.value.uid
-  groups.value = groups.value.map((group) => (group.uid === uid ? { ...group, member_count: group.member_count + change } : group))
-}
-
 const searchMembers = useAsyncAction(async () => {
   if (!project.value) return
-  memberMatches.value = (await projectAdminService.listEndUsers(accountUid.value, project.value.uid, 1, { email_cont: memberEmail.value.trim() || undefined })).items
+  memberMatches.value = (await projectAdminService.listEndUsers(accountUid.value, project.value.uid, { search: memberEmail.value })).items
 })
 
 const addMember = useAsyncAction(async (endUser: EndUser) => {
   if (!project.value || !membersOf.value) return
   await projectAdminService.addGroupMember(accountUid.value, project.value.uid, membersOf.value.uid, endUser.uid)
-  setMemberCount(1)
-  await loadMembers.run()
+  await Promise.all([loadMembers.run(), list.reload()])
 })
 
 const removeMember = useAsyncAction(async (endUser: EndUser) => {
   if (!project.value || !membersOf.value) return
   await projectAdminService.removeGroupMember(accountUid.value, project.value.uid, membersOf.value.uid, endUser.uid)
-  setMemberCount(-1)
-  await loadMembers.run()
+  await Promise.all([loadMembers.run(), list.reload()])
 })
 
 const isMember = (endUser: EndUser) => members.value.items.some((member) => member.uid === endUser.uid) || endUser.groups.some((group) => group.uid === membersOf.value?.uid)
 
 watch(membersPage, () => loadMembers.run())
-onMounted(() => load.run())
+onMounted(() => openLinked.run())
 </script>
 
 <template>
   <BaseCard title="Groups" description="Sets of end users. Assign apps to groups, and send group names to apps as the groups claim or a SAML attribute.">
-    <template v-if="access.developer" #footer>
-      <BaseButton label="Create group" @click="openForm(null)" />
-    </template>
-
-    <BaseAlert v-if="load.error.value" variant="danger">We couldn't load groups. {{ load.error.value.message }}</BaseAlert>
+    <BaseAlert v-if="openLinked.error.value" variant="danger">We couldn't open that group. {{ openLinked.error.value.message }}</BaseAlert>
     <BaseAlert v-if="destroy.error.value" variant="danger">{{ destroy.error.value.message }}</BaseAlert>
 
-    <BaseTable
+    <BaseDataTable
+      v-model:state="listState"
       caption="Groups"
+      search-label="Search by name"
       :columns="columns"
-      :rows="groups"
+      :filters="filters"
+      :rows="list.rows.value"
       :row-key="(group) => group.uid"
-      :loading="load.loading.value"
+      :total="list.total.value"
+      :per-page="list.perPage.value"
+      :loading="list.loading.value"
+      :error="list.error.value"
       empty-message="No groups yet. Create one to give its members access to apps."
+      @retry="list.reload"
     >
+      <template v-if="access.developer" #actions>
+        <BaseButton label="Create group" @click="openForm(null)" />
+      </template>
       <template #cell-name="{ row }">
         <span class="font-medium">{{ row.name }}</span>
         <span v-if="row.description" class="block text-xs text-text-muted">{{ row.description }}</span>
@@ -149,7 +156,7 @@ onMounted(() => load.run())
           </template>
         </div>
       </template>
-    </BaseTable>
+    </BaseDataTable>
   </BaseCard>
 
   <BaseDialog v-model:visible="formOpen" :title="editing ? `Edit ${editing.name}` : 'Create group'">

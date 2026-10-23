@@ -2,10 +2,17 @@ module V1
   module Accounts
     module Projects
       class IdentityProvidersController < ManagementController
+        LIST = ListQuery.new(
+          search: "name_i_cont",
+          filters: %i[kind_eq kind_in enabled_eq],
+          sorts: { "name" => :name, "kind" => :kind, "created_at" => :created_at },
+          default_sort: "created_at"
+        )
+
         before_action :set_identity_provider, only: %i[show update destroy]
 
         def index
-          providers = paginated(current_project.identity_providers.includes(project: :account).order(:created_at, :id))
+          providers = listed(current_project.identity_providers.includes(project: :account), LIST)
           render json: IdentityProviderSerializer.new(providers).serializable_hash
         end
 

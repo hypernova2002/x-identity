@@ -18,7 +18,7 @@ import EndUserActionDialog from '@/components/project/EndUserActionDialog.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useEndUserActions } from '@/composables/useEndUserActions'
 import { useProjectContext } from '@/composables/useProjectContext'
-import type { AuditEventFilters } from '@/services/account'
+import type { ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
 import type { AttributeDefinition, EndUser, EndUserAppAccess, EndUserIdentity, Group } from '@/types/api'
 import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttributes'
@@ -131,8 +131,8 @@ const saveProfile = useAsyncAction(async () => {
   notice.value = 'Profile saved.'
 })
 
-function fetchAudit(page: number, filters: AuditEventFilters) {
-  return projectAdminService.listAuditEvents(accountUid.value, project.value!.uid, page, filters)
+function fetchAudit(params: ListParams) {
+  return projectAdminService.listAuditEvents(accountUid.value, project.value!.uid, params)
 }
 
 const appLink = (app: EndUserAppAccess) =>

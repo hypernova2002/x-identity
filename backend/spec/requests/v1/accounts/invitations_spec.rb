@@ -15,6 +15,7 @@ RSpec.describe "Invitations", type: :openapi do
       get "List pending invitations" do
         tags "Invitations"
         security [ { BearerAuth: [] } ]
+        ListParameters.build(search: "Email", sorts: %w[email role expires_at created_at], filters: { role_eq: { type: :string } }).each { |list_parameter| parameter(**list_parameter) }
 
         response 200, "pending invitations" do
           schema type: :array, items: Schemas::Invitation
@@ -122,6 +123,24 @@ RSpec.describe "Invitations", type: :openapi do
 
     it "refuses an invitation from another account" do
       assert_api_response :post, 401, body: body, path_params: { account_uid: create(:account).uid }
+    end
+  end
+
+  describe "searching and sorting invitations" do
+    def emails(params)
+      get "/v1/accounts/#{account.uid}/invitations", params: params, headers: auth_headers_for(admin)
+      response.parsed_body.pluck("email")
+    end
+
+    before do
+      Invitation.issue!(account: account, invited_by: admin, email: "zoe@acme.test", role: "member")
+      Invitation.issue!(account: account, invited_by: admin, email: "ari@acme.test", role: "admin")
+    end
+
+    it "searches by email, filters by role and sorts" do
+      expect(emails(q: { search: "zoe" })).to eq([ "zoe@acme.test" ])
+      expect(emails(q: { role_eq: "admin" })).to eq([ "ari@acme.test" ])
+      expect(emails(sort: "email")).to eq(%w[ari@acme.test zoe@acme.test])
     end
   end
 end

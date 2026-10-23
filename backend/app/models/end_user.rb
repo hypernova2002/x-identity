@@ -27,14 +27,35 @@ class EndUser < ApplicationRecord
     %w[uid email name status]
   end
 
-  scope :with_verified_email, ->(verified) { verified ? where.not(email_verified_at: nil) : where(email_verified_at: nil) }
+  def self.ransackable_scopes(_auth_object = nil)
+    %w[with_verified_email with_mfa invitation_pending in_group]
+  end
+
+  # Ransack doesn't call a scope given `false`, so these take the request's "true" or "false" as is.
+  def self.ransackable_scopes_skip_sanitize_args
+    %w[with_verified_email with_mfa]
+  end
+
+  FLAGS = { "true" => true, "false" => false }.freeze
+
+  scope :with_verified_email, lambda { |verified|
+    case FLAGS[verified.to_s]
+    when true then where.not(email_verified_at: nil)
+    when false then where(email_verified_at: nil)
+    else all
+    end
+  }
   scope :with_mfa, lambda { |enabled|
     with_credential = OtpCredential.confirmed.where(subject_type: "EndUser").select(:subject_id)
-    enabled ? where(id: with_credential) : where.not(id: with_credential)
+    case FLAGS[enabled.to_s]
+    when true then where(id: with_credential)
+    when false then where.not(id: with_credential)
+    else all
+    end
   }
   # Created by an admin or invited, and hasn't set a password or linked a provider yet.
   scope :invitation_pending, -> { where(password_digest: nil).where.not(id: EndUserIdentity.select(:end_user_id)) }
-  scope :in_group, ->(group) { where(id: group.group_memberships.select(:end_user_id)) }
+  scope :in_group, ->(group_uid) { where(id: GroupMembership.joins(:group).where(groups: { uid: group_uid }).select(:end_user_id)) }
 
   # @return [Realms::ProjectRealm]
   def realm

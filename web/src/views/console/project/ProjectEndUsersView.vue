@@ -1,122 +1,93 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 
 import BaseActionMenu, { type ActionMenuItem } from '@/components/base/BaseActionMenu.vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseCheckbox from '@/components/base/BaseCheckbox.vue'
+import BaseDataTable from '@/components/base/BaseDataTable.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
-import BasePagination from '@/components/base/BasePagination.vue'
-import BaseSelect from '@/components/base/BaseSelect.vue'
-import BaseTable from '@/components/base/BaseTable.vue'
-import type { SelectOption } from '@/components/base/types'
+import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import CustomAttributeFields from '@/components/project/CustomAttributeFields.vue'
 import EndUserActionDialog from '@/components/project/EndUserActionDialog.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useEndUserActions } from '@/composables/useEndUserActions'
+import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
-import type { Page } from '@/services/http'
-import { projectAdminService, type EndUserFilters } from '@/services/project'
+import { projectAdminService } from '@/services/project'
 import type { AttributeDefinition, EndUser, Group } from '@/types/api'
 import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttributes'
 import { formatDateTime } from '@/utils/format'
+import { userStatusOptions } from '@/utils/options'
 
-const route = useRoute()
 const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
-const endUsers = ref<Page<EndUser>>({ items: [], total: 0, perPage: 25 })
 const definitions = ref<AttributeDefinition[]>([])
 const groups = ref<Group[]>([])
 const notice = ref<string | null>(null)
 
-// Filters live in the URL, so they survive reloads and the back button.
-const text = (key: string) => (typeof route.query[key] === 'string' ? (route.query[key] as string) : '')
-const search = ref(text('search'))
-const status = ref(text('status'))
-const emailVerified = ref(text('email'))
-const mfa = ref(text('mfa'))
-const invitation = ref(text('invitation'))
-const groupUid = ref(text('group'))
-const page = computed(() => Math.max(1, Number(text('page')) || 1))
+const filters = computed<DataTableFilter[]>(() => [
+  { type: 'select', key: 'status_eq', label: 'Status', options: userStatusOptions },
+  {
+    type: 'select',
+    key: 'with_verified_email',
+    label: 'Email',
+    options: [
+      { label: 'Verified', value: 'true' },
+      { label: 'Not verified', value: 'false' },
+    ],
+  },
+  {
+    type: 'select',
+    key: 'with_mfa',
+    label: 'MFA',
+    options: [
+      { label: 'On', value: 'true' },
+      { label: 'Off', value: 'false' },
+    ],
+  },
+  { type: 'select', key: 'invitation_pending', label: 'Invitation', options: [{ label: 'Pending', value: 'true' }] },
+  { type: 'select', key: 'in_group', label: 'Group', options: groups.value.map((group) => ({ label: group.name, value: group.uid })) },
+])
 
-const anyOption = (label: string): SelectOption => ({ label, value: '' })
-const statusOptions: SelectOption[] = [anyOption('Any status'), { label: 'Active', value: 'active' }, { label: 'Disabled', value: 'disabled' }]
-const emailOptions: SelectOption[] = [anyOption('Any email'), { label: 'Verified', value: 'true' }, { label: 'Not verified', value: 'false' }]
-const mfaOptions: SelectOption[] = [anyOption('Any MFA'), { label: 'MFA on', value: 'true' }, { label: 'MFA off', value: 'false' }]
-const invitationOptions: SelectOption[] = [anyOption('Any'), { label: 'Invitation pending', value: 'true' }]
-const groupOptions = computed<SelectOption[]>(() => [anyOption('Any group'), ...groups.value.map((group) => ({ label: group.name, value: group.uid }))])
-
-const filtered = computed(() => ['search', 'status', 'email', 'mfa', 'invitation', 'group'].some((key) => text(key) !== ''))
-
-const columns = [
-  { key: 'email', label: 'End user' },
-  { key: 'status', label: 'Status' },
+const columns: DataTableColumn[] = [
+  { key: 'email', label: 'End user', sortKey: 'email' },
+  { key: 'status', label: 'Status', sortKey: 'status' },
   { key: 'mfa_enabled', label: 'MFA' },
   { key: 'groups', label: 'Groups' },
-  { key: 'last_sign_in_at', label: 'Last sign-in' },
+  { key: 'last_sign_in_at', label: 'Last sign-in', sortKey: 'last_sign_in_at' },
   { key: 'actions', label: 'Actions', srOnly: true },
 ]
 
-function filtersFromQuery(): EndUserFilters {
-  const term = text('search').trim()
-  const bool = (value: string) => (value === '' ? undefined : value === 'true')
-  const statusValue = text('status')
-  return {
-    uid_eq: term.startsWith('eu_') ? term : undefined,
-    email_cont: term && !term.startsWith('eu_') ? term : undefined,
-    status_eq: statusValue === 'active' || statusValue === 'disabled' ? statusValue : undefined,
-    email_verified: bool(text('email')),
-    mfa: bool(text('mfa')),
-    invitation_pending: text('invitation') === 'true' || undefined,
-    group_uid: text('group') || undefined,
-  }
-}
-
-const load = useAsyncAction(async () => {
-  if (!project.value) return
-  const [loaded, loadedDefinitions, loadedGroups] = await Promise.all([
-    projectAdminService.listEndUsers(accountUid.value, project.value.uid, page.value, filtersFromQuery()),
-    definitions.value.length > 0 ? null : projectAdminService.listAttributes(accountUid.value, project.value.uid),
-    groups.value.length > 0 ? null : projectAdminService.listGroups(accountUid.value, project.value.uid),
-  ])
-  endUsers.value = loaded
-  if (loadedDefinitions) definitions.value = loadedDefinitions.items
-  if (loadedGroups) groups.value = loadedGroups.items
+const list = useListView((params) => projectAdminService.listEndUsers(accountUid.value, project.value!.uid, params), {
+  defaultSort: 'created_at',
+  filterKeys: ['status_eq', 'with_verified_email', 'with_mfa', 'invitation_pending', 'in_group'],
+  syncRoute: true,
 })
+const listState = list.state
 
-function applyFilters() {
-  const query = { search: search.value.trim(), status: status.value, email: emailVerified.value, mfa: mfa.value, invitation: invitation.value, group: groupUid.value }
-  router.push({ query: Object.fromEntries(Object.entries(query).filter(([, value]) => value !== '')) })
-}
-
-function clearFilters() {
-  search.value = ''
-  status.value = ''
-  emailVerified.value = ''
-  mfa.value = ''
-  invitation.value = ''
-  groupUid.value = ''
-  router.push({ query: {} })
-}
-
-function setPage(value: number) {
-  router.push({ query: { ...route.query, page: value > 1 ? String(value) : undefined } })
-}
+const loadLookups = useAsyncAction(async () => {
+  if (!project.value) return
+  const [loadedDefinitions, loadedGroups] = await Promise.all([
+    projectAdminService.listAttributes(accountUid.value, project.value.uid),
+    projectAdminService.listGroups(accountUid.value, project.value.uid),
+  ])
+  definitions.value = loadedDefinitions.items
+  groups.value = loadedGroups.items
+})
 
 const userLink = (endUser: EndUser) => ({ name: 'project-end-user', params: { projectUid: project.value?.uid, endUserUid: endUser.uid } })
 
 const actions = useEndUserActions(
   () => (project.value ? { accountUid: accountUid.value, projectUid: project.value.uid } : null),
-  ({ endUser, updated, notice: message }) => {
+  ({ notice: message }) => {
     notice.value = message
-    endUsers.value = updated
-      ? { ...endUsers.value, items: endUsers.value.items.map((existing) => (existing.uid === endUser.uid ? updated : existing)) }
-      : { ...endUsers.value, items: endUsers.value.items.filter((existing) => existing.uid !== endUser.uid), total: endUsers.value.total - 1 }
+    list.reload()
   },
 )
 
@@ -154,48 +125,32 @@ const create = useAsyncAction(async () => {
   await router.push(userLink(created))
 })
 
-watch(() => route.query, () => load.run())
-onMounted(() => load.run())
+onMounted(() => loadLookups.run())
 </script>
 
 <template>
   <BaseCard>
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <form class="flex flex-1 flex-col gap-4" role="search" novalidate @submit.prevent="applyFilters">
-        <div class="flex flex-wrap items-end gap-4">
-          <div class="w-full max-w-sm">
-            <BaseInput v-model="search" label="Search by email or user ID" type="search" hint="A user ID starts with eu_." />
-          </div>
-          <BaseButton type="submit" label="Search" variant="secondary" />
-        </div>
-        <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <BaseSelect v-model="status" label="Status" :options="statusOptions" @update:model-value="applyFilters" />
-          <BaseSelect v-model="emailVerified" label="Email" :options="emailOptions" @update:model-value="applyFilters" />
-          <BaseSelect v-model="mfa" label="MFA" :options="mfaOptions" @update:model-value="applyFilters" />
-          <BaseSelect v-model="invitation" label="Invitation" :options="invitationOptions" @update:model-value="applyFilters" />
-          <BaseSelect v-model="groupUid" label="Group" :options="groupOptions" @update:model-value="applyFilters" />
-        </div>
-      </form>
-      <BaseButton v-if="access.developer" label="Create end user" @click="createOpen = true" />
-    </div>
-
     <BaseAlert v-if="notice" variant="success">{{ notice }}</BaseAlert>
-    <BaseAlert v-if="load.error.value" variant="danger">We couldn't load end users. {{ load.error.value.message }}</BaseAlert>
     <BaseAlert v-if="actions.perform.error.value && !actions.pending.value" variant="danger">{{ actions.perform.error.value.message }}</BaseAlert>
 
-    <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-text-muted">
-      <span role="status">{{ endUsers.total }} {{ endUsers.total === 1 ? 'end user' : 'end users' }}{{ filtered ? ' match' : '' }}</span>
-      <BaseButton v-if="filtered" label="Clear filters" variant="ghost" size="sm" @click="clearFilters" />
-    </div>
-
-    <BaseTable
+    <BaseDataTable
+      v-model:state="listState"
       caption="End users"
+      search-label="Search by email, name or ID"
       :columns="columns"
-      :rows="endUsers.items"
+      :filters="filters"
+      :rows="list.rows.value"
       :row-key="(endUser) => endUser.uid"
-      :loading="load.loading.value"
-      :empty-message="filtered ? 'No end users match these filters.' : 'No end users yet. They appear here once they sign up, sign in with an identity provider, or you create them.'"
+      :total="list.total.value"
+      :per-page="list.perPage.value"
+      :loading="list.loading.value"
+      :error="list.error.value"
+      empty-message="No end users yet. They appear here once they sign up, sign in with an identity provider, or you create them."
+      @retry="list.reload"
     >
+      <template v-if="access.developer" #actions>
+        <BaseButton label="Create end user" @click="createOpen = true" />
+      </template>
       <template #cell-email="{ row }">
         <RouterLink :to="userLink(row)" class="font-medium text-primary underline-offset-2 hover:underline">{{ row.email }}</RouterLink>
         <span v-if="row.name" class="block text-text-muted">{{ row.name }}</span>
@@ -226,9 +181,7 @@ onMounted(() => load.run())
           <BaseActionMenu v-if="access.developer" :items="menuItems(row)" :label="`More actions for ${row.email}`" />
         </div>
       </template>
-    </BaseTable>
-
-    <BasePagination :page="page" :total="endUsers.total" :per-page="endUsers.perPage" :disabled="load.loading.value" @update:page="setPage" />
+    </BaseDataTable>
   </BaseCard>
 
   <EndUserActionDialog

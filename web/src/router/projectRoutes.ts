@@ -57,8 +57,8 @@ export const projectRoutes: RouteRecordRaw[] = [
       ['activity', 'project-saml-app-activity', () => import('../views/console/project/applications/AppActivityTab.vue')],
     ]),
   },
-  { path: 'app-clients', redirect: withQuery('project-applications', { type: 'oidc' }) },
-  { path: 'saml-apps', redirect: withQuery('project-applications', { type: 'saml' }) },
+  { path: 'app-clients', redirect: withQuery('project-applications', { app_type_eq: 'app_client' }) },
+  { path: 'saml-apps', redirect: withQuery('project-applications', { app_type_eq: 'saml_app' }) },
 
   {
     path: 'end-users',

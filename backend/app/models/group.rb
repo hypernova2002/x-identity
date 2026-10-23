@@ -18,6 +18,6 @@ class Group < ApplicationRecord
   scope :for_new_users, -> { where(default_for_new_users: true) }
 
   def self.ransackable_attributes(_auth_object = nil)
-    %w[name]
+    %w[name default_for_new_users]
   end
 end

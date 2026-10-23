@@ -3,7 +3,7 @@ module V1
     module Projects
       # Console endpoints for managing a project. Projects the console user can't view are 404s.
       class ManagementController < Accounts::AuthenticatedController
-        include Paginated
+        include Listing
 
         before_action :set_project
 

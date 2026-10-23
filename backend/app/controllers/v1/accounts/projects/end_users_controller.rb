@@ -2,14 +2,19 @@ module V1
   module Accounts
     module Projects
       class EndUsersController < ManagementController
-        FILTERS = %i[email_cont name_cont status_eq uid_eq].freeze
-        BOOLEAN = { "true" => true, "false" => false }.freeze
+        LIST = ListQuery.new(
+          search: "email_or_name_or_uid_i_cont",
+          filters: %i[status_eq uid_eq with_verified_email with_mfa invitation_pending in_group],
+          sorts: {
+            "email" => :email, "name" => :name, "status" => :status, "created_at" => :created_at, "last_sign_in_at" => :last_sign_in_at
+          },
+          default_sort: "created_at"
+        )
 
         before_action :set_end_user, only: %i[show update destroy reset_mfa sign_out resend_invitation identities unlink_identity access]
 
         def index
-          end_users = filtered(current_project.end_users.ransack(params.fetch(:q, {}).permit(*FILTERS)).result)
-          end_users = paginated(end_users.includes(:otp_credential, :identities, :groups).order(:created_at, :id))
+          end_users = listed(current_project.end_users.includes(:otp_credential, :identities, :groups), LIST)
           render json: EndUserSerializer.new(end_users).serializable_hash
         end
 
@@ -64,16 +69,6 @@ module V1
         end
 
         private
-
-        # Filters the ransack search can't express: email verification, MFA, pending invitations and groups.
-        def filtered(scope)
-          filters = params.fetch(:filter, {}).permit(:email_verified, :mfa, :invitation_pending, :group_uid)
-          scope = scope.with_verified_email(BOOLEAN.fetch(filters[:email_verified])) if BOOLEAN.key?(filters[:email_verified])
-          scope = scope.with_mfa(BOOLEAN.fetch(filters[:mfa])) if BOOLEAN.key?(filters[:mfa])
-          scope = scope.invitation_pending if filters[:invitation_pending] == "true"
-          scope = scope.in_group(current_project.groups.find_by_uid!(filters[:group_uid])) if filters[:group_uid].present?
-          scope
-        end
 
         def set_end_user
           @end_user = current_project.end_users.find_by_uid!(params[:uid])

@@ -10,7 +10,7 @@ import PageHeader from '@/components/console/PageHeader.vue'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
-import type { AuditEventFilters } from '@/services/account'
+import type { ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
 import { useSessionStore } from '@/stores/session'
 import type { AppKind, IdentityProvider } from '@/types/api'
@@ -84,11 +84,11 @@ const appAccessRoute = (app: AppSummary) =>
     ? { name: 'project-saml-app-access', params: { projectUid: project.value?.uid, samlAppUid: app.uid } }
     : { name: 'project-app-client-access', params: { projectUid: project.value?.uid, clientUid: app.uid } }
 
-function fetchAudit(page: number, filters: AuditEventFilters) {
-  return projectAdminService.listAuditEvents(accountUid.value, project.value!.uid, page, filters)
+function fetchAudit(params: ListParams) {
+  return projectAdminService.listAuditEvents(accountUid.value, project.value!.uid, params)
 }
 
-const countEvents = async (filters: AuditEventFilters) => (await fetchAudit(1, { ...filters, per_page: 1 })).total
+const countEvents = async (filters: Record<string, string>) => (await fetchAudit({ perPage: 1, filters })).total
 
 const load = useAsyncAction(async () => {
   if (!project.value) return
@@ -96,7 +96,7 @@ const load = useAsyncAction(async () => {
   const [clients, samlApps, endUsers, loadedProviders] = await Promise.all([
     projectAdminService.listAppClients(accountUid.value, projectUid),
     projectAdminService.listSamlApps(accountUid.value, projectUid),
-    projectAdminService.listEndUsers(accountUid.value, projectUid, 1, {}),
+    projectAdminService.listEndUsers(accountUid.value, projectUid, { perPage: 1 }),
     projectAdminService.listIdentityProviders(accountUid.value, projectUid),
   ])
   endUserCount.value = endUsers.total

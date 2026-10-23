@@ -8,6 +8,10 @@ class IdentityProvider < ApplicationRecord
 
   self.uid_prefix = "idp"
 
+  def self.ransackable_attributes(_auth_object = nil)
+    %w[name kind enabled]
+  end
+
   MAX_AUDIENCES = 10
   METADATA_KEYS = %w[issuer authorization_endpoint token_endpoint jwks_uri].freeze
   APPLE_ID_FORMAT = /\A[A-Z0-9]{10}\z/

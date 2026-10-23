@@ -5,7 +5,7 @@ import InputText from 'openvue/inputtext'
 const props = withDefaults(
   defineProps<{
     label: string
-    type?: 'text' | 'email' | 'password' | 'search' | 'tel' | 'url' | 'number'
+    type?: 'text' | 'email' | 'password' | 'search' | 'tel' | 'url' | 'number' | 'date'
     autocomplete?: string
     inputmode?: 'text' | 'numeric' | 'email'
     hint?: string

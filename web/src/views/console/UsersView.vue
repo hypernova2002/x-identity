@@ -1,29 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
+import BaseDataTable from '@/components/base/BaseDataTable.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
-import BasePagination from '@/components/base/BasePagination.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
-import BaseTable from '@/components/base/BaseTable.vue'
+import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import PageHeader from '@/components/console/PageHeader.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useListView } from '@/composables/useListView'
 import { userService } from '@/services/account'
-import type { Page } from '@/services/http'
 import { useSessionStore } from '@/stores/session'
 import type { AccountRole, Invitation, User } from '@/types/api'
 import { formatDateTime } from '@/utils/format'
-import { accountRoleOptions } from '@/utils/options'
+import { accountRoleOptions, userStatusOptions } from '@/utils/options'
 
 const { account, me } = storeToRefs(useSessionStore())
 
-const page = ref(1)
-const users = ref<Page<User>>({ items: [], total: 0, perPage: 25 })
-const invitations = ref<Invitation[]>([])
 const inviteEmail = ref('')
 const inviteRole = ref<AccountRole>('member')
 const invited = ref<string | null>(null)
@@ -33,60 +30,64 @@ const grantableRoles = computed(() =>
   me.value?.role === 'owner' ? accountRoleOptions : accountRoleOptions.filter((option) => option.value !== 'owner'),
 )
 
-const userColumns = [
-  { key: 'name', label: 'Name' },
-  { key: 'role', label: 'Role' },
+const userColumns: DataTableColumn[] = [
+  { key: 'name', label: 'Name', sortKey: 'name' },
+  { key: 'role', label: 'Role', sortKey: 'role' },
   { key: 'status', label: 'Status' },
-  { key: 'last_sign_in_at', label: 'Last sign-in' },
+  { key: 'last_sign_in_at', label: 'Last sign-in', sortKey: 'last_sign_in_at' },
   { key: 'actions', label: 'Actions', srOnly: true },
+]
+const userFilters: DataTableFilter[] = [
+  { type: 'select', key: 'role_eq', label: 'Role', options: accountRoleOptions },
+  { type: 'select', key: 'status_eq', label: 'Status', options: userStatusOptions },
 ]
 
-const invitationColumns = [
-  { key: 'email', label: 'Email' },
-  { key: 'role', label: 'Role' },
-  { key: 'expires_at', label: 'Expires' },
+const invitationColumns: DataTableColumn[] = [
+  { key: 'email', label: 'Email', sortKey: 'email' },
+  { key: 'role', label: 'Role', sortKey: 'role' },
+  { key: 'expires_at', label: 'Expires', sortKey: 'expires_at' },
   { key: 'actions', label: 'Actions', srOnly: true },
 ]
+const invitationFilters: DataTableFilter[] = [{ type: 'select', key: 'role_eq', label: 'Role', options: accountRoleOptions }]
+
+const users = useListView((params) => userService.list(account.value!.uid, params), {
+  defaultSort: 'created_at',
+  filterKeys: userFilters.map((filter) => filter.key),
+  syncRoute: true,
+})
+const usersState = users.state
+
+const invitations = useListView((params) => userService.listInvitations(account.value!.uid, params), {
+  defaultSort: 'created_at',
+  filterKeys: invitationFilters.map((filter) => filter.key),
+})
+const invitationsState = invitations.state
 
 function canManage(user: User) {
   if (!me.value || user.uid === me.value.uid) return false
   return me.value.role === 'owner' || user.role !== 'owner'
 }
 
-const load = useAsyncAction(async () => {
-  if (!account.value) return
-  const [loadedUsers, loadedInvitations] = await Promise.all([
-    userService.list(account.value.uid, page.value),
-    userService.listInvitations(account.value.uid),
-  ])
-  users.value = loadedUsers
-  invitations.value = loadedInvitations.items
-})
-
 const userAction = useAsyncAction(async (user: User, changes: Partial<Pick<User, 'role' | 'status'>> | null) => {
   if (!account.value) return
-  if (changes === null) {
-    await userService.remove(account.value.uid, user.uid)
-    users.value = { ...users.value, items: users.value.items.filter((existing) => existing.uid !== user.uid), total: users.value.total - 1 }
-    return
-  }
-  const updated = await userService.update(account.value.uid, user.uid, changes)
-  users.value = { ...users.value, items: users.value.items.map((existing) => (existing.uid === updated.uid ? updated : existing)) }
+  if (changes === null) await userService.remove(account.value.uid, user.uid)
+  else await userService.update(account.value.uid, user.uid, changes)
+  await users.reload()
 })
 
 const invite = useAsyncAction(async () => {
   if (!account.value) return
   invited.value = null
   const invitation = await userService.invite(account.value.uid, inviteEmail.value, inviteRole.value)
-  invitations.value = [...invitations.value.filter((existing) => existing.email !== invitation.email), invitation]
   invited.value = invitation.email
   inviteEmail.value = ''
+  await invitations.reload()
 })
 
 const revoke = useAsyncAction(async (invitation: Invitation) => {
   if (!account.value) return
   await userService.revokeInvitation(account.value.uid, invitation.uid)
-  invitations.value = invitations.value.filter((existing) => existing.uid !== invitation.uid)
+  await invitations.reload()
 })
 
 async function confirmDelete() {
@@ -94,24 +95,27 @@ async function confirmDelete() {
   await userAction.run(pendingDelete.value, null)
   pendingDelete.value = null
 }
-
-watch(page, () => load.run())
-onMounted(() => load.run())
 </script>
 
 <template>
   <PageHeader title="Console users" description="People who manage this account in the console, and their account roles. Project end users are managed in each project's Directory." />
 
-  <BaseAlert v-if="load.error.value" variant="danger">We couldn't load users. {{ load.error.value.message }}</BaseAlert>
   <BaseAlert v-if="userAction.error.value" variant="danger">{{ userAction.error.value.message }}</BaseAlert>
 
-  <BaseTable
-    caption="Users"
+  <BaseDataTable
+    v-model:state="usersState"
+    caption="Console users"
+    search-label="Search by name or email"
     :columns="userColumns"
-    :rows="users.items"
+    :filters="userFilters"
+    :rows="users.rows.value"
     :row-key="(user) => user.uid"
-    :loading="load.loading.value"
-    empty-message="No users found."
+    :total="users.total.value"
+    :per-page="users.perPage.value"
+    :loading="users.loading.value"
+    :error="users.error.value"
+    empty-message="No users yet."
+    @retry="users.reload"
   >
     <template #cell-name="{ row }">
       <span class="font-medium">{{ row.name }}</span>
@@ -154,9 +158,7 @@ onMounted(() => load.run())
         />
       </div>
     </template>
-  </BaseTable>
-
-  <BasePagination v-model:page="page" :total="users.total" :per-page="users.perPage" :disabled="load.loading.value" />
+  </BaseDataTable>
 
   <BaseDialog :visible="pendingDelete !== null" title="Delete user?" @update:visible="(open: boolean) => !open && (pendingDelete = null)">
     <p class="text-sm">
@@ -183,18 +185,26 @@ onMounted(() => load.run())
     </form>
 
     <BaseAlert v-if="revoke.error.value" variant="danger">{{ revoke.error.value.message }}</BaseAlert>
-    <BaseTable
+    <BaseDataTable
+      v-model:state="invitationsState"
       caption="Pending invitations"
+      search-label="Search by email"
       :columns="invitationColumns"
-      :rows="invitations"
+      :filters="invitationFilters"
+      :rows="invitations.rows.value"
       :row-key="(invitation) => invitation.uid"
+      :total="invitations.total.value"
+      :per-page="invitations.perPage.value"
+      :loading="invitations.loading.value"
+      :error="invitations.error.value"
       empty-message="No pending invitations."
+      @retry="invitations.reload"
     >
       <template #cell-role="{ row }"><span class="capitalize">{{ row.role }}</span></template>
       <template #cell-expires_at="{ row }">{{ formatDateTime(row.expires_at) }}</template>
       <template #cell-actions="{ row }">
         <BaseButton label="Revoke" variant="ghost" size="sm" :disabled="revoke.loading.value" @click="revoke.run(row)" />
       </template>
-    </BaseTable>
+    </BaseDataTable>
   </BaseCard>
 </template>
