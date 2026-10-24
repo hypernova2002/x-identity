@@ -7,7 +7,7 @@ module Apps
   class Directory
     include Enumerable
 
-    Row = Data.define(:app_type, :uid, :name, :enabled, :client_type, :machine, :entity_id, :created_at)
+    Row = Data.define(:app_type, :uid, :name, :enabled, :client_type, :machine, :entity_id, :created_at, :assignment_count, :api_count)
 
     SORTS = { "name" => :name, "type" => :app_type, "created_at" => :created_at }.freeze
     TABLE = Arel::Table.new(:applications)
@@ -73,13 +73,20 @@ module Apps
 
     def source
       clients = @project.app_clients.managed.select(
-        Arel.sql("'app_client'").as("app_type"), :id, :uid, :name, :enabled, :client_type, :machine, Arel.sql("NULL").as("entity_id"), :created_at
+        Arel.sql("'app_client'").as("app_type"), :id, :uid, :name, :enabled, :client_type, :machine, Arel.sql("NULL").as("entity_id"), :created_at,
+        assignment_count("AppClient", "app_clients"), Arel.sql("(SELECT COUNT(*) FROM api_grants WHERE api_grants.app_client_id = app_clients.id)").as("api_count")
       )
       saml_apps = @project.saml_apps.select(
         Arel.sql("'saml_app'").as("app_type"), :id, :uid, :name, :enabled, Arel.sql("NULL").as("client_type"), Arel.sql("FALSE").as("machine"), :entity_id,
-        :created_at
+        :created_at, assignment_count("SamlApp", "saml_apps"), Arel.sql("0").as("api_count")
       )
       Arel::Nodes::TableAlias.new(Arel.sql("(#{clients.to_sql} UNION ALL #{saml_apps.to_sql})"), "applications")
+    end
+
+    # Users and groups assigned to each app, counted in the same query.
+    def assignment_count(app_type, table)
+      Arel.sql("(SELECT COUNT(*) FROM app_assignments WHERE app_assignments.app_type = '#{app_type}' AND app_assignments.app_id = #{table}.id)")
+        .as("assignment_count")
     end
 
     def sort_column

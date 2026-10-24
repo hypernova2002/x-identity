@@ -27,6 +27,12 @@ RSpec.describe "JWKS", type: :openapi do
     end
   end
 
+  it "lets caches keep the key set for five minutes" do
+    assert_api_response :get, 200, path_params: { account_uid: account.uid } do
+      expect(response.headers["Cache-Control"]).to include("public", "max-age=300", "stale-while-revalidate=60")
+    end
+  end
+
   it "does not publish private key material" do
     tokens_for(create(:user, account: account))
 

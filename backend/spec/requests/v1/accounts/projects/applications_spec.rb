@@ -61,6 +61,18 @@ RSpec.describe "Applications", type: :openapi do
     expect(names.call(sort: "-name")).to eq([ "Wiki", "Web shop", "Billing API" ])
   end
 
+  it "counts each app's assignments and APIs in the same query" do
+    group = project.groups.create!(name: "Staff")
+    AppAssignment.create!(project: project, app: wiki, principal: group)
+    machine = create(:app_client, :machine, project: project, name: "Billing job")
+    machine.api_grants.create!(api_resource: project.api_resources.create!(name: "Orders", identifier: "https://orders.example.com"), scopes: [])
+
+    get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/applications", headers: auth_headers_for(viewer)
+
+    counts = response.parsed_body.to_h { |row| [ row["name"], [ row["assignment_count"], row["api_count"] ] ] }
+    expect(counts).to include("Wiki" => [ 2, 0 ], "Billing job" => [ 0, 1 ], "Web shop" => [ 1, 0 ])
+  end
+
   it "filters by kind: OpenID Connect, machine-to-machine or SAML" do
     machine = create(:app_client, :machine, project: project, name: "Billing job")
     names = lambda do |kind|

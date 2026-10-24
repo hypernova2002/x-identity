@@ -33,6 +33,13 @@ class ApplicationController < ActionController::API
     raise ApiError.new(:validation_failed, details: details)
   end
 
+  # Lets browsers, CDNs and HTTP clients reuse a response that's the same for everyone (keys,
+  # discovery documents) for `max_age`, then keep serving it briefly while they refetch.
+  # @param max_age [ActiveSupport::Duration]
+  def cache_publicly(max_age)
+    expires_in max_age, public: true, stale_while_revalidate: 1.minute
+  end
+
   # Who is calling, for the audit log. Passed to services as plain keyword arguments.
   # @return [Hash{Symbol => String, nil}]
   def client_info

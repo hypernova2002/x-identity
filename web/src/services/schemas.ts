@@ -153,6 +153,8 @@ export const applicationSchema = z.object({
   machine: z.boolean(),
   entity_id: nullableString,
   created_at: timestamp,
+  assignment_count: z.number(),
+  api_count: z.number(),
 }) satisfies z.ZodType<Application>
 
 export const appClientSchema = z.object({

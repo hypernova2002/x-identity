@@ -45,16 +45,21 @@ class EndUser < ApplicationRecord
     else all
     end
   }
+  # The credential and identity checks are correlated EXISTS subqueries, so each end user only looks
+  # at its own rows instead of every project's.
   scope :with_mfa, lambda { |enabled|
-    with_credential = OtpCredential.confirmed.where(subject_type: "EndUser").select(:subject_id)
+    credential = OtpCredential.confirmed.where(subject_type: "EndUser").where(OtpCredential.arel_table[:subject_id].eq(arel_table[:id])).select(1).arel.exists
     case FLAGS[enabled.to_s]
-    when true then where(id: with_credential)
-    when false then where.not(id: with_credential)
+    when true then where(credential)
+    when false then where(credential.not)
     else all
     end
   }
   # Created by an admin or invited, and hasn't set a password or linked a provider yet.
-  scope :invitation_pending, -> { where(password_digest: nil).where.not(id: EndUserIdentity.select(:end_user_id)) }
+  scope :invitation_pending, lambda {
+    identity = EndUserIdentity.where(EndUserIdentity.arel_table[:end_user_id].eq(arel_table[:id])).select(1).arel.exists
+    where(password_digest: nil).where(identity.not)
+  }
   scope :in_group, ->(group_uid) { where(id: GroupMembership.joins(:group).where(groups: { uid: group_uid }).select(:end_user_id)) }
 
   # @return [Realms::ProjectRealm]

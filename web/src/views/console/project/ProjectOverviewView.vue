@@ -10,7 +10,7 @@ import PageHeader from '@/components/console/PageHeader.vue'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
-import type { ListParams } from '@/services/list'
+import { LOOKUP, type ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
 import { useSessionStore } from '@/stores/session'
 import type { AppKind, IdentityProvider } from '@/types/api'
@@ -97,27 +97,20 @@ const countEvents = async (filters: Record<string, string>) => (await fetchAudit
 const load = useAsyncAction(async () => {
   if (!project.value) return
   const projectUid = project.value.uid
-  const [clients, samlApps, endUsers, loadedProviders] = await Promise.all([
-    projectAdminService.listAppClients(accountUid.value, projectUid),
-    projectAdminService.listSamlApps(accountUid.value, projectUid),
+  const [applications, endUsers, loadedProviders] = await Promise.all([
+    projectAdminService.listApplications(accountUid.value, projectUid, LOOKUP),
     projectAdminService.listEndUsers(accountUid.value, projectUid, { perPage: 1 }),
     projectAdminService.listIdentityProviders(accountUid.value, projectUid),
   ])
   endUserCount.value = endUsers.total
   providers.value = loadedProviders.items
-
-  const summaries = [
-    ...clients.items.map((client) => ({ kind: 'app_client' as const, uid: client.uid, name: client.name, machine: client.machine })),
-    ...samlApps.items.map((app) => ({ kind: 'saml_app' as const, uid: app.uid, name: app.name, machine: false })),
-  ]
-  apps.value = await Promise.all(
-    summaries.map(async (app) => ({
-      ...app,
-      assignments: app.machine
-        ? (await projectAdminService.listApiGrants(accountUid.value, projectUid, app.uid)).length
-        : (await projectAdminService.listAssignments(accountUid.value, projectUid, app.kind, app.uid)).total,
-    })),
-  )
+  apps.value = applications.items.map((app) => ({
+    kind: app.app_type,
+    uid: app.uid,
+    name: app.name,
+    machine: app.machine,
+    assignments: app.machine ? app.api_count : app.assignment_count,
+  }))
 
   if (access.value.developer) {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()

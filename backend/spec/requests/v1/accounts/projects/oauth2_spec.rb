@@ -86,7 +86,14 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
           "jwks_uri" => "#{project.token_issuer}/.well-known/jwks.json",
           "code_challenge_methods_supported" => [ "S256" ]
         )
+        expect(response.headers["Cache-Control"]).to include("public", "max-age=3600")
       end
+    end
+
+    it "lets caches keep the project's key set for five minutes" do
+      get "#{URI.parse(project.token_issuer).path}/.well-known/jwks.json"
+
+      expect(response.headers["Cache-Control"]).to include("public", "max-age=300")
     end
   end
 

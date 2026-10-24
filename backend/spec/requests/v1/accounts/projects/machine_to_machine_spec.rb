@@ -109,9 +109,10 @@ RSpec.describe "Machine-to-machine apps", type: :openapi do
 
     it "limits token requests per client per minute to the project's setting" do
       project.auth_configuration!.update!(token_requests_per_minute: 10)
-
-      10.times { token }
-      body = token
+      body = freeze_time do
+        10.times { token }
+        token
+      end
 
       expect(response).to have_http_status(:too_many_requests)
       expect(body).to include("error" => "slow_down")

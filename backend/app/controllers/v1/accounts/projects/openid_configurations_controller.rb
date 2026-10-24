@@ -3,6 +3,7 @@ module V1
     module Projects
       class OpenidConfigurationsController < BaseController
         def show
+          cache_publicly(1.hour)
           issuer = current_project.token_issuer
           render json: {
             issuer: issuer,

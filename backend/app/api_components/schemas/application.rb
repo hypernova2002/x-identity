@@ -3,7 +3,7 @@ class Schemas::Application
 
   schema(
     type: :object,
-    required: %w[app_type uid name enabled client_type machine entity_id created_at],
+    required: %w[app_type uid name enabled client_type machine entity_id created_at assignment_count api_count],
     properties: {
       app_type: { type: :string, enum: %w[app_client saml_app] },
       uid: { type: :string },
@@ -12,7 +12,9 @@ class Schemas::Application
       client_type: { type: [ :string, :null ], enum: [ "public", "confidential", nil ], description: "App clients only." },
       machine: { type: :boolean, description: "A machine-to-machine app (always false for SAML apps)." },
       entity_id: { type: [ :string, :null ], description: "SAML apps only." },
-      created_at: { type: :string, format: "date-time" }
+      created_at: { type: :string, format: "date-time" },
+      assignment_count: { type: :integer, description: "Users and groups assigned to the app." },
+      api_count: { type: :integer, description: "APIs a machine-to-machine app can get tokens for (0 for other apps)." }
     }
   )
 end

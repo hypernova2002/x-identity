@@ -5719,6 +5719,8 @@ components:
       - machine
       - entity_id
       - created_at
+      - assignment_count
+      - api_count
       properties:
         app_type:
           type: string
@@ -5751,6 +5753,13 @@ components:
         created_at:
           type: string
           format: date-time
+        assignment_count:
+          type: integer
+          description: Users and groups assigned to the app.
+        api_count:
+          type: integer
+          description: APIs a machine-to-machine app can get tokens for (0 for other
+            apps).
       title: Application
     AttributeDefinition:
       type: object

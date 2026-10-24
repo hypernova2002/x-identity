@@ -134,6 +134,10 @@ export interface Application {
   /** SAML apps only. */
   entity_id: string | null
   created_at: string
+  /** Users and groups assigned. */
+  assignment_count: number
+  /** APIs a machine-to-machine app can get tokens for. */
+  api_count: number
 }
 export type PrincipalType = 'end_user' | 'group'
 
