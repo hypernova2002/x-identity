@@ -33,8 +33,17 @@ const props = withDefaults(
     emptyMessage: string
     /** Shown when a search or filter matches nothing. */
     noMatchesMessage?: string
+    /** On narrow screens, shows each row as a card of labelled fields instead of a wide table. */
+    stacked?: boolean
   }>(),
-  { searchHint: undefined, filters: () => [], loading: false, error: null, noMatchesMessage: 'Nothing matches this search and these filters.' },
+  {
+    searchHint: undefined,
+    filters: () => [],
+    loading: false,
+    error: null,
+    noMatchesMessage: 'Nothing matches this search and these filters.',
+    stacked: false,
+  },
 )
 
 const state = defineModel<ListState>('state', { required: true })
@@ -122,6 +131,19 @@ const page = computed({
 })
 
 const selectValue = (filter: DataTableFilter) => state.value.filters[filter.key] ?? ''
+
+/** Stacked rows have no headers to click, so they sort with a select instead. */
+const sortOptions = computed(() =>
+  props.columns
+    .filter((column) => column.sortKey)
+    .flatMap((column) => {
+      const [ascending, descending] = column.sortKind === 'date' ? ['oldest first', 'newest first'] : ['A to Z', 'Z to A']
+      return [
+        { label: `${column.label}, ${descending}`, value: `-${column.sortKey}` },
+        { label: `${column.label}, ${ascending}`, value: column.sortKey! },
+      ]
+    }),
+)
 </script>
 
 <template>
@@ -154,6 +176,9 @@ const selectValue = (filter: DataTableFilter) => state.value.filters[filter.key]
             @update:model-value="(value: string) => onTextFilter(filter.key, value)"
           />
         </div>
+        <div v-if="stacked && sortOptions.length > 0" class="w-full sm:hidden">
+          <BaseSelect :model-value="state.sort" label="Sort by" :options="sortOptions" @update:model-value="(value: string) => update({ sort: value })" />
+        </div>
         <BaseButton v-if="narrowed" label="Clear filters" variant="ghost" @click="clearAll" />
       </form>
       <div v-if="$slots.actions" class="flex flex-wrap gap-2">
@@ -166,7 +191,28 @@ const selectValue = (filter: DataTableFilter) => state.value.filters[filter.key]
       <BaseButton label="Try again" variant="ghost" size="sm" @click="emit('retry')" />
     </BaseAlert>
 
-    <div class="overflow-x-auto rounded-lg border border-border">
+    <ul v-if="stacked" class="flex flex-col divide-y divide-border rounded-lg border border-border sm:hidden" :aria-label="caption" :aria-busy="loading || undefined">
+      <li v-if="loading && rows.length === 0" class="px-4 py-8 text-center text-sm text-text-muted" role="status">Loading…</li>
+      <li v-else-if="rows.length === 0 && !error" class="px-4 py-8 text-center text-sm text-text-muted">
+        <template v-if="narrowed">
+          {{ noMatchesMessage }}
+          <BaseButton label="Clear filters" variant="ghost" size="sm" @click="clearAll" />
+        </template>
+        <slot v-else name="empty">{{ emptyMessage }}</slot>
+      </li>
+      <template v-else>
+        <li v-for="row in rows" :key="rowKey(row)" class="flex flex-col gap-2 p-4 text-sm" :class="{ 'opacity-60': loading }">
+          <div v-for="column in columns" :key="column.key" class="flex min-w-0 flex-col gap-0.5">
+            <span v-if="!column.srOnly" class="text-xs font-medium text-text-muted">{{ column.label }}</span>
+            <div class="min-w-0 break-words">
+              <slot :name="`cell-${column.key}`" :row="row">{{ (row as Record<string, unknown>)[column.key] }}</slot>
+            </div>
+          </div>
+        </li>
+      </template>
+    </ul>
+
+    <div class="overflow-x-auto rounded-lg border border-border" :class="{ 'hidden sm:block': stacked }">
       <table class="w-full border-collapse text-left text-sm" :aria-busy="loading || undefined">
         <caption class="sr-only">{{ caption }}</caption>
         <thead class="bg-bg-subtle">

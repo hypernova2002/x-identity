@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import OpenVue from 'openvue/config'
@@ -43,8 +43,19 @@ async function mountTable(props: Partial<InstanceType<typeof DeviceSessionTable>
 const buttonNamed = (name: string) => [...document.body.querySelectorAll('button')].find((button) => button.textContent?.trim() === name)
 
 describe('DeviceSessionTable', () => {
+  // OpenVue's Select, used for sorting the stacked rows, asks for matchMedia, which jsdom lacks.
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('lists devices with their approximate location, marking this one', async () => {
     const { wrapper, fetchPage } = await mountTable()
+
+    expect(wrapper.find('ul[aria-label="Signed-in devices"]').exists()).toBe(true)
 
     expect(fetchPage).toHaveBeenCalledWith(expect.objectContaining({ sort: '-last_seen_at', page: 1 }))
     expect(wrapper.text()).toContain('This device')

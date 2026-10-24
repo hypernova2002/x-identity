@@ -9,6 +9,8 @@ export interface DataTableColumn {
   srOnly?: boolean
   /** The server's sort key; columns without one aren't sortable. */
   sortKey?: string
+  /** How the sort directions are described where there are no headers: dates read newest/oldest first. */
+  sortKind?: 'text' | 'date'
 }
 
 /** A filter on a data table. `key` is the endpoint's `q` predicate, e.g. `role_eq`. */

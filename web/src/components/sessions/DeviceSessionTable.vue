@@ -30,8 +30,8 @@ const props = withDefaults(
 const columns: DataTableColumn[] = [
   { key: 'device', label: 'Device' },
   { key: 'location', label: 'Approximate location' },
-  { key: 'created_at', label: 'Signed in', sortKey: 'created_at' },
-  { key: 'last_seen_at', label: 'Last active', sortKey: 'last_seen_at' },
+  { key: 'created_at', label: 'Signed in', sortKey: 'created_at', sortKind: 'date' },
+  { key: 'last_seen_at', label: 'Last active', sortKey: 'last_seen_at', sortKind: 'date' },
   { key: 'actions', label: 'Actions', srOnly: true },
 ]
 
@@ -74,6 +74,7 @@ defineExpose({ reload: list.reload })
     :loading="list.loading.value"
     :error="list.error.value"
     :empty-message="owner === 'you' ? 'You aren\'t signed in on any other device.' : `${owner} isn't signed in on any device.`"
+    stacked
     @retry="list.reload"
   >
     <template v-if="signOutOthers" #actions>
@@ -93,8 +94,16 @@ defineExpose({ reload: list.reload })
     <template #cell-created_at="{ row }"><span class="text-xs">{{ formatDateTime(row.created_at) }}</span></template>
     <template #cell-last_seen_at="{ row }"><span class="text-xs">{{ formatDateTime(row.last_seen_at) }}</span></template>
     <template #cell-actions="{ row }">
-      <div class="flex justify-end">
-        <BaseButton v-if="signOut && !row.current" label="Sign out" variant="ghost" size="sm" :aria-label="`Sign out ${deviceLabel(row)}`" @click="pending = row" />
+      <div class="flex sm:justify-end">
+        <BaseButton
+          v-if="signOut && !row.current"
+          class="whitespace-nowrap"
+          label="Sign out"
+          variant="ghost"
+          size="sm"
+          :aria-label="`Sign out ${deviceLabel(row)}`"
+          @click="pending = row"
+        />
       </div>
     </template>
   </BaseDataTable>
