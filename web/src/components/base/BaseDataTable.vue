@@ -25,6 +25,8 @@ const props = withDefaults(
     rowKey: (row: Row) => string
     total: number
     perPage: number
+    /** The total is a lower bound; offers counting exactly. */
+    capped?: boolean
     searchLabel: string
     searchHint?: string
     filters?: readonly DataTableFilter[]
@@ -44,6 +46,7 @@ const props = withDefaults(
     error: null,
     noMatchesMessage: 'Nothing matches this search and these filters.',
     stacked: false,
+    capped: false,
   },
 )
 
@@ -51,6 +54,7 @@ const state = defineModel<ListState>('state', { required: true })
 
 const emit = defineEmits<{
   retry: []
+  countExactly: []
 }>()
 
 defineSlots<{
@@ -269,6 +273,6 @@ const sortOptions = computed(() =>
       </table>
     </div>
 
-    <BasePagination v-model:page="page" :total="total" :per-page="perPage" :disabled="loading" />
+    <BasePagination v-model:page="page" :total="total" :per-page="perPage" :capped="capped" :disabled="loading" @count-exactly="emit('countExactly')" />
   </div>
 </template>

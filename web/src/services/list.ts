@@ -9,6 +9,8 @@ export interface ListParams {
   sort?: string
   /** Keyed by the endpoint's filter predicate, e.g. `role_eq` or `kind_in`. */
   filters?: Record<string, string | readonly string[] | undefined>
+  /** Count every match, for lists whose total is otherwise capped. */
+  exactCount?: boolean
 }
 
 /** For filling selects and lookups rather than a paged table: the largest page the API allows. */
@@ -52,6 +54,7 @@ export function listQuery(params: ListParams): ListQuery {
   if (params.page !== undefined && params.page > 1) query.page = params.page
   if (params.perPage !== undefined) query.per_page = params.perPage
   if (params.sort) query.sort = params.sort
+  if (params.exactCount) query.exact_count = 'true'
   const search = params.search?.trim()
   if (search) query['q[search]'] = search
   for (const [key, value] of Object.entries(params.filters ?? {})) {

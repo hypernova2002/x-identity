@@ -142,6 +142,31 @@ RSpec.describe "Identity providers", type: :openapi do
     end
   end
 
+  describe "listing many providers" do
+    def queries_listing
+      count = 0
+      counter = ->(*, payload) { count += 1 unless payload[:name] == "SCHEMA" }
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+        get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/identity-providers", headers: auth_headers_for(developer)
+      end
+      count
+    end
+
+    def add_provider_with_mapping
+      provider = create(:identity_provider, :oidc, project: project, client_id: "c-#{SecureRandom.hex(4)}")
+      provider.group_mappings.create!(value: "staff", group: project.groups.create!(name: "Staff #{SecureRandom.hex(4)}"))
+    end
+
+    it "doesn't run more queries for more providers" do
+      add_provider_with_mapping
+      queries_listing
+      one = queries_listing
+      3.times { add_provider_with_mapping }
+
+      expect(queries_listing).to eq(one)
+    end
+  end
+
   describe "searching, filtering and sorting providers" do
     def names(params)
       get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/identity-providers", params: params, headers: auth_headers_for(developer)

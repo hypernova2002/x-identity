@@ -54,10 +54,12 @@ const listState = list.state
     :row-key="(event) => event.uid"
     :total="list.total.value"
     :per-page="list.perPage.value"
+    :capped="list.capped.value"
     :loading="list.loading.value"
     :error="list.error.value"
     empty-message="No events recorded yet."
     @retry="list.reload"
+    @count-exactly="list.countExactly"
   >
     <template #cell-occurred_at="{ row }">{{ formatDateTime(row.occurred_at) }}</template>
     <template #cell-action="{ row }"><code class="font-mono text-xs">{{ row.action }}</code></template>

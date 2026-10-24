@@ -101,7 +101,13 @@ describe('apiPage', () => {
   it('reads pagination metadata from the response headers', async () => {
     stubFetch().mockResolvedValue(jsonResponse([{ uid: 'usr_1' }], 200, { Total: '30', 'Per-Page': '25' }))
 
-    await expect(apiPage('/v1/accounts/acct_1/users', schema)).resolves.toEqual({ items: [{ uid: 'usr_1' }], total: 30, perPage: 25 })
+    await expect(apiPage('/v1/accounts/acct_1/users', schema)).resolves.toEqual({ items: [{ uid: 'usr_1' }], total: 30, perPage: 25, capped: false })
+  })
+
+  it('notices when the server stopped counting', async () => {
+    stubFetch().mockResolvedValue(jsonResponse([{ uid: 'evt_1' }], 200, { Total: '10000', 'Per-Page': '25', 'Total-Capped': 'true' }))
+
+    await expect(apiPage('/v1/accounts/acct_1/audit-events', schema)).resolves.toMatchObject({ total: 10000, capped: true })
   })
 
   it('rejects items that don\'t match the schema', async () => {

@@ -13,7 +13,7 @@ module AuditLogListing
 
   # @param scope [ActiveRecord::Relation<AuditEvent>]
   def render_audit_events(scope)
-    events = listed(scope.includes(:project), LIST)
+    events = listed(scope.includes(:project), LIST, capped: true)
     render json: AuditEventSerializer.new(events).serializable_hash
   end
 end

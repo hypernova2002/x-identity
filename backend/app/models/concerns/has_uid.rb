@@ -10,7 +10,9 @@ module HasUid
 
     before_validation :generate_uid, on: :create
 
-    validates :uid, presence: true, uniqueness: true
+    # Uids are random (24 base58 characters), so a uniqueness check before every insert would only
+    # cost a query; the unique index still guards against the impossible collision.
+    validates :uid, presence: true
   end
 
   class_methods do

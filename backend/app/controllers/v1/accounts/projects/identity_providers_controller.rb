@@ -12,7 +12,7 @@ module V1
         before_action :set_identity_provider, only: %i[show update destroy]
 
         def index
-          providers = listed(current_project.identity_providers.includes(project: :account), LIST)
+          providers = listed(current_project.identity_providers.includes(project: :account, group_mappings: :group), LIST)
           render json: IdentityProviderSerializer.new(providers).serializable_hash
         end
 

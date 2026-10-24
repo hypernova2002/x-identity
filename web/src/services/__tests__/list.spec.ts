@@ -18,6 +18,11 @@ describe('listQuery', () => {
     expect(listQuery({ page: 1, search: '   ', sort: '', filters: { role_eq: '', status_eq: undefined, kind_in: [] } })).toEqual({})
   })
 
+  it('asks for an exact count only when told to', () => {
+    expect(listQuery({ exactCount: true })).toEqual({ exact_count: 'true' })
+    expect(listQuery({ exactCount: false })).toEqual({})
+  })
+
   it('makes a picked date cover the whole day, in UTC', () => {
     expect(listQuery({ filters: { created_at_gteq: '2026-10-01', created_at_lteq: '2026-10-31' } })).toEqual({
       'q[created_at_gteq]': '2026-10-01T00:00:00Z',

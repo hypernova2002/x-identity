@@ -49,6 +49,9 @@ Links carry a separate opaque token.
 - Revoking a user's sessions (sign out everywhere, password reset, disabling) invalidates their
   refresh tokens, outstanding access tokens and hosted login sessions.
 - Changing a password or email signs out the user's other sessions.
+- Used refresh tokens are kept until their session expires or is revoked, because presenting a
+  used one again is how a stolen token is detected. They're deleted after that.
+- Retired signing keys, private keys included, are deleted once no token they signed can still be valid.
 - Each sign-in on a device is a device session. A hosted login browser session and every app it
   signs in to belong to one device session; a sign-in through the API is a device session of its
   own. Signing a device out revokes its refresh tokens and hosted login session; its access tokens

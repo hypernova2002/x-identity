@@ -22,10 +22,12 @@ class DeviceSession < ApplicationRecord
 
   after_create_commit -> { NewDeviceEmailJob.perform_later(device_session_id: id) }
 
-  # Not signed out, and still holding a refresh token or browser session that works.
+  # Not signed out, and still holding a refresh token or browser session that works. The checks are
+  # correlated, so each device session only looks at its own tokens rather than every active token.
   scope :current, lambda {
-    where(revoked_at: nil).where(id: RefreshToken.active.select(:device_session_id))
-      .or(where(revoked_at: nil).where(id: BrowserSession.active.select(:device_session_id)))
+    tokens = RefreshToken.active.where(RefreshToken.arel_table[:device_session_id].eq(arel_table[:id])).select(1).arel.exists
+    sessions = BrowserSession.active.where(BrowserSession.arel_table[:device_session_id].eq(arel_table[:id])).select(1).arel.exists
+    where(revoked_at: nil).where(tokens.or(sessions))
   }
 
   # @param subject [User, EndUser]
@@ -35,12 +37,26 @@ class DeviceSession < ApplicationRecord
   # @param user_agent [String, nil]
   # @return [DeviceSession]
   def self.start!(subject:, amr:, authenticated_at:, ip:, user_agent:)
+    prune_for!(subject)
     device = Devices::Describer.new.call(user_agent)
     create!(
       subject: subject, project: subject.try(:project), amr: amr, authenticated_at: authenticated_at, last_seen_at: Time.current,
       created_ip: ip, created_user_agent: user_agent, last_ip: ip, last_user_agent: user_agent,
       device_name: device.name, device_type: device.type, **location_for(ip)
     )
+  end
+
+  # Clears out what a user's ended sessions left behind: their refresh tokens and hosted login
+  # sessions, and device sessions inactive for longer than the new-device check looks back. The
+  # latest device session always stays, so a user back after a long absence isn't mistaken for one
+  # signing in for the first time, which would skip their new-device email.
+  # @param subject [User, EndUser]
+  def self.prune_for!(subject)
+    RefreshToken.prune_for!(subject)
+    BrowserSession.prune_for!(subject) if subject.is_a?(EndUser)
+    latest = where(subject: subject).order(created_at: :desc, id: :desc).limit(1).select(:id)
+    stale = where(subject: subject, last_seen_at: ...FAMILIAR_FOR.ago).where.not(id: latest)
+    Prunable.delete_batch(stale.where.not(id: stale.current.select(:id)))
   end
 
   # @param ip [String, nil]

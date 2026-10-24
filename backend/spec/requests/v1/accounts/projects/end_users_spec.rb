@@ -16,7 +16,7 @@ RSpec.describe "End users (admin)", type: :openapi do
       get "List and search the project's end users" do
         tags "End users"
         security [ { BearerAuth: [] } ]
-        ListParameters.build(search: "Email, name or uid", sorts: %w[email name status created_at last_sign_in_at], filters: { status_eq: { type: :string }, uid_eq: { type: :string }, with_verified_email: { type: :string, enum: %w[true false] }, with_mfa: { type: :string, enum: %w[true false] }, invitation_pending: { type: :string, enum: %w[true] }, in_group: { type: :string, description: "Group uid" } }).each { |list_parameter| parameter(**list_parameter) }
+        ListParameters.build(search: "Email, name or uid", sorts: %w[email name status created_at last_sign_in_at], filters: { status_eq: { type: :string }, uid_eq: { type: :string }, with_verified_email: { type: :string, enum: %w[true false] }, with_mfa: { type: :string, enum: %w[true false] }, invitation_pending: { type: :string, enum: %w[true] }, in_group: { type: :string, description: "Group uid" } }, capped: true).each { |list_parameter| parameter(**list_parameter) }
 
         response 200, "end users, paginated with Total, Per-Page and Link headers" do
           schema type: :array, items: Schemas::EndUser

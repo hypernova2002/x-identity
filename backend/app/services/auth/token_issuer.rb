@@ -59,7 +59,7 @@ module Auth
     # @return [TokenSet]
     def issue_for_client(api:, scope:)
       now = Time.current
-      ttl = api.access_token_ttl
+      ttl = (api.access_token_ttl_seconds || @configuration.access_token_ttl_seconds).seconds
       key = SigningKeys::Rotator.new(owner: @realm.owner, configuration: @configuration).current
       claims = {
         iss: @realm.token_issuer, sub: @app_client.uid, aud: api.identifier, client_id: @app_client.uid, scope: scope,

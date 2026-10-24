@@ -28,11 +28,6 @@ class ApiResource < ApplicationRecord
     scopes.map { |scope| scope["name"] }
   end
 
-  # @return [ActiveSupport::Duration] how long access tokens for the API last
-  def access_token_ttl
-    (access_token_ttl_seconds || project.auth_configuration!.access_token_ttl_seconds).seconds
-  end
-
   private
 
   def scopes_are_valid

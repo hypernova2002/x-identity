@@ -37,14 +37,14 @@ module Oidc
 
     # The API named by `audience`, or the app's only API when there's just one.
     def grant_for(app_client, audience)
-      grants = app_client.api_grants.includes(:api_resource)
+      grants = app_client.api_grants.includes(:api_resource).to_a
       if audience.nil?
         return grants.first if grants.one?
 
         refuse(app_client, "invalid_request", "Name the API with the audience parameter.")
       end
 
-      grant = grants.joins(:api_resource).find_by(api_resources: { identifier: audience })
+      grant = grants.find { |candidate| candidate.api_resource.identifier == audience }
       grant || refuse(app_client, "invalid_target", "The app hasn't been granted access to this API, or there's no such API.", audience: audience)
     end
 

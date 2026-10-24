@@ -22,6 +22,8 @@ module SigningKeys
         next key if usable?(key)
 
         @owner.signing_keys.signing.find_each { |signing_key| signing_key.retire!(publish_for: RETIRED_KEY_PUBLISH_PERIOD) }
+        # Keys no longer published can't verify any token still in use, and their private keys shouldn't linger.
+        @owner.signing_keys.where(published_until: ...Time.current).delete_all
         SigningKey.generate!(owner: @owner, algorithm: @configuration.signing_algorithm)
       end
     end

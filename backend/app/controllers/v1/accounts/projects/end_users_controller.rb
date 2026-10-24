@@ -14,7 +14,7 @@ module V1
         before_action :set_end_user, only: %i[show update destroy reset_mfa sign_out resend_invitation identities unlink_identity access]
 
         def index
-          end_users = listed(current_project.end_users.includes(:otp_credential, :identities, :groups), LIST)
+          end_users = listed(current_project.end_users.includes(:otp_credential, :identities, :groups), LIST, capped: true)
           render json: EndUserSerializer.new(end_users).serializable_hash
         end
 

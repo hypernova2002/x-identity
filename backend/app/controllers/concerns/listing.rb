@@ -6,8 +6,9 @@ module Listing
 
   # @param scope [ActiveRecord::Relation]
   # @param query [ListQuery]
+  # @param capped [Boolean] for lists that can grow very large; see {Paginated}
   # @return [ActiveRecord::Relation] the requested page
-  def listed(scope, query)
-    paginated(query.call(scope, params))
+  def listed(scope, query, capped: false)
+    paginated(query.call(scope, params), capped: capped)
   end
 end

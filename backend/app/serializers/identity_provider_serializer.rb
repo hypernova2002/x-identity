@@ -10,7 +10,7 @@ class IdentityProviderSerializer
   attribute(:acs_url) { |provider| provider.acs_url if provider.kind_saml? }
   attribute(:sp_slo_url) { |provider| provider.sp_slo_url if provider.kind_saml? }
   attribute(:group_mappings) do |provider|
-    provider.group_mappings.includes(:group).sort_by(&:value).map { |mapping| { value: mapping.value, group_uid: mapping.group.uid, group_name: mapping.group.name } }
+    provider.group_mappings.sort_by(&:value).map { |mapping| { value: mapping.value, group_uid: mapping.group.uid, group_name: mapping.group.name } }
   end
   attribute(:issuer) { |provider| provider.endpoints["issuer"] }
   attribute(:client_secret_set) { |provider| provider.client_secret.present? }

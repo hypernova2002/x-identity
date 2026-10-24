@@ -127,6 +127,15 @@ paths:
           type: integer
           minimum: 1
         description: Values above 100 are capped.
+      - name: exact_count
+        in: query
+        schema:
+          type: string
+          enum:
+          - 'true'
+        description: 'Count every matching row for the Total header. Otherwise Total
+          is exact up to 10000 rows, and a lower bound past that, with Total-Capped:
+          true.'
       security:
       - BearerAuth: []
       responses:
@@ -2371,6 +2380,15 @@ paths:
           type: integer
           minimum: 1
         description: Values above 100 are capped.
+      - name: exact_count
+        in: query
+        schema:
+          type: string
+          enum:
+          - 'true'
+        description: 'Count every matching row for the Total header. Otherwise Total
+          is exact up to 10000 rows, and a lower bound past that, with Total-Capped:
+          true.'
       security:
       - BearerAuth: []
       responses:
@@ -3272,6 +3290,15 @@ paths:
           type: integer
           minimum: 1
         description: Values above 100 are capped.
+      - name: exact_count
+        in: query
+        schema:
+          type: string
+          enum:
+          - 'true'
+        description: 'Count every matching row for the Total header. Otherwise Total
+          is exact up to 10000 rows, and a lower bound past that, with Total-Capped:
+          true.'
       security:
       - BearerAuth: []
       responses:

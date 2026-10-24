@@ -3,7 +3,9 @@ class RefreshToken < ApplicationRecord
   belongs_to :subject, polymorphic: true
   belongs_to :device_session, optional: true
 
-  validates :token_digest, presence: true, uniqueness: true
+  # Tokens are 43 random base58 characters; the unique index guards against collisions without a
+  # query before every refresh.
+  validates :token_digest, presence: true
   validates :family_id, :authenticated_at, :expires_at, presence: true
 
   scope :active, -> { where(used_at: nil, revoked_at: nil).where("expires_at > ?", Time.current) }
@@ -18,6 +20,13 @@ class RefreshToken < ApplicationRecord
   # @return [RefreshToken, nil]
   def self.find_by_token(token)
     find_by(token_digest: digest(token))
+  end
+
+  # Deletes a user's refresh tokens from sessions that have ended: expired or revoked. Used tokens
+  # of live sessions stay, because presenting one again is how a stolen token is noticed.
+  # @param subject [User, EndUser]
+  def self.prune_for!(subject)
+    Prunable.delete_batch(where(subject: subject).where("revoked_at IS NOT NULL OR expires_at < ?", Time.current))
   end
 
   # @param family_id [String]

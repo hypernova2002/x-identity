@@ -47,8 +47,11 @@ export interface RequestOptions {
 
 export interface Page<T> {
   items: T[]
+  /** When `capped`, a lower bound: at least this many match. */
   total: number
   perPage: number
+  /** The server stopped counting; ask with `exactCount` for the real total. */
+  capped?: boolean
 }
 
 let authHandlers: AuthHandlers | null = null
@@ -151,5 +154,6 @@ export async function apiPage<T>(path: string, schema: z.ZodType<T>, options: Re
     items,
     total: Number(response.headers.get('Total') ?? items.length),
     perPage: Number(response.headers.get('Per-Page') ?? items.length),
+    capped: response.headers.get('Total-Capped') === 'true',
   }
 }

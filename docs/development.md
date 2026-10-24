@@ -73,6 +73,21 @@ rows are always ordered by `id` last. Models allow-list their searchable attribu
 console, list responses are validated with zod schemas (`web/src/services/schemas.ts`), and every
 list uses `BaseDataTable` with `useListView`.
 
+The audit logs and the end-user list cap their `Total` header:
+- **Up to 10,000 matches:** the count is exact.
+- **Beyond that:** `Total` is a lower bound and `Total-Capped: true` is set, so a page never counts a whole large table.
+- **Exact count:** `exact_count=true` counts everything; the console's "Count exactly" link sends it.
+
+Expired data is cleaned up as new rows are created, at most 100 rows per request:
+- **Signing keys:** keys past their publish period are deleted when a new key is generated.
+- **One-time tokens:** a subject's used and expired tokens of the same kind are deleted when a new one is issued.
+- **At each new sign-in:**
+  - the user's refresh tokens from expired or revoked sessions are deleted
+  - hosted login sessions that ended over a day ago are deleted
+  - device sessions inactive for 90 days are deleted, except the latest one
+
+Rows belonging to users who never return stay until a scheduled cleanup is added. Audit events are never deleted.
+
 ## Code reference
 
 Backend classes and methods are documented with YARD comments. `yard` serves them, reloading on

@@ -39,6 +39,17 @@ class BrowserSession < ApplicationRecord
     [ session, token ]
   end
 
+  # Hosted login sessions that ended over a day ago; the delay leaves time to finish single logout.
+  # @param end_user [EndUser]
+  def self.prune_for!(end_user)
+    cutoff = 1.day.ago
+    ids = where(end_user: end_user).where("revoked_at < ? OR expires_at < ?", cutoff, cutoff).limit(Prunable::BATCH).pluck(:id)
+    return if ids.empty?
+
+    BrowserSessionApp.where(browser_session_id: ids).delete_all
+    where(id: ids).delete_all
+  end
+
   # @param token [String, nil] from the cookie
   # @param project [Project]
   # @return [BrowserSession, nil] the session, if it's still valid for an active user

@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_030001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "accounts", force: :cascade do |t|
     t.string "uid", null: false
@@ -121,9 +122,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_030001) do
     t.datetime "updated_at", null: false
     t.string "app_client_uid"
     t.string "saml_app_uid"
+    t.index ["account_id", "actor_uid", "occurred_at"], name: "index_audit_events_on_account_id_and_actor_uid_and_occurred_at", where: "(actor_uid IS NOT NULL)"
     t.index ["account_id", "occurred_at"], name: "index_audit_events_on_account_id_and_occurred_at"
+    t.index ["account_id", "target_uid", "occurred_at"], name: "idx_on_account_id_target_uid_occurred_at_736f07a1f2", where: "(target_uid IS NOT NULL)"
     t.index ["action"], name: "index_audit_events_on_action"
+    t.index ["project_id", "action", "occurred_at"], name: "index_audit_events_on_project_id_and_action_and_occurred_at", opclass: { action: :text_pattern_ops }
+    t.index ["project_id", "actor_uid", "occurred_at"], name: "index_audit_events_on_project_id_and_actor_uid_and_occurred_at", where: "(actor_uid IS NOT NULL)"
+    t.index ["project_id", "app_client_uid", "occurred_at"], name: "idx_on_project_id_app_client_uid_occurred_at_b2ecb1bc0a", where: "(app_client_uid IS NOT NULL)"
     t.index ["project_id", "occurred_at"], name: "index_audit_events_on_project_id_and_occurred_at"
+    t.index ["project_id", "saml_app_uid", "occurred_at"], name: "idx_on_project_id_saml_app_uid_occurred_at_751251e73a", where: "(saml_app_uid IS NOT NULL)"
+    t.index ["project_id", "target_uid", "occurred_at"], name: "idx_on_project_id_target_uid_occurred_at_7eb67dbe53", where: "(target_uid IS NOT NULL)"
     t.index ["project_id"], name: "index_audit_events_on_project_id"
     t.index ["uid"], name: "index_audit_events_on_uid", unique: true
   end
@@ -281,8 +289,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_030001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "failed_mfa_attempts", default: 0, null: false
+    t.index ["email"], name: "index_end_users_on_email_trigram", opclass: :gin_trgm_ops, using: :gin
+    t.index ["name"], name: "index_end_users_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
+    t.index ["project_id", "created_at", "id"], name: "index_end_users_on_project_id_and_created_at_and_id"
     t.index ["project_id", "email"], name: "index_end_users_on_project_id_and_email", unique: true
     t.index ["uid"], name: "index_end_users_on_uid", unique: true
+    t.index ["uid"], name: "index_end_users_on_uid_trigram", opclass: :gin_trgm_ops, using: :gin
   end
 
   create_table "group_memberships", force: :cascade do |t|

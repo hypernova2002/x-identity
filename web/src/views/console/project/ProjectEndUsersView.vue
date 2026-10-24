@@ -139,10 +139,12 @@ onMounted(() => loadLookups.run())
       :row-key="(endUser) => endUser.uid"
       :total="list.total.value"
       :per-page="list.perPage.value"
+      :capped="list.capped.value"
       :loading="list.loading.value"
       :error="list.error.value"
       empty-message="No end users yet. They appear here once they sign up, sign in with an identity provider, or you create them."
       @retry="list.reload"
+      @count-exactly="list.countExactly"
     >
       <template v-if="access.developer" #actions>
         <BaseButton label="Create end user" @click="createOpen = true" />

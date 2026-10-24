@@ -50,19 +50,30 @@ export function useListView<T>(fetch: (params: ListParams) => Promise<Page<T>>, 
   }
 
   const state = ref<ListState>(options.syncRoute ? fromQuery(route.query) : fromQuery({}))
+  /** Set by "Count exactly"; any change to the list goes back to the cheaper, capped count. */
+  const exactCount = ref(false)
 
   const { data, loading, error, reload } = useAsync(() =>
-    fetch({ page: state.value.page, perPage: options.perPage, search: state.value.search, sort: state.value.sort, filters: state.value.filters }),
+    fetch({
+      page: state.value.page,
+      perPage: options.perPage,
+      search: state.value.search,
+      sort: state.value.sort,
+      filters: state.value.filters,
+      exactCount: exactCount.value || undefined,
+    }),
   )
 
   const rows = computed(() => data.value?.items ?? [])
   const total = computed(() => data.value?.total ?? 0)
   const perPage = computed(() => data.value?.perPage ?? options.perPage ?? 25)
+  const capped = computed(() => data.value?.capped ?? false)
   const filtered = computed(() => state.value.search !== '' || Object.keys(state.value.filters).length > 0)
 
   watch(
     state,
     (next) => {
+      exactCount.value = false
       reload()
       if (!options.syncRoute) return
       const owned = new Set(['page', 'search', 'sort', ...filterKeys])
@@ -82,5 +93,10 @@ export function useListView<T>(fetch: (params: ListParams) => Promise<Page<T>>, 
     )
   }
 
-  return { state, rows, total, perPage, loading, error, filtered, reload }
+  function countExactly() {
+    exactCount.value = true
+    return reload()
+  }
+
+  return { state, rows, total, perPage, capped, loading, error, filtered, reload, countExactly }
 }
