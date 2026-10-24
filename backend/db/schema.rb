@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -77,6 +77,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_000001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "app_client_uid"
+    t.string "saml_app_uid"
     t.index ["account_id", "occurred_at"], name: "index_audit_events_on_account_id_and_occurred_at"
     t.index ["action"], name: "index_audit_events_on_action"
     t.index ["project_id", "occurred_at"], name: "index_audit_events_on_project_id_and_occurred_at"

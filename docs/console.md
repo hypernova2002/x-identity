@@ -48,9 +48,12 @@ and text filters apply as you type; dropdown and date filters apply at once; any
 page 1. The list's state is kept in the URL, so it survives reloads and can be shared. Date filters
 cover whole days in UTC.
 
-The console has no list of an end user's active sessions (the API doesn't provide one); "Sign out
-everywhere" ends them all. SAML sign-ins are recorded against the user rather than the SAML app, so a
-SAML app's Activity tab shows only configuration changes.
+Dropdowns that pick from a project's groups, app clients, console users or projects show the first 20
+and search the server as you type; when there are more, they link to the full list.
+
+Each application's Activity tab shows sign-ins and access refusals through it (OpenID Connect and
+SAML alike) and changes to it. Leaving a page with unsaved changes asks in a dialog; closing or
+reloading the tab can only use the browser's own prompt.
 
 ## Account pages
 

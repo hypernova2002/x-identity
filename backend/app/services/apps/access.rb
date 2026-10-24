@@ -18,7 +18,10 @@ module Apps
     def authorize!(app, end_user, recorder:)
       return if allowed?(app, end_user)
 
-      recorder.record(action: "end_user.app_access_denied", actor: end_user, target: end_user, metadata: { app: app.uid, app_name: app.name })
+      recorder.record(
+        action: "end_user.app_access_denied", actor: end_user, target: end_user, metadata: { app: app.uid, app_name: app.name },
+        saml_app: (app if app.is_a?(SamlApp))
+      )
       raise ApiError.new(:app_access_denied)
     end
   end

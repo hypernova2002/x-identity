@@ -1,13 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import BaseActionMenu, { type ActionMenuItem } from '@/components/base/BaseActionMenu.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseInput from '@/components/base/BaseInput.vue'
 import CreateProjectDialog from '@/components/console/CreateProjectDialog.vue'
+import { useDebounce } from '@/composables/useDebounce'
+import { projectService } from '@/services/account'
+import { LOOKUP_SIZE } from '@/services/list'
 import { useProjectStore } from '@/stores/project'
 import { useSessionStore } from '@/stores/session'
+import type { Project } from '@/types/api'
 
 const props = defineProps<{
   currentProjectUid: string | null
@@ -15,12 +20,34 @@ const props = defineProps<{
 
 const route = useRoute()
 const router = useRouter()
-const { projects, projectsLoaded } = storeToRefs(useProjectStore())
+const { projects, project, projectsLoaded, accountUid } = storeToRefs(useProjectStore())
 const { isAccountAdmin } = storeToRefs(useSessionStore())
 
 const createOpen = ref(false)
+const term = ref('')
+/** Search results, or null to show the first projects the store loaded. */
+const matches = ref<{ items: Project[]; total: number } | null>(null)
 
-const current = computed(() => projects.value.find((project) => project.uid === props.currentProjectUid) ?? null)
+const search = useDebounce(async (value: string) => {
+  const page = await projectService.list(accountUid.value, { search: value, perPage: LOOKUP_SIZE }).catch(() => ({ items: [], total: 0 }))
+  if (term.value.trim() === value) matches.value = page
+}, 300)
+
+watch(term, (value) => {
+  if (value.trim()) search.run(value.trim())
+  else {
+    search.cancel()
+    matches.value = null
+  }
+})
+
+const shown = computed(() => matches.value?.items ?? projects.value.slice(0, LOOKUP_SIZE))
+
+const current = computed(
+  () =>
+    projects.value.find((candidate) => candidate.uid === props.currentProjectUid) ??
+    (project.value?.uid === props.currentProjectUid ? project.value : null),
+)
 
 /** Switching keeps you on the same section, e.g. End users, in the other project. */
 function switchTo(projectUid: string) {
@@ -29,8 +56,17 @@ function switchTo(projectUid: string) {
 }
 
 const items = computed<ActionMenuItem[]>(() => [
-  ...projects.value.map((project) => ({ label: project.name, current: project.uid === props.currentProjectUid, action: () => switchTo(project.uid) })),
-  { label: 'All projects', separatorBefore: true, action: () => router.push({ name: 'projects' }) },
+  ...shown.value.map((shownProject) => ({
+    label: shownProject.name,
+    current: shownProject.uid === props.currentProjectUid,
+    action: () => switchTo(shownProject.uid),
+  })),
+  ...(shown.value.length === 0 ? [{ label: 'No projects match', disabled: true, action: () => undefined }] : []),
+  {
+    label: matches.value && matches.value.total > shown.value.length ? `All projects (${matches.value.total} match)` : 'All projects',
+    separatorBefore: true,
+    action: () => router.push({ name: 'projects', query: term.value.trim() ? { search: term.value.trim() } : {} }),
+  },
   ...(isAccountAdmin.value ? [{ label: 'Create project', action: () => (createOpen.value = true) }] : []),
 ])
 </script>
@@ -38,6 +74,9 @@ const items = computed<ActionMenuItem[]>(() => [
 <template>
   <div class="flex flex-col gap-1">
     <BaseActionMenu v-if="projects.length > 0" :items="items" label="Switch project">
+      <template #start>
+        <BaseInput v-model="term" label="Find a project" type="search" />
+      </template>
       <template #trigger="{ toggle }">
         <button
           type="button"

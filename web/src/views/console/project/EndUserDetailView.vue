@@ -8,6 +8,7 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
+import BaseSearchSelect from '@/components/base/BaseSearchSelect.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { SelectOption } from '@/components/base/types'
 import PageBreadcrumbs from '@/components/console/PageBreadcrumbs.vue'
@@ -19,9 +20,10 @@ import DeviceSessionTable from '@/components/sessions/DeviceSessionTable.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useEndUserActions } from '@/composables/useEndUserActions'
 import { useProjectContext } from '@/composables/useProjectContext'
+import { useProjectLookups } from '@/composables/useProjectLookups'
 import type { ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
-import type { AttributeDefinition, DeviceSession, EndUser, EndUserAppAccess, EndUserIdentity, Group } from '@/types/api'
+import type { AttributeDefinition, DeviceSession, EndUser, EndUserAppAccess, EndUserIdentity } from '@/types/api'
 import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttributes'
 import { formatDateTime } from '@/utils/format'
 
@@ -33,18 +35,19 @@ const endUser = ref<EndUser | null>(null)
 const identities = ref<EndUserIdentity[]>([])
 const appAccess = ref<EndUserAppAccess[]>([])
 const definitions = ref<AttributeDefinition[]>([])
-const groups = ref<Group[]>([])
 const notice = ref<string | null>(null)
 const endUserUid = computed(() => String(route.params.endUserUid))
 const ids = () => (project.value ? { accountUid: accountUid.value, projectUid: project.value.uid } : null)
 
-const otherGroups = computed<SelectOption[]>(() =>
-  groups.value.filter((group) => !endUser.value?.groups.some((member) => member.uid === group.uid)).map((group) => ({ label: group.name, value: group.uid })),
-)
+const lookups = useProjectLookups()
 const groupToAdd = ref('')
-watch(otherGroups, (options) => {
-  if (!options.some((option) => option.value === groupToAdd.value)) groupToAdd.value = options[0]?.value ?? ''
-})
+
+/** Groups the user can join: the search's matches, minus the groups they're already in. */
+async function searchGroupsToJoin(term: string) {
+  const page = await lookups.searchGroups(term)
+  const items = page.items.filter((option) => !endUser.value?.groups.some((group) => group.uid === option.value))
+  return { items, total: page.total - (page.items.length - items.length) }
+}
 
 const attributeValue = (key: string) => {
   const value = endUser.value?.custom_attributes[key]
@@ -54,18 +57,16 @@ const attributeValue = (key: string) => {
 const load = useAsyncAction(async () => {
   const target = ids()
   if (!target) return
-  const [loaded, loadedIdentities, loadedAccess, loadedDefinitions, loadedGroups] = await Promise.all([
+  const [loaded, loadedIdentities, loadedAccess, loadedDefinitions] = await Promise.all([
     projectAdminService.getEndUser(target.accountUid, target.projectUid, endUserUid.value),
     projectAdminService.listEndUserIdentities(target.accountUid, target.projectUid, endUserUid.value),
     projectAdminService.getEndUserAccess(target.accountUid, target.projectUid, endUserUid.value),
     projectAdminService.listAttributes(target.accountUid, target.projectUid),
-    projectAdminService.listGroups(target.accountUid, target.projectUid),
   ])
   endUser.value = loaded
   identities.value = loadedIdentities
   appAccess.value = loadedAccess
   definitions.value = loadedDefinitions.items
-  groups.value = loadedGroups.items
 })
 
 async function reloadMembership() {
@@ -104,6 +105,7 @@ const membership = useAsyncAction(async (change: 'add' | 'remove', groupUid: str
   if (!target || !endUser.value) return
   if (change === 'add') await projectAdminService.addGroupMember(target.accountUid, target.projectUid, groupUid, endUser.value.uid)
   else await projectAdminService.removeGroupMember(target.accountUid, target.projectUid, groupUid, endUser.value.uid)
+  if (change === 'add') groupToAdd.value = ''
   await reloadMembership()
 })
 
@@ -235,9 +237,11 @@ watch(endUserUid, () => load.run(), { immediate: true })
             <BaseButton v-if="access.developer" label="Remove" variant="ghost" size="sm" :loading="membership.loading.value" @click="membership.run('remove', group.uid)" />
           </li>
         </ul>
-        <div v-if="access.developer && otherGroups.length > 0" class="flex flex-wrap items-end gap-2">
-          <div class="min-w-48 flex-1"><BaseSelect v-model="groupToAdd" label="Add to group" :options="otherGroups" /></div>
-          <BaseButton label="Add" variant="secondary" :loading="membership.loading.value" @click="membership.run('add', groupToAdd)" />
+        <div v-if="access.developer" class="flex flex-wrap items-end gap-2">
+          <div class="min-w-48 flex-1">
+            <BaseSearchSelect v-model="groupToAdd" label="Add to group" :search="searchGroupsToJoin" :see-all="lookups.allGroups.value" />
+          </div>
+          <BaseButton label="Add" variant="secondary" :disabled="!groupToAdd" :loading="membership.loading.value" @click="membership.run('add', groupToAdd)" />
         </div>
       </section>
 

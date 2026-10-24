@@ -73,7 +73,10 @@ module SamlIdp
         end_user: end_user, acs_url: data["acs_url"], in_response_to: data["request_id"],
         session_index: participation.session_index, authenticated_at: session.authenticated_at, amr: session.amr
       )
-      recorder.record(action: "end_user.signed_in_to_app", actor: end_user, target: end_user, metadata: { saml_app: app.uid, app_name: app.name, amr: session.amr })
+      recorder.record(
+        action: "end_user.signed_in_to_app", actor: end_user, target: end_user, metadata: { saml_app: app.uid, app_name: app.name, amr: session.amr },
+        saml_app: app
+      )
       Outcome.new(html: PostForm.html(data["acs_url"], "SAMLResponse" => saml_response, "RelayState" => data["relay_state"]))
     rescue ApiError => error
       error_page(error.message, code: error.code.to_s)

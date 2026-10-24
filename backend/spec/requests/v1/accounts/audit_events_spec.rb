@@ -10,7 +10,7 @@ RSpec.describe "Audit events", type: :openapi do
     get "List the account's audit events, newest first" do
       tags "Audit log"
       security [ { BearerAuth: [] } ]
-      ListParameters.build(search: "Action prefix, e.g. `end_user.`", sorts: %w[occurred_at], filters: { action_eq: { type: :string }, action_start: { type: :string }, actor_uid_eq: { type: :string }, target_uid_eq: { type: :string }, app_client_uid_eq: { type: :string }, occurred_at_gteq: { type: :string, format: "date-time" }, occurred_at_lteq: { type: :string, format: "date-time" } }).each { |list_parameter| parameter(**list_parameter) }
+      ListParameters.build(search: "Action prefix, e.g. `end_user.`", sorts: %w[occurred_at], filters: { action_eq: { type: :string }, action_start: { type: :string }, actor_uid_eq: { type: :string }, target_uid_eq: { type: :string }, app_client_uid_eq: { type: :string }, saml_app_uid_eq: { type: :string }, occurred_at_gteq: { type: :string, format: "date-time" }, occurred_at_lteq: { type: :string, format: "date-time" } }).each { |list_parameter| parameter(**list_parameter) }
 
       response 200, "audit events" do
         schema type: :array, items: Schemas::AuditEvent

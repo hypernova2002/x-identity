@@ -386,6 +386,8 @@ export interface AuditEvent {
   target: AuditEventReference | null
   project_uid: string | null
   app_client_uid: string | null
+  /** The SAML app an end user signed in to, or was refused. */
+  saml_app_uid: string | null
   ip: string | null
   user_agent: string | null
   metadata: Record<string, unknown>

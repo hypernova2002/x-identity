@@ -18,8 +18,9 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useEndUserActions } from '@/composables/useEndUserActions'
 import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
+import { useProjectLookups } from '@/composables/useProjectLookups'
 import { projectAdminService } from '@/services/project'
-import type { AttributeDefinition, EndUser, Group } from '@/types/api'
+import type { AttributeDefinition, EndUser } from '@/types/api'
 import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttributes'
 import { formatDateTime } from '@/utils/format'
 import { userStatusOptions } from '@/utils/options'
@@ -28,7 +29,7 @@ const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
 const definitions = ref<AttributeDefinition[]>([])
-const groups = ref<Group[]>([])
+const lookups = useProjectLookups()
 const notice = ref<string | null>(null)
 
 const filters = computed<DataTableFilter[]>(() => [
@@ -52,7 +53,7 @@ const filters = computed<DataTableFilter[]>(() => [
     ],
   },
   { type: 'select', key: 'invitation_pending', label: 'Invitation', options: [{ label: 'Pending', value: 'true' }] },
-  { type: 'select', key: 'in_group', label: 'Group', options: groups.value.map((group) => ({ label: group.name, value: group.uid })) },
+  { type: 'lookup', key: 'in_group', label: 'Group', search: lookups.searchGroups, resolveLabel: lookups.groupName, seeAll: lookups.allGroups.value },
 ])
 
 const columns: DataTableColumn[] = [
@@ -73,12 +74,7 @@ const listState = list.state
 
 const loadLookups = useAsyncAction(async () => {
   if (!project.value) return
-  const [loadedDefinitions, loadedGroups] = await Promise.all([
-    projectAdminService.listAttributes(accountUid.value, project.value.uid),
-    projectAdminService.listGroups(accountUid.value, project.value.uid),
-  ])
-  definitions.value = loadedDefinitions.items
-  groups.value = loadedGroups.items
+  definitions.value = (await projectAdminService.listAttributes(accountUid.value, project.value.uid)).items
 })
 
 const userLink = (endUser: EndUser) => ({ name: 'project-end-user', params: { projectUid: project.value?.uid, endUserUid: endUser.uid } })

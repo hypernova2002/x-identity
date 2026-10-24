@@ -109,7 +109,7 @@ RSpec.describe "SAML identity provider", type: :openapi do
       expect(saml_response.nameid).to eq("casey@shop.test")
       expect(saml_response.attributes.multi("groups")).to eq([ "All end users" ])
       expect(saml_response.sessionindex).to eq(BrowserSessionApp.sole.session_index)
-      expect(AuditEvent.where(action: "end_user.signed_in_to_app")).to exist
+      expect(AuditEvent.find_by!(action: "end_user.signed_in_to_app").saml_app_uid).to eq(sp.uid)
     end
 
     it "uses the persistent NameID when the app asks for it" do
@@ -140,6 +140,7 @@ RSpec.describe "SAML identity provider", type: :openapi do
       start_sign_in(unassigned)
 
       expect(sign_in_on_hosted_page.dig("error", "code")).to eq("app_access_denied")
+      expect(AuditEvent.find_by!(action: "end_user.app_access_denied").saml_app_uid).to eq(unassigned.uid)
     end
 
     it "answers IsPassive with NoPassive when there's no session" do

@@ -5,7 +5,7 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import SamlProviderFields from '@/components/project/SamlProviderFields.vue'
 import type { ApiError } from '@/services/http'
-import type { Group, IdentityProvider } from '@/types/api'
+import type { IdentityProvider } from '@/types/api'
 import type { IdentityProviderDraft } from '@/utils/identityProviders'
 
 defineProps<{
@@ -14,7 +14,6 @@ defineProps<{
   existing: IdentityProvider | null
   error: ApiError | null
   /** For SAML group mappings. */
-  groups: readonly Group[]
   importError: ApiError | null
   importing: boolean
 }>()
@@ -36,7 +35,6 @@ const draft = defineModel<IdentityProviderDraft>({ required: true })
     <SamlProviderFields
       v-if="draft.kind === 'saml'"
       v-model="draft"
-      :groups="groups"
       :error="error"
       :import-error="importError"
       :importing="importing"

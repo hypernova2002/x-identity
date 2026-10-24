@@ -1,30 +1,35 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { ref } from 'vue'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseDataTable from '@/components/base/BaseDataTable.vue'
+import BaseSearchSelect from '@/components/base/BaseSearchSelect.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectService, userService } from '@/services/account'
-import type { ProjectMember, ProjectRole, User } from '@/types/api'
+import { lookupFrom, type LookupPage } from '@/services/list'
+import type { ProjectMember, ProjectRole } from '@/types/api'
 import { projectRoleOptions } from '@/utils/options'
 
 const { accountUid, project, members, access } = useProjectContext()
 
-const accountUsers = ref<User[]>([])
 const newMemberUid = ref('')
 const newMemberRole = ref<ProjectRole>('viewer')
 
-const candidateOptions = computed(() =>
-  accountUsers.value
-    .filter((user) => !members.value.some((member) => member.user_uid === user.uid))
-    .map((user) => ({ label: `${user.name} (${user.email})`, value: user.uid })),
-)
+/** Console users who could join: the search's matches, minus current members. */
+async function searchCandidates(term: string): Promise<LookupPage> {
+  const page = await lookupFrom(
+    (params) => userService.list(accountUid.value, params),
+    (user) => ({ label: `${user.name} (${user.email})`, value: user.uid }),
+  )(term)
+  const items = page.items.filter((option) => !members.value.some((member) => member.user_uid === option.value))
+  return { items, total: page.total - (page.items.length - items.length) }
+}
 
 const columns: DataTableColumn[] = [
   { key: 'name', label: 'Name', sortKey: 'name' },
@@ -40,10 +45,6 @@ const list = useListView((params) => projectService.listMembers(accountUid.value
   syncRoute: true,
 })
 const listState = list.state
-
-const loadUsers = useAsyncAction(async () => {
-  if (access.value.admin) accountUsers.value = (await userService.list(accountUid.value)).items
-})
 
 const addMember = useAsyncAction(async () => {
   if (!project.value || !newMemberUid.value) return
@@ -65,7 +66,6 @@ const memberAction = useAsyncAction(async (member: ProjectMember, role: ProjectR
   await list.reload()
 })
 
-onMounted(() => loadUsers.run())
 </script>
 
 <template>
@@ -116,11 +116,14 @@ onMounted(() => loadUsers.run())
     <form v-if="access.admin" class="flex flex-col gap-4 border-t border-border pt-4" novalidate @submit.prevent="addMember.run()">
       <h3 class="font-semibold">Add a member</h3>
       <BaseAlert v-if="addMember.error.value" variant="danger">{{ addMember.error.value.message }}</BaseAlert>
-      <p v-if="candidateOptions.length === 0" class="text-sm text-text-muted">
-        Everyone in the account is already a member. Invite more people from the Users page.
-      </p>
-      <div v-else class="grid gap-4 sm:grid-cols-2">
-        <BaseSelect v-model="newMemberUid" label="User" :options="candidateOptions" />
+      <div class="grid gap-4 sm:grid-cols-2">
+        <BaseSearchSelect
+          v-model="newMemberUid"
+          label="Console user"
+          hint="People join the account by invitation, from Console users."
+          :search="searchCandidates"
+          :see-all="{ name: 'users' }"
+        />
         <BaseSelect v-model="newMemberRole" label="Project role" :options="projectRoleOptions" />
       </div>
       <BaseButton type="submit" label="Add member" :loading="addMember.loading.value" :disabled="!newMemberUid" class="self-start" />

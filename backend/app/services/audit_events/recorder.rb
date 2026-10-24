@@ -18,8 +18,9 @@ module AuditEvents
     # @param target [ApplicationRecord, nil] what it was done to
     # @param project [Project, nil] overrides the recorder's project
     # @param metadata [Hash]
+    # @param saml_app [SamlApp, nil] the SAML app an end user signed in to, or was refused
     # @return [AuditEvent]
-    def record(action:, actor: nil, target: nil, project: @project, metadata: {})
+    def record(action:, actor: nil, target: nil, project: @project, metadata: {}, saml_app: nil)
       AuditEvent.create!(
         account: @account,
         project: project,
@@ -31,6 +32,7 @@ module AuditEvents
         target_uid: target.try(:uid),
         target_label: label_for(target),
         app_client_uid: @app_client&.uid,
+        saml_app_uid: saml_app&.uid,
         ip: @ip,
         user_agent: @user_agent&.truncate(255),
         metadata: metadata,

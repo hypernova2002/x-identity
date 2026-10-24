@@ -17,7 +17,7 @@ const columns: DataTableColumn[] = [
   { key: 'action', label: 'Action' },
   { key: 'actor', label: 'Actor' },
   { key: 'target', label: 'Target' },
-  ...(props.showAppClient ? [{ key: 'app_client_uid', label: 'App client' }] : []),
+  ...(props.showAppClient ? [{ key: 'app', label: 'App' }] : []),
   { key: 'ip', label: 'IP address' },
 ]
 
@@ -27,7 +27,12 @@ const filters: DataTableFilter[] = [
   { type: 'date', key: 'occurred_at_lteq', label: 'To' },
   { type: 'text', key: 'actor_uid_eq', label: 'Actor ID' },
   { type: 'text', key: 'target_uid_eq', label: 'Target ID' },
-  ...(props.showAppClient ? [{ type: 'text' as const, key: 'app_client_uid_eq', label: 'App client ID' }] : []),
+  ...(props.showAppClient
+    ? [
+        { type: 'text' as const, key: 'app_client_uid_eq', label: 'App client ID' },
+        { type: 'text' as const, key: 'saml_app_uid_eq', label: 'SAML app ID' },
+      ]
+    : []),
 ]
 
 const list = useListView((params) => props.fetchPage(params), {
@@ -58,7 +63,7 @@ const listState = list.state
     <template #cell-action="{ row }"><code class="font-mono text-xs">{{ row.action }}</code></template>
     <template #cell-actor="{ row }">{{ row.actor.label ?? row.actor.type }}</template>
     <template #cell-target="{ row }">{{ row.target?.label ?? row.target?.uid ?? '—' }}</template>
-    <template #cell-app_client_uid="{ row }"><span class="font-mono text-xs">{{ row.app_client_uid ?? '—' }}</span></template>
+    <template #cell-app="{ row }"><span class="font-mono text-xs">{{ row.app_client_uid ?? row.saml_app_uid ?? '—' }}</span></template>
     <template #cell-ip="{ row }"><span class="font-mono text-xs">{{ row.ip ?? '—' }}</span></template>
   </BaseDataTable>
 </template>

@@ -14,6 +14,27 @@ export interface ListParams {
 /** For filling selects and lookups rather than a paged table: the largest page the API allows. */
 export const LOOKUP: ListParams = { perPage: 100 }
 
+/** How many options a searchable dropdown shows at once; it searches the server for the rest. */
+export const LOOKUP_SIZE = 20
+
+/** One page of options for a searchable dropdown, and how many match in total. */
+export interface LookupPage {
+  items: { label: string; value: string }[]
+  total: number
+}
+
+/** Turns a list endpoint into a dropdown search: the first LOOKUP_SIZE matches, by its own search. */
+export function lookupFrom<T>(
+  fetch: (params: ListParams) => Promise<{ items: T[]; total: number }>,
+  toOption: (item: T) => { label: string; value: string },
+  filters: ListParams['filters'] = {},
+) {
+  return async (term: string): Promise<LookupPage> => {
+    const page = await fetch({ search: term, perPage: LOOKUP_SIZE, filters })
+    return { items: page.items.map(toOption), total: page.total }
+  }
+}
+
 export type ListQuery = Record<string, string | number | readonly string[] | undefined>
 
 const isSet = (value: string | readonly string[] | undefined) => (Array.isArray(value) ? value.length > 0 : value !== undefined && value !== '')

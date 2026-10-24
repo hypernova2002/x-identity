@@ -8,6 +8,7 @@ import BaseAlert from './BaseAlert.vue'
 import BaseButton from './BaseButton.vue'
 import BaseInput from './BaseInput.vue'
 import BasePagination from './BasePagination.vue'
+import BaseSearchSelect from './BaseSearchSelect.vue'
 import BaseSelect from './BaseSelect.vue'
 import type { DataTableColumn, DataTableFilter } from './types'
 import { useDebounce } from '@/composables/useDebounce'
@@ -159,6 +160,16 @@ const sortOptions = computed(() =>
             :model-value="selectValue(filter)"
             :label="filter.label"
             :options="[{ label: filter.anyLabel ?? 'Any', value: '' }, ...filter.options]"
+            @update:model-value="(value: string) => setFilter(filter.key, value)"
+          />
+          <BaseSearchSelect
+            v-else-if="filter.type === 'lookup'"
+            :model-value="selectValue(filter)"
+            :label="filter.label"
+            :search="filter.search"
+            :resolve-label="filter.resolveLabel"
+            :see-all="filter.seeAll"
+            placeholder="Any"
             @update:model-value="(value: string) => setFilter(filter.key, value)"
           />
           <BaseInput

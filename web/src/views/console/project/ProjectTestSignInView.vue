@@ -8,12 +8,14 @@ import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
+import BaseSearchSelect from '@/components/base/BaseSearchSelect.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { SelectOption } from '@/components/base/types'
 import DecodedToken from '@/components/project/DecodedToken.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useOidcCodeFlow } from '@/composables/useOidcCodeFlow'
 import { useProjectContext } from '@/composables/useProjectContext'
+import { useProjectLookups } from '@/composables/useProjectLookups'
 import { useTestSignIn } from '@/composables/useTestSignIn'
 import { oidcService } from '@/services/oidc'
 import { projectAdminService } from '@/services/project'
@@ -27,18 +29,16 @@ const flow = useTestSignIn()
 const hostedLogin = useOidcCodeFlow({ storageKey: 'x-identity:test-hosted-login', scope: 'openid email profile groups offline_access' })
 const { challenge, enrollment, tokens, recoveryCodes, refreshedAt, signedOut } = flow
 
-const clients = ref<AppClient[]>([])
+const lookups = useProjectLookups()
+const hasClients = ref(false)
 const clientUid = ref('')
+const selectedClient = ref<AppClient | null>(null)
 const clientSecret = ref('')
 const email = ref('')
 const password = ref('')
 const code = ref('')
 const newPassword = ref('')
 
-const clientOptions = computed<SelectOption[]>(() =>
-  clients.value.map((client) => ({ label: `${client.name} (${client.client_type})`, value: client.uid })),
-)
-const selectedClient = computed(() => clients.value.find((client) => client.uid === clientUid.value))
 
 const hostedRedirectUri = computed(() => (project.value ? `${window.location.origin}/console/projects/${project.value.uid}/test-sign-in` : ''))
 const hostedLoginReady = computed(
@@ -54,10 +54,18 @@ watch(challenge, () => {
 
 const loadClients = useAsyncAction(async () => {
   if (!project.value) return
-  const { items } = await projectAdminService.listAppClients(accountUid.value, project.value.uid)
-  clients.value = items.filter((client) => client.enabled)
-  clientUid.value = clients.value.find((client) => client.uid === route.query.client)?.uid ?? clients.value[0]?.uid ?? ''
+  const firstPage = await lookups.searchAppClients('')
+  hasClients.value = firstPage.total > 0
+  clientUid.value = typeof route.query.client === 'string' ? route.query.client : (firstPage.items[0]?.value ?? '')
 })
+
+const loadClient = useAsyncAction(async (uid: string) => {
+  selectedClient.value = null
+  if (!project.value || !uid) return
+  selectedClient.value = await projectAdminService.getAppClient(accountUid.value, project.value.uid, uid)
+})
+
+watch(clientUid, (uid) => loadClient.run(uid))
 
 function signIn() {
   if (!project.value || !selectedClient.value) return
@@ -131,7 +139,7 @@ onMounted(() => {
   </BaseAlert>
   <p v-else-if="loadClients.loading.value" class="text-sm text-text-muted" role="status">Loading app clients…</p>
 
-  <BaseCard v-else-if="clients.length === 0" title="No OpenID Connect or API clients" description="End users sign in through an enabled client.">
+  <BaseCard v-else-if="!hasClients" title="No OpenID Connect or API clients" description="End users sign in through an enabled client.">
     <RouterLink
       :to="{ name: 'project-applications', params: { projectUid: project?.uid } }"
       class="self-start text-sm font-medium text-primary underline hover:text-primary-hover"
@@ -149,7 +157,14 @@ onMounted(() => {
           <p v-if="flow.signIn.error.value && explainSignInError(flow.signIn.error.value.code)" class="text-sm">{{ explainSignInError(flow.signIn.error.value.code) }}</p>
         </BaseAlert>
 
-        <BaseSelect v-model="clientUid" label="App client" :options="clientOptions" />
+        <BaseSearchSelect
+          v-model="clientUid"
+          label="App client"
+          :search="lookups.searchAppClients"
+          :resolve-label="lookups.appClientName"
+          :see-all="lookups.allApplications.value"
+          :error="loadClient.error.value?.message"
+        />
         <BaseInput
           v-if="selectedClient?.client_type === 'confidential'"
           v-model="clientSecret"

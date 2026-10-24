@@ -1,3 +1,7 @@
+import type { RouteLocationRaw } from 'vue-router'
+
+import type { LookupPage } from '@/services/list'
+
 export interface SelectOption<V extends string = string> {
   label: string
   value: V
@@ -18,3 +22,11 @@ export type DataTableFilter =
   | { type: 'select'; key: string; label: string; options: readonly SelectOption[]; anyLabel?: string }
   | { type: 'text'; key: string; label: string }
   | { type: 'date'; key: string; label: string }
+  | {
+      type: 'lookup'
+      key: string
+      label: string
+      search: (term: string) => Promise<LookupPage>
+      resolveLabel?: (value: string) => Promise<string | null> | string | null
+      seeAll?: RouteLocationRaw
+    }

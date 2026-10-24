@@ -16,13 +16,12 @@ import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { useProviderEditor } from '@/composables/useProviderEditor'
 import { projectAdminService } from '@/services/project'
-import type { Group, IdentityProviderKind } from '@/types/api'
+import type { IdentityProviderKind } from '@/types/api'
 import { identityProviderKindOptions, yesNoOptions } from '@/utils/options'
 
 const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
-const groups = ref<Group[]>([])
 const chooseOpen = ref(false)
 const newKind = ref<IdentityProviderKind>('google')
 const editor = useProviderEditor(() => (project.value ? { accountUid: accountUid.value, projectUid: project.value.uid } : null))
@@ -55,11 +54,6 @@ const list = useListView((params) => projectAdminService.listIdentityProviders(a
 })
 const listState = list.state
 
-const loadGroups = useAsyncAction(async () => {
-  if (!project.value) return
-  groups.value = (await projectAdminService.listGroups(accountUid.value, project.value.uid)).items
-})
-
 function startAdding() {
   chooseOpen.value = false
   editor.start(null, newKind.value)
@@ -70,7 +64,6 @@ async function create() {
   if (saved && project.value) await router.push({ name: 'project-identity-provider', params: { projectUid: project.value.uid, providerUid: saved.uid } })
 }
 
-onMounted(() => loadGroups.run())
 </script>
 
 <template>
@@ -141,7 +134,6 @@ onMounted(() => loadGroups.run())
       form-id="identity-provider-form"
       :existing="null"
       :error="editor.save.error.value"
-      :groups="groups"
       :import-error="editor.importMetadata.error.value"
       :importing="editor.importMetadata.loading.value"
       @submit="create"

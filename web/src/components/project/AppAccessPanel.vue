@@ -6,8 +6,7 @@ import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
-import BaseSelect from '@/components/base/BaseSelect.vue'
-import type { SelectOption } from '@/components/base/types'
+import BaseSearchSelect from '@/components/base/BaseSearchSelect.vue'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import { useAppAccess, type AppRef } from '@/composables/useAppAccess'
 
@@ -19,19 +18,19 @@ const props = defineProps<{
 }>()
 
 const access = useAppAccess()
-const { assignments, unassignedGroups, endUserMatches } = access
+const { assignments, endUserMatches } = access
 
 const groupUid = ref('')
 const email = ref('')
 
-const groupOptions = computed<SelectOption[]>(() => unassignedGroups.value.map((group) => ({ label: `${group.name} (${group.member_count})`, value: group.uid })))
 const error = computed(() => access.load.error.value ?? access.assign.error.value ?? access.unassign.error.value ?? access.searchEndUsers.error.value)
 const groupAssignments = computed(() => assignments.value.filter((assignment) => assignment.principal_type === 'group'))
 const directAssignments = computed(() => assignments.value.filter((assignment) => assignment.principal_type === 'end_user'))
 
-watch(unassignedGroups, (available) => {
-  if (!available.some((group) => group.uid === groupUid.value)) groupUid.value = available[0]?.uid ?? ''
-})
+async function assignGroup() {
+  await access.assign.run('group', groupUid.value)
+  if (!access.assign.error.value) groupUid.value = ''
+}
 
 watch(
   () => props.app.uid,
@@ -92,16 +91,14 @@ watch(
       <template v-if="canManage">
         <div class="flex flex-wrap items-end gap-2 border-t border-border pt-4">
           <div class="min-w-48 flex-1">
-            <BaseSelect v-if="groupOptions.length > 0" v-model="groupUid" label="Assign a group" :options="groupOptions" />
-            <p v-else class="text-sm text-text-muted">Every group is already assigned.</p>
+            <BaseSearchSelect
+              v-model="groupUid"
+              label="Assign a group"
+              :search="access.searchUnassignedGroups"
+              :see-all="{ name: 'project-groups', params: { projectUid } }"
+            />
           </div>
-          <BaseButton
-            v-if="groupOptions.length > 0"
-            label="Assign group"
-            variant="secondary"
-            :loading="access.assign.loading.value"
-            @click="access.assign.run('group', groupUid)"
-          />
+          <BaseButton label="Assign group" variant="secondary" :disabled="!groupUid" :loading="access.assign.loading.value" @click="assignGroup" />
         </div>
 
         <form class="flex flex-wrap items-end gap-2" novalidate @submit.prevent="access.searchEndUsers.run(email)">

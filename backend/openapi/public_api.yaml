@@ -100,6 +100,8 @@ paths:
               type: string
             app_client_uid_eq:
               type: string
+            saml_app_uid_eq:
+              type: string
             occurred_at_gteq:
               type: string
               format: date-time
@@ -1933,6 +1935,8 @@ paths:
             target_uid_eq:
               type: string
             app_client_uid_eq:
+              type: string
+            saml_app_uid_eq:
               type: string
             occurred_at_gteq:
               type: string
@@ -5264,6 +5268,11 @@ components:
           - string
           - 'null'
           description: The app client an end user signed in through.
+        saml_app_uid:
+          type:
+          - string
+          - 'null'
+          description: The SAML app an end user signed in to, or was refused.
         ip:
           type:
           - string

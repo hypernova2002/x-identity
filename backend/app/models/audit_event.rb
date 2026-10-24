@@ -17,6 +17,6 @@ class AuditEvent < ApplicationRecord
   end
 
   def self.ransackable_attributes(_auth_object = nil)
-    %w[action actor_uid target_uid app_client_uid occurred_at]
+    %w[action actor_uid target_uid app_client_uid saml_app_uid occurred_at]
   end
 end

@@ -1,20 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCheckbox from '@/components/base/BaseCheckbox.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
+import BaseSearchSelect from '@/components/base/BaseSearchSelect.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
-import type { SelectOption } from '@/components/base/types'
+import { useProjectLookups } from '@/composables/useProjectLookups'
 import type { ApiError } from '@/services/http'
-import type { Group } from '@/types/api'
 import type { IdentityProviderDraft } from '@/utils/identityProviders'
 import { nameIdFormatOptions } from '@/utils/samlApps'
 
-const props = defineProps<{
-  groups: readonly Group[]
+defineProps<{
   error: ApiError | null
   importError: ApiError | null
   importing: boolean
@@ -28,14 +27,14 @@ const draft = defineModel<IdentityProviderDraft>({ required: true })
 
 const metadataUrl = ref('')
 const metadataXml = ref('')
-const groupOptions = computed<SelectOption[]>(() => props.groups.map((group) => ({ label: group.name, value: group.uid })))
+const lookups = useProjectLookups()
 
 function importMetadata() {
   emit('importMetadata', metadataUrl.value.trim() ? { metadata_url: metadataUrl.value.trim() } : { metadata_xml: metadataXml.value })
 }
 
 function addMapping() {
-  draft.value.groupMappings.push({ value: '', groupUid: props.groups[0]?.uid ?? '' })
+  draft.value.groupMappings.push({ value: '', groupUid: '' })
 }
 </script>
 
@@ -98,14 +97,21 @@ function addMapping() {
     <p class="text-xs text-text-muted">
       At each sign-in, membership of these project groups follows the groups attribute. Groups that aren't mapped are left alone.
     </p>
-    <p v-if="groups.length === 0" class="text-xs text-text-muted">Create project groups first to map them.</p>
     <div v-for="(mapping, index) in draft.groupMappings" :key="index" class="flex flex-wrap items-end gap-2">
       <div class="min-w-36 flex-1"><BaseInput v-model="mapping.value" :label="`Provider group ${index + 1}`" /></div>
-      <div class="min-w-36 flex-1"><BaseSelect v-model="mapping.groupUid" label="Project group" :options="groupOptions" /></div>
+      <div class="min-w-36 flex-1">
+        <BaseSearchSelect
+          v-model="mapping.groupUid"
+          label="Project group"
+          :search="lookups.searchGroups"
+          :resolve-label="lookups.groupName"
+          :see-all="lookups.allGroups.value"
+        />
+      </div>
       <BaseButton label="Remove" variant="ghost" size="sm" @click="draft.groupMappings.splice(index, 1)" />
     </div>
     <p v-if="error?.fieldError('group_mappings')" class="text-xs font-medium text-danger">Error: {{ error.fieldError('group_mappings') }}</p>
-    <BaseButton v-if="groups.length > 0" label="Add mapping" variant="secondary" size="sm" class="self-start" @click="addMapping" />
+    <BaseButton label="Add mapping" variant="secondary" size="sm" class="self-start" @click="addMapping" />
   </fieldset>
 
   <BaseCheckbox

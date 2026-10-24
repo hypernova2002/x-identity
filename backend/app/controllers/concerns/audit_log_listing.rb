@@ -4,7 +4,7 @@ module AuditLogListing
 
   LIST = ListQuery.new(
     search: "action_start",
-    filters: %i[action_eq action_start actor_uid_eq target_uid_eq app_client_uid_eq occurred_at_gteq occurred_at_lteq],
+    filters: %i[action_eq action_start actor_uid_eq target_uid_eq app_client_uid_eq saml_app_uid_eq occurred_at_gteq occurred_at_lteq],
     sorts: { "occurred_at" => :occurred_at },
     default_sort: "-occurred_at"
   )

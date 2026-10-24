@@ -202,6 +202,7 @@ export const auditEventSchema = z.object({
   target: auditReference.nullable(),
   project_uid: nullableString,
   app_client_uid: nullableString,
+  saml_app_uid: nullableString,
   ip: nullableString,
   user_agent: nullableString,
   metadata: z.record(z.string(), z.unknown()),

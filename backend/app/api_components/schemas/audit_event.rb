@@ -17,6 +17,7 @@ class Schemas::AuditEvent
       target: reference.merge(type: [ :object, :null ]),
       project_uid: { type: [ :string, :null ] },
       app_client_uid: { type: [ :string, :null ], description: "The app client an end user signed in through." },
+      saml_app_uid: { type: [ :string, :null ], description: "The SAML app an end user signed in to, or was refused." },
       ip: { type: [ :string, :null ] },
       user_agent: { type: [ :string, :null ] },
       metadata: { type: :object },

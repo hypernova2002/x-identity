@@ -17,7 +17,7 @@ import { useProjectContext } from '@/composables/useProjectContext'
 import { useProviderEditor } from '@/composables/useProviderEditor'
 import type { ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
-import type { Group, IdentityProvider } from '@/types/api'
+import type { IdentityProvider } from '@/types/api'
 import { identityProviderKindOptions } from '@/utils/options'
 import { nameIdFormatOptions } from '@/utils/samlApps'
 
@@ -26,7 +26,6 @@ const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
 const provider = ref<IdentityProvider | null>(null)
-const groups = ref<Group[]>([])
 const disableOpen = ref(false)
 const deleteOpen = ref(false)
 const providerUid = computed(() => String(route.params.providerUid))
@@ -38,12 +37,7 @@ const createsUsers = computed(() => Boolean(provider.value?.create_users || proj
 
 const load = useAsyncAction(async () => {
   if (!project.value) return
-  const [loaded, loadedGroups] = await Promise.all([
-    projectAdminService.getIdentityProvider(accountUid.value, project.value.uid, providerUid.value),
-    projectAdminService.listGroups(accountUid.value, project.value.uid),
-  ])
-  provider.value = loaded
-  groups.value = loadedGroups.items
+  provider.value = await projectAdminService.getIdentityProvider(accountUid.value, project.value.uid, providerUid.value)
 })
 
 async function saveEdit() {
@@ -229,8 +223,7 @@ onMounted(() => load.run())
         form-id="identity-provider-form"
         :existing="provider"
         :error="editor.save.error.value"
-        :groups="groups"
-        :import-error="editor.importMetadata.error.value"
+          :import-error="editor.importMetadata.error.value"
         :importing="editor.importMetadata.loading.value"
         @submit="saveEdit"
         @import-metadata="(source) => editor.importMetadata.run(source)"
