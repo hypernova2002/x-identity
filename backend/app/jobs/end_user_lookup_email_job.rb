@@ -9,7 +9,7 @@ class EndUserLookupEmailJob < TransactionalEmailJob
   # @param ip [String, nil]
   # @param user_agent [String, nil]
   def perform(kind:, project_id:, email:, ip: nil, user_agent: nil)
-    project = Project.find_by(id: project_id)
+    project = Project.active.find_by(id: project_id)
     return if project.nil?
 
     case kind

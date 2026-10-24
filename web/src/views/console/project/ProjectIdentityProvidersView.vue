@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -11,7 +11,6 @@ import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import IdentityProviderForm from '@/components/project/IdentityProviderForm.vue'
-import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { useProviderEditor } from '@/composables/useProviderEditor'

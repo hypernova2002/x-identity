@@ -77,6 +77,14 @@ export interface Project {
   updated_at: string
 }
 
+/** A deleted project, which an account admin can restore until `purge_at`. */
+export interface DeletedProject {
+  uid: string
+  name: string
+  deleted_at: string
+  purge_at: string
+}
+
 export type ProjectSettings = Pick<
   Project,
   'name' | 'allow_self_sign_up' | 'confirm_sign_up_url' | 'reset_password_url' | 'accept_invitation_url'

@@ -60,7 +60,7 @@ reloading the tab can only use the browser's own prompt.
 
 | Page | What it manages | Who can change it |
 | --- | --- | --- |
-| Projects | All projects you can see; creating projects. | Account admins create |
+| Projects | All projects you can see; creating projects; restoring deleted ones. | Account admins create and restore |
 | Console users and roles | Console users, roles, disabling, invitations. | Account admins (granting owner: owners) |
 | Console sign-in | The account's [auth configuration](#authentication-settings) for console users. | Account admins |
 | Audit log | Account-level events. | Account admins |
@@ -69,6 +69,12 @@ reloading the tab can only use the browser's own prompt.
 MFA, regenerate recovery codes, and see **where they're signed in**: each device with its approximate
 location, IP address, sign-in method and last activity, with sign-out per device or for every other
 device. End users get the same list on the app portal.
+
+**Deleting a project** takes effect at once: it disappears from the console, and its sign-in,
+token and discovery endpoints return 404. For 24 hours an account admin can restore it from
+**Scheduled for deletion** on the Projects page, with nothing lost. After that, a background job
+permanently deletes its data in batches (an hourly job catches any that were missed). Its audit
+events are kept: `project.deleted`, `project.restored` and `project.purged`.
 
 ## Authentication settings
 

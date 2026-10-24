@@ -8,7 +8,9 @@ class Account < ApplicationRecord
   ].freeze
 
   has_many :users
-  has_many :projects
+  # Deleted projects are left out everywhere, until they're restored or purged.
+  has_many :projects, -> { where(deleted_at: nil) }
+  has_many :deleted_projects, -> { where.not(deleted_at: nil) }, class_name: "Project"
   has_many :invitations
   has_many :audit_events
   has_many :signing_keys, as: :owner

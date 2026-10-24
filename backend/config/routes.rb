@@ -48,6 +48,9 @@ Rails.application.routes.draw do
 
       resources :users, only: %i[index show update destroy], param: :uid
       resources :invitations, only: %i[index create destroy], param: :uid
+      resources :deleted_projects, path: "deleted-projects", only: :index, param: :uid do
+        post "restore", on: :member
+      end
       resources :projects, only: %i[index show create update destroy], param: :uid do
         resources :members, only: %i[index create update destroy], param: :user_uid, controller: "project_members"
       end

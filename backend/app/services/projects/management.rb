@@ -49,41 +49,32 @@ module Projects
       project
     end
 
-    # Deletes the project with its end users, app clients, attributes and keys. Its audit events are kept.
+    # Deletes the project at once: it disappears from every list and endpoint, and nobody can sign
+    # in to it. Its data is purged after {Project::RESTORE_PERIOD}, until when it can be restored.
     # @param project [Project]
     # @raise [ApiError] `forbidden`
     def destroy(project)
       raise ApiError.new(:forbidden) unless ProjectPolicy.new(@actor, project).destroy?
 
-      Project.transaction do
-        end_user_ids = project.end_users.select(:id)
-        [ RefreshToken, OneTimeToken, RecoveryCode, OtpCredential ].each do |model|
-          model.where(subject_type: "EndUser", subject_id: end_user_ids).delete_all
-        end
-        EndUserIdentity.where(end_user_id: end_user_ids).delete_all
-        OneTimeToken.where(subject_type: "BrowserSession", subject_id: BrowserSession.where(project: project).select(:id)).delete_all
-        BrowserSessionApp.where(browser_session_id: BrowserSession.where(project: project).select(:id)).delete_all
-        BrowserSession.where(project: project).delete_all
-        GroupMembership.where(group_id: project.groups.select(:id)).delete_all
-        project.app_assignments.delete_all
-        project.groups.delete_all
-        OneTimeToken.where(subject_type: "SamlApp", subject_id: project.saml_apps.select(:id)).delete_all
-        project.saml_apps.delete_all
-        project.saml_certificates.delete_all
-        OneTimeToken.where(subject_type: "AppClient", subject_id: project.app_clients.select(:id)).delete_all
-        OneTimeToken.where(subject_type: "IdentityProvider", subject_id: project.identity_providers.select(:id)).delete_all
-        IdentityProviderGroupMapping.where(identity_provider_id: project.identity_providers.select(:id)).delete_all
-        ConsumedSamlAssertion.where(identity_provider_id: project.identity_providers.select(:id)).delete_all
-        project.identity_providers.delete_all
-        project.end_users.delete_all
-        project.app_clients.delete_all
-        project.end_user_attribute_definitions.delete_all
-        project.signing_keys.delete_all
-        project.auth_configuration&.delete
-        project.destroy!
-      end
+      project.update!(deleted_at: Time.current)
+      ProjectPurgeJob.set(wait_until: project.purge_at).perform_later(project_id: project.id)
+      record("project.deleted", project, purge_at: project.purge_at.iso8601)
+    end
 
-      @account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "project.deleted", actor: @actor, target: project)
+    # Brings back a deleted project that hasn't been purged yet.
+    # @param project [Project] one of the account's deleted projects
+    # @raise [ApiError] `forbidden`
+    def restore(project)
+      raise ApiError.new(:forbidden) unless AccountPolicy.new(@actor).manage?
+
+      project.update!(deleted_at: nil)
+      record("project.restored", project)
+    end
+
+    private
+
+    def record(action, project, **metadata)
+      @account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: action, actor: @actor, target: project, metadata: metadata)
     end
   end
 end

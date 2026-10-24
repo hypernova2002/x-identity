@@ -830,6 +830,69 @@ paths:
           description: signed out
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/deleted-projects":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List deleted projects that can still be restored
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: deleted projects, most recently deleted first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/DeletedProject"
+        '403':
+          description: only account owners and admins can see deleted projects
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/deleted-projects/{uid}/restore":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Restore a deleted project before it's purged
+      tags:
+      - Projects
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: restored
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Project"
+        '404':
+          description: no such deleted project, or already purged
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/invitations":
     parameters:
     - name: account_uid
@@ -5174,7 +5237,8 @@ paths:
       - BearerAuth: []
       responses:
         '204':
-          description: deleted
+          description: deleted at once; its data is purged after 24 hours, and an
+            account admin can restore it until then
         '403':
           description: only account owners and admins can delete projects
           content:
@@ -6049,6 +6113,27 @@ components:
           type: string
           format: date-time
       title: AuthConfiguration
+    DeletedProject:
+      type: object
+      required:
+      - uid
+      - name
+      - deleted_at
+      - purge_at
+      properties:
+        uid:
+          type: string
+        name:
+          type: string
+        deleted_at:
+          type: string
+          format: date-time
+        purge_at:
+          type: string
+          format: date-time
+          description: When its data is permanently deleted; it can be restored until
+            then.
+      title: DeletedProject
     DeviceSession:
       type: object
       required:

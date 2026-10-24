@@ -8,7 +8,7 @@ class EndUserSignUpJob < TransactionalEmailJob
   # @param ip [String, nil]
   # @param user_agent [String, nil]
   def perform(project_id:, email:, password_digest:, app_client_id: nil, name: nil, custom_attributes: {}, ip: nil, user_agent: nil)
-    project = Project.find_by(id: project_id)
+    project = Project.active.find_by(id: project_id)
     return if project.nil?
 
     EndUsers::SignUp.new(

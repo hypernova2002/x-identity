@@ -35,6 +35,14 @@ services:
     ports:
       - "3000:3000"
 
+  # Runs background jobs (emails, new-device checks, project purges) and scheduled jobs.
+  worker:
+    <<: *backend
+    command: ["./bin/jobs"]
+    depends_on:
+      backend:
+        condition: service_started
+
   web:
     build:
       context: ./web

@@ -104,7 +104,7 @@ RSpec.describe "Projects", type: :openapi do
         tags "Projects"
         security [ { BearerAuth: [] } ]
 
-        response 204, "deleted"
+        response 204, "deleted at once; its data is purged after 24 hours, and an account admin can restore it until then"
 
         response 403, "only account owners and admins can delete projects" do
           schema Schemas::Error
@@ -148,8 +148,88 @@ RSpec.describe "Projects", type: :openapi do
       assert_api_response :delete, 403, headers: auth_headers_for(member), path_params: path_params
     end
 
-    it "lets account admins delete the project" do
-      assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: path_params
+    it "lets account admins delete the project, which disappears at once and is purged after 24 hours" do
+      expect { assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: path_params }
+        .to have_enqueued_job(ProjectPurgeJob).with(project_id: project.id).at(be_within(1.second).of(24.hours.from_now))
+
+      get "/v1/accounts/#{account.uid}/projects/#{project.uid}", headers: auth_headers_for(admin)
+      expect(response).to have_http_status(:not_found)
+      get "/v1/accounts/#{account.uid}/projects", headers: auth_headers_for(admin)
+      expect(response.parsed_body).to be_empty
+      expect(AuditEvent.last).to have_attributes(action: "project.deleted", target_uid: project.uid)
+    end
+
+    it "stops a deleted project's own endpoints working, such as sign-in and its keys" do
+      project.update!(deleted_at: Time.current)
+
+      get "#{URI.parse(project.token_issuer).path}/.well-known/openid-configuration"
+      expect(response).to have_http_status(:not_found)
+      get "#{URI.parse(project.token_issuer).path}/.well-known/jwks.json"
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "deleted projects" do
+    api_path "/v1/accounts/{account_uid}/deleted-projects" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+
+      get "List deleted projects that can still be restored" do
+        tags "Projects"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "deleted projects, most recently deleted first" do
+          schema type: :array, items: Schemas::DeletedProject
+        end
+
+        response 403, "only account owners and admins can see deleted projects" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/deleted-projects/{uid}/restore" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      post "Restore a deleted project before it's purged" do
+        tags "Projects"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "restored" do
+          schema Schemas::Project
+        end
+
+        response 404, "no such deleted project, or already purged" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    before { project.update!(deleted_at: 1.hour.ago) }
+
+    it "lists them for account admins, with when they'll be purged" do
+      assert_api_response(:get, 200, headers: auth_headers_for(admin), path_params: { account_uid: account.uid }) do
+        expect(parsed_body.sole).to include("uid" => project.uid, "name" => "Production", "purge_at" => (project.deleted_at + 24.hours).as_json)
+      end
+    end
+
+    it "is only for account admins" do
+      assert_api_response :get, 403, headers: auth_headers_for(member), path_params: { account_uid: account.uid }
+    end
+
+    it "restores a deleted project" do
+      assert_api_response :post, 200, headers: auth_headers_for(admin), path_params: { account_uid: account.uid, uid: project.uid }
+
+      expect(project.reload.deleted_at).to be_nil
+      expect(AuditEvent.last).to have_attributes(action: "project.restored", target_uid: project.uid)
+      get "/v1/accounts/#{account.uid}/projects/#{project.uid}", headers: auth_headers_for(admin)
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "doesn't restore a project that isn't deleted" do
+      project.update!(deleted_at: nil)
+
+      assert_api_response :post, 404, headers: auth_headers_for(admin), path_params: { account_uid: account.uid, uid: project.uid }
     end
   end
 

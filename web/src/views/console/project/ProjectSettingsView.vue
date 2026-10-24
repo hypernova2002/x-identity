@@ -134,7 +134,7 @@ const destroy = useAsyncAction(async () => {
       </div>
     </form>
 
-    <BaseCard v-if="access.accountAdmin" title="Delete project" description="Deletes the project with all of its end users, applications and settings.">
+    <BaseCard v-if="access.accountAdmin" title="Delete project" description="Deletes the project with all of its end users, applications and settings. Account admins can restore it for 24 hours.">
       <BaseButton label="Delete project" variant="danger" class="self-start" @click="deleteOpen = true" />
     </BaseCard>
 
@@ -148,8 +148,9 @@ const destroy = useAsyncAction(async () => {
       @confirm="destroy.run()"
     >
       <p>
-        This permanently deletes <strong>{{ project.name }}</strong>: its end users, groups, applications, identity providers,
-        attributes, signing keys and certificates. Apps using it will stop working. This can't be undone.
+        <strong>{{ project.name }}</strong> stops working at once: apps using it can't sign anyone in. An account admin can restore
+        it from the Projects page for 24 hours. After that, its end users, groups, applications, identity providers, attributes,
+        signing keys and certificates are permanently deleted.
       </p>
     </ConfirmDialog>
   </template>

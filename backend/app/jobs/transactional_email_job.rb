@@ -4,7 +4,7 @@ require "net/smtp"
 # the HTTP response identical, in content and timing, whether or not the email belongs to a user.
 # Tokens are generated inside the job so plaintext tokens never sit in the queue.
 class TransactionalEmailJob < ApplicationJob
-  queue_as :default
+  queue_as :mailers
 
   retry_on Net::OpenTimeout, Net::ReadTimeout, Net::SMTPServerBusy, Errno::ECONNREFUSED,
     wait: :polynomially_longer, attempts: 5

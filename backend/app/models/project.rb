@@ -4,6 +4,8 @@ class Project < ApplicationRecord
   self.uid_prefix = "proj"
 
   EMAIL_LINK_URL_FIELDS = %i[confirm_sign_up_url reset_password_url accept_invitation_url].freeze
+  # A deleted project can be restored for this long; then its data is purged.
+  RESTORE_PERIOD = 24.hours
 
   belongs_to :account
   has_many :project_memberships, dependent: :delete_all
@@ -19,6 +21,9 @@ class Project < ApplicationRecord
   has_many :end_user_attribute_definitions
   has_many :signing_keys, as: :owner
   has_one :auth_configuration, as: :owner
+
+  scope :active, -> { where(deleted_at: nil) }
+  scope :due_for_purge, -> { where(deleted_at: ..RESTORE_PERIOD.ago) }
 
   validates :name, presence: true, length: { maximum: 100 }
   validates :allow_self_sign_up, inclusion: { in: [ true, false ] }
@@ -60,6 +65,15 @@ class Project < ApplicationRecord
   def email_link(field, token)
     template = public_send(field)
     template.presence&.gsub("{token}", CGI.escape(token))
+  end
+
+  def deleted?
+    deleted_at.present?
+  end
+
+  # @return [Time, nil] when a deleted project's data will be purged
+  def purge_at
+    deleted_at && deleted_at + RESTORE_PERIOD
   end
 
   private

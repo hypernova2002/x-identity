@@ -1,0 +1,16 @@
+# Scheduled jobs, run by the dispatcher in bin/jobs.
+default: &default
+  purge_deleted_projects:
+    class: PurgeDeletedProjectsJob
+    queue: maintenance
+    schedule: every hour
+  clear_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    queue: maintenance
+    schedule: every hour at minute 12
+
+development:
+  <<: *default
+
+production:
+  <<: *default

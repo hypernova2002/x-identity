@@ -11,6 +11,7 @@ docker compose up --build
 | Service | Default URL | |
 | --- | --- | --- |
 | `backend` | http://localhost:3000 | Rails API |
+| `worker` | | Background and scheduled jobs (`bin/jobs`) |
 | `web` | http://localhost:5173 | Console and hosted pages |
 | `yard` | http://localhost:8808 | Backend code reference |
 | `mailpit` | http://localhost:8025 | Every email sent locally |
@@ -51,6 +52,13 @@ Device locations come from an offline GeoIP database (DB-IP Lite, CC BY 4.0) at
 `backend/vendor/geoip/dbip-city-lite.mmdb` (or `GEOIP_DATABASE_PATH`). It isn't in git: run
 `docker compose run --rm backend bin/rails geoip:download` once in development; the production image
 downloads it at build, so rebuild monthly to refresh it. Without the file, locations are blank.
+
+Background jobs run on Solid Queue, stored in the main database, in the `worker` service
+(`bin/jobs`), in development as in production; specs use the test adapter. Queues are set in
+`backend/config/queue.yml`: `mailers` and `default` share a worker; `maintenance` (project purges,
+clearing finished jobs) has its own single thread, so slow clean-up never delays emails. Scheduled
+jobs are in `backend/config/recurring.yml`. After changing job code, run
+`docker compose restart worker`.
 
 After changing `Gemfile` or `package.json`, rebuild the image (`docker compose build backend`, or
 `docker compose up --build -V web`) and recreate the container with `docker compose up -d`;

@@ -1,7 +1,7 @@
 import { apiPage, apiRequest } from './http'
 import { LOOKUP, listQuery, type ListParams } from './list'
 import { auditEventSchema, deviceSessionSchema, invitationSchema, projectMemberSchema, projectSchema, userSchema } from './schemas'
-import type { Account, AccountRole, AuthConfiguration, Invitation, Me, MfaEnrollment, Project, ProjectMember, ProjectRole, ProjectSettings, User, UserStatus } from '@/types/api'
+import type { Account, AccountRole, AuthConfiguration, DeletedProject, Invitation, Me, MfaEnrollment, Project, ProjectMember, ProjectRole, ProjectSettings, User, UserStatus } from '@/types/api'
 
 const base = (accountUid: string) => `/v1/accounts/${accountUid}`
 const authenticated = { authenticated: true } as const
@@ -101,6 +101,11 @@ export const projectService = {
 
   remove: (accountUid: string, projectUid: string) =>
     apiRequest<null>(`${base(accountUid)}/projects/${projectUid}`, { ...authenticated, method: 'DELETE' }),
+
+  listDeleted: (accountUid: string) => apiRequest<DeletedProject[]>(`${base(accountUid)}/deleted-projects`, authenticated),
+
+  restore: (accountUid: string, projectUid: string) =>
+    apiRequest<Project>(`${base(accountUid)}/deleted-projects/${projectUid}/restore`, { ...authenticated, method: 'POST' }),
 
   listMembers: (accountUid: string, projectUid: string, params: ListParams = LOOKUP) =>
     apiPage(`${base(accountUid)}/projects/${projectUid}/members`, projectMemberSchema, { ...authenticated, query: listQuery(params) }),
