@@ -50,8 +50,9 @@ module Oidc
         end
 
         session.update_column(:last_used_at, Time.current)
+        session.device_session&.touch_activity!(ip: @ip, user_agent: @user_agent)
         record_sso_sign_in(session, app_client)
-        return Outcome.new(redirect_url: code_redirect(app_client, request, session.end_user, session.amr, session.authenticated_at))
+        return Outcome.new(redirect_url: code_redirect(app_client, request, session, session.amr, session.authenticated_at))
       end
       raise Error.new("login_required", "The user needs to sign in.", redirect_uri: redirect_uri, state: state) if prompts.include?("none")
 
@@ -89,7 +90,9 @@ module Oidc
       end_user = record.subject
       amr = record.data["amr"]
       authenticated_at = Time.iso8601(record.data["authenticated_at"])
-      session, token = BrowserSession.start!(end_user: end_user, amr: amr, authenticated_at: authenticated_at, upstream: interaction.data["upstream"])
+      session, token = BrowserSession.start!(
+        end_user: end_user, amr: amr, authenticated_at: authenticated_at, upstream: interaction.data["upstream"], ip: @ip, user_agent: @user_agent
+      )
 
       response =
         if app.is_a?(SamlApp)
@@ -97,7 +100,7 @@ module Oidc
         elsif interaction.data["protocol"] == "portal"
           { redirect_url: Urls.hosted_page(@project, "apps") }
         else
-          { redirect_url: code_redirect(app, interaction.data, end_user, amr, authenticated_at) }
+          { redirect_url: code_redirect(app, interaction.data, session, amr, authenticated_at) }
         end
       Outcome.new(**response, session_token: token, session_expires_at: session.expires_at)
     end
@@ -133,12 +136,13 @@ module Oidc
       max_age.blank? || session.authenticated_at >= max_age.to_i.seconds.ago
     end
 
-    def code_redirect(app_client, request, end_user, amr, authenticated_at)
+    def code_redirect(app_client, request, session, amr, authenticated_at)
       _record, code = OneTimeToken.issue!(
-        subject: end_user, purpose: :oidc_code, replace: false,
+        subject: session.end_user, purpose: :oidc_code, replace: false,
         data: {
           "app_client_id" => app_client.id, "redirect_uri" => request["redirect_uri"], "code_challenge" => request["code_challenge"],
-          "nonce" => request["nonce"], "scope" => request["scope"], "amr" => amr, "authenticated_at" => authenticated_at.utc.iso8601(6)
+          "nonce" => request["nonce"], "scope" => request["scope"], "amr" => amr, "authenticated_at" => authenticated_at.utc.iso8601(6),
+          "device_session_id" => session.device_session_id
         }
       )
       Urls.append_query(request["redirect_uri"], code: code, state: request["state"], iss: @project.token_issuer)

@@ -155,6 +155,23 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
       expect(response.parsed_body["refresh_token"]).not_to eq(refresh_token)
     end
 
+    it "puts every app the browser signs in to under the browser's device" do
+      exchange(code_for_app(scope: "openid offline_access"))
+      device = BrowserSession.sole.device_session
+
+      expect(RefreshToken.find_by_token(response.parsed_body["refresh_token"]).device_session).to eq(device)
+      expect(claims(response.parsed_body["access_token"])["sid"]).to eq(device.uid)
+    end
+
+    it "doesn't redeem a code for a device that was signed out since" do
+      code = code_for_app
+      BrowserSession.sole.device_session.revoke!
+
+      exchange(code)
+
+      expect(response.parsed_body).to include("error" => "invalid_grant")
+    end
+
     it "needs the right code verifier, and each code only once" do
       code = code_for_app
 

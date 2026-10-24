@@ -47,6 +47,11 @@ docker compose run --rm --no-deps web npm run type-check
 docker compose run --rm --no-deps web npm run build-only
 ```
 
+Device locations come from an offline GeoIP database (DB-IP Lite, CC BY 4.0) at
+`backend/vendor/geoip/dbip-city-lite.mmdb` (or `GEOIP_DATABASE_PATH`). It isn't in git: run
+`docker compose run --rm backend bin/rails geoip:download` once in development; the production image
+downloads it at build, so rebuild monthly to refresh it. Without the file, locations are blank.
+
 After changing `Gemfile` or `package.json`, rebuild the image (`docker compose build backend`, or
 `docker compose up --build -V web`) and recreate the container with `docker compose up -d`;
 `docker compose restart` keeps the old one.

@@ -9,10 +9,12 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import PageHeader from '@/components/console/PageHeader.vue'
+import DeviceSessionTable from '@/components/sessions/DeviceSessionTable.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { meService } from '@/services/account'
+import type { ListParams } from '@/services/list'
 import { useSessionStore } from '@/stores/session'
-import type { MfaEnrollment } from '@/types/api'
+import type { DeviceSession, MfaEnrollment } from '@/types/api'
 
 const session = useSessionStore()
 const { account, me } = storeToRefs(session)
@@ -34,6 +36,10 @@ const enrollmentCode = ref('')
 const recoveryCodes = ref<string[]>([])
 const disablePassword = ref('')
 const mfaCode = ref('')
+
+const fetchSessions = (params: ListParams) => meService.listSessions(account.value!.uid, params)
+const signOutSession = (deviceSession: DeviceSession) => meService.signOutSession(account.value!.uid, deviceSession.uid)
+const signOutOtherSessions = () => meService.signOutOtherSessions(account.value!.uid)
 
 const saveProfile = useAsyncAction(async () => {
   if (!account.value) return
@@ -94,7 +100,7 @@ const regenerateCodes = useAsyncAction(async () => {
 </script>
 
 <template>
-  <PageHeader title="My security" description="Your profile, password, email address and multi-factor authentication." />
+  <PageHeader title="My security" description="Your profile, password, email address, multi-factor authentication and signed-in devices." />
 
   <BaseCard title="Profile">
     <form class="flex flex-col gap-4" novalidate @submit.prevent="saveProfile.run()">
@@ -220,5 +226,9 @@ const regenerateCodes = useAsyncAction(async () => {
         <BaseButton label="Turn off MFA" variant="danger" :loading="disableOtp.loading.value" @click="disableOtp.run()" />
       </div>
     </form>
+  </BaseCard>
+
+  <BaseCard v-if="account" title="Where you're signed in" description="Devices signed in to the console with your account. Sign out any you don't recognise, then change your password.">
+    <DeviceSessionTable :fetch-page="fetchSessions" :sign-out="signOutSession" :sign-out-others="signOutOtherSessions" />
   </BaseCard>
 </template>

@@ -49,6 +49,14 @@ Links carry a separate opaque token.
 - Revoking a user's sessions (sign out everywhere, password reset, disabling) invalidates their
   refresh tokens, outstanding access tokens and hosted login sessions.
 - Changing a password or email signs out the user's other sessions.
+- Each sign-in on a device is a device session. A hosted login browser session and every app it
+  signs in to belong to one device session; a sign-in through the API is a device session of its
+  own. Signing a device out revokes its refresh tokens and hosted login session; its access tokens
+  expire as usual. Access tokens carry the device session as `sid`.
+- Devices are described from the user agent (parsed locally) and located from the IP address with
+  an offline database (DB-IP Lite, CC BY 4.0): nothing is sent to another service. Requests from
+  confidential clients come from the app's servers, so their IP address and user agent aren't
+  recorded as the user's device. Locations are approximate, and blank for private addresses.
 - Sign-in challenge sessions last 5 minutes and are bound to the app client and, for hosted login,
   the interaction.
 

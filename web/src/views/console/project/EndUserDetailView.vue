@@ -15,12 +15,13 @@ import PageHeader from '@/components/console/PageHeader.vue'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import CustomAttributeFields from '@/components/project/CustomAttributeFields.vue'
 import EndUserActionDialog from '@/components/project/EndUserActionDialog.vue'
+import DeviceSessionTable from '@/components/sessions/DeviceSessionTable.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useEndUserActions } from '@/composables/useEndUserActions'
 import { useProjectContext } from '@/composables/useProjectContext'
 import type { ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
-import type { AttributeDefinition, EndUser, EndUserAppAccess, EndUserIdentity, Group } from '@/types/api'
+import type { AttributeDefinition, DeviceSession, EndUser, EndUserAppAccess, EndUserIdentity, Group } from '@/types/api'
 import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttributes'
 import { formatDateTime } from '@/utils/format'
 
@@ -85,7 +86,18 @@ const actions = useEndUserActions(ids, async ({ updated, notice: message }) => {
   }
   endUser.value = updated
   notice.value = message
+  sessions.value?.reload()
 })
+
+const sessions = ref<InstanceType<typeof DeviceSessionTable> | null>(null)
+
+function fetchSessions(params: ListParams) {
+  return projectAdminService.listEndUserSessions(accountUid.value, project.value!.uid, endUser.value!.uid, params)
+}
+
+function signOutSession(session: DeviceSession) {
+  return projectAdminService.signOutEndUserSession(accountUid.value, project.value!.uid, endUser.value!.uid, session.uid)
+}
 
 const membership = useAsyncAction(async (change: 'add' | 'remove', groupUid: string) => {
   const target = ids()
@@ -268,12 +280,15 @@ watch(endUserUid, () => load.run(), { immediate: true })
       </div>
     </BaseCard>
 
-    <BaseCard title="Sessions">
-      <p class="text-sm">
-        Individual sessions aren't listed yet. Signing out everywhere revokes every refresh token, stops current access tokens working and
-        ends hosted login sessions.
-      </p>
-      <BaseButton v-if="access.developer" label="Sign out everywhere" variant="secondary" class="self-start" @click="actions.request('sign_out', endUser)" />
+    <BaseCard title="Sessions" description="The devices this user is signed in on.">
+      <template v-if="access.developer">
+        <DeviceSessionTable ref="sessions" :fetch-page="fetchSessions" :sign-out="signOutSession" :owner="endUser.email" />
+        <p class="text-sm text-text-muted">
+          Signing out everywhere also stops access tokens already issued from working, and ends every hosted login session.
+        </p>
+        <BaseButton label="Sign out everywhere" variant="secondary" class="self-start" @click="actions.request('sign_out', endUser)" />
+      </template>
+      <p v-else class="text-sm text-text-muted">Only project admins and developers can see this user's devices.</p>
     </BaseCard>
 
     <BaseCard v-if="access.developer" title="Activity">

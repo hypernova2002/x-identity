@@ -34,11 +34,14 @@ module Auth
           amr: record.amr,
           family_id: record.family_id,
           refresh_expires_at: record.expires_at,
-          scope: record.scope
+          scope: record.scope,
+          device_session: record.device_session
         )
       end
 
       raise ApiError.new(outcome) if outcome.is_a?(Symbol)
+
+      record.device_session&.touch_activity!(**DeviceDetails.for(@app_client, ip: @ip, user_agent: @user_agent))
 
       outcome
     end

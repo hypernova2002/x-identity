@@ -38,6 +38,9 @@ Rails.application.routes.draw do
         post "otp/confirm", to: "otps#confirm"
         delete "otp", to: "otps#destroy"
         post "recovery-codes", to: "recovery_codes#create"
+        get "sessions", to: "sessions#index"
+        delete "sessions", to: "sessions#destroy_others"
+        delete "sessions/:uid", to: "sessions#destroy", as: :session
       end
 
       get "auth-configuration", to: "auth_configurations#show"
@@ -126,6 +129,9 @@ Rails.application.routes.draw do
           post "recovery-codes", to: "recovery_codes#create"
           get "identities", to: "identities#index"
           delete "identities/:uid", to: "identities#destroy", as: :identity
+          get "sessions", to: "sessions#index"
+          delete "sessions", to: "sessions#destroy_others"
+          delete "sessions/:uid", to: "sessions#destroy", as: :session
         end
 
         get "auth-configuration", to: "auth_configurations#show"
@@ -158,6 +164,7 @@ Rails.application.routes.draw do
             get "access", action: :access
             delete "identities/:identity_uid", action: :unlink_identity
           end
+          resources :sessions, controller: "end_user_sessions", param: :uid, only: %i[index destroy]
         end
         resources :attribute_definitions, path: "attributes", param: :uid, only: %i[index create update destroy]
         resources :audit_events, path: "audit-events", only: :index

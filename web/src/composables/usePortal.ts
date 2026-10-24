@@ -3,9 +3,10 @@ import { ref } from 'vue'
 import { useAsyncAction } from './useAsyncAction'
 import { useOidcCodeFlow, type CodeFlowReturn } from './useOidcCodeFlow'
 import { ApiError } from '@/services/http'
+import type { ListParams } from '@/services/list'
 import { oidcService } from '@/services/oidc'
 import { portalService } from '@/services/portal'
-import type { PortalApp, PortalConfig } from '@/types/api'
+import type { DeviceSession, PortalApp, PortalConfig } from '@/types/api'
 import { decodeJwt } from '@/utils/jwt'
 
 interface StoredSession {
@@ -16,7 +17,7 @@ interface StoredSession {
 /**
  * The app portal for one project. The portal is an OpenID Connect client of the project: it signs
  * in with the code flow (straight through when the hosted login session is still valid) and keeps
- * only its own access token, in session storage, to list the user's apps.
+ * only its own access token, in session storage, to list the user's apps and signed-in devices.
  */
 export function usePortal(projectUid: string, navigate: (url: string) => void = (url) => window.location.assign(url)) {
   const storageKey = `x-identity:portal:${projectUid}`
@@ -25,6 +26,7 @@ export function usePortal(projectUid: string, navigate: (url: string) => void = 
   const config = ref<PortalConfig | null>(null)
   const apps = ref<PortalApp[]>([])
   const email = ref<string | null>(null)
+  const accessToken = ref<string | null>(null)
   let accountUid = ''
 
   function storedSession(): StoredSession | null {
@@ -52,11 +54,13 @@ export function usePortal(projectUid: string, navigate: (url: string) => void = 
 
   async function loadApps(session: StoredSession) {
     email.value = session.email
+    accessToken.value = session.accessToken
     try {
       apps.value = await portalService.apps(accountUid, projectUid, session.accessToken)
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'invalid_token') {
         storeSession(null)
+        accessToken.value = null
         return signIn()
       }
       throw caught
@@ -83,6 +87,10 @@ export function usePortal(projectUid: string, navigate: (url: string) => void = 
     return session ? loadApps(session) : signIn()
   })
 
+  const fetchSessions = (params: ListParams) => portalService.sessions(accountUid, projectUid, accessToken.value ?? '', params)
+  const signOutSession = (session: DeviceSession) => portalService.signOutSession(accountUid, projectUid, accessToken.value ?? '', session.uid)
+  const signOutOtherSessions = () => portalService.signOutOtherSessions(accountUid, projectUid, accessToken.value ?? '')
+
   function launch(app: PortalApp) {
     navigate(app.launch_url)
   }
@@ -91,8 +99,9 @@ export function usePortal(projectUid: string, navigate: (url: string) => void = 
   function logOut() {
     if (!config.value) return
     storeSession(null)
+    accessToken.value = null
     navigate(oidcService.logoutUrl(config.value.issuer, { clientId: config.value.client_id, postLogoutRedirectUri: config.value.post_logout_redirect_uri }))
   }
 
-  return { config, apps, email, open, launch, logOut }
+  return { config, apps, email, accessToken, open, launch, logOut, fetchSessions, signOutSession, signOutOtherSessions }
 }

@@ -30,7 +30,7 @@ pages renamed in the redesign (`app-clients`, `saml-apps`, `sign-in-providers`) 
 | --- | --- | --- | --- |
 | | Overview | Project ID, issuer, discovery and portal URLs; common tasks; a setup checklist and "needs attention" items worked out from the project's real state; failed sign-ins and access refusals in the last 24 hours, and recent events (developers). | — |
 | | Applications | OpenID Connect/API clients and SAML apps in one list, searchable and filterable by type. Each app has tabs: Overview, Sign-in (redirect URIs, origins, launch URL) or Configuration (SAML), Access (group and direct assignments), Tokens & claims (OIDC), Credentials (client secret rotation, or the SAML signing certificate), Activity. | Developers (certificates: admins) |
-| Directory | End users | Search by email, name or ID (`eu_…`); filters for status, email verification, MFA, group and pending invitation, kept in the URL. Each user has a page: identity and attributes, linked providers, groups and app access (including access through groups), authentication state and actions, sign out everywhere, activity. Disabling, resetting MFA, signing out and deleting are confirmed first. | Developers |
+| Directory | End users | Search by email, name or ID (`eu_…`); filters for status, email verification, MFA, group and pending invitation, kept in the URL. Each user has a page: identity and attributes, linked providers, groups and app access (including access through groups), authentication state and actions, signed-in devices (sign out one device, or everywhere), activity. Disabling, resetting MFA, signing out and deleting are confirmed first. | Developers |
 | Directory | Groups | Groups, members, and whether new users join automatically. | Developers |
 | Directory | Attributes | Custom attributes: key, label, type, max length, required, user-editable, included in the ID token. Up to 50. | Project admins |
 | Authentication | Settings | The project's [auth configuration](#authentication-settings), in tabs: Sign-in methods, MFA, Security policies, Tokens & sessions, Signing keys (with the JWKS URL and SAML certificates). Each tab saves only its own settings; rarely changed limits are under "Advanced". | Project admins |
@@ -61,8 +61,10 @@ SAML app's Activity tab shows only configuration changes.
 | Console sign-in | The account's [auth configuration](#authentication-settings) for console users. | Account admins |
 | Audit log | Account-level events. | Account admins |
 
-**My security** lets each console user change their name, email and password, and set up or turn
-off MFA and regenerate recovery codes.
+**My security** lets each console user change their name, email and password, set up or turn off
+MFA, regenerate recovery codes, and see **where they're signed in**: each device with its approximate
+location, IP address, sign-in method and last activity, with sign-out per device or for every other
+device. End users get the same list on the app portal.
 
 ## Authentication settings
 

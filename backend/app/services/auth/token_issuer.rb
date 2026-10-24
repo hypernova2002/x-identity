@@ -17,8 +17,10 @@ module Auth
     # @param nonce [String, nil] echoed in the ID token, for OpenID Connect clients
     # @param refresh [Boolean] false issues no refresh token (OpenID Connect without offline_access)
     # @param scope [String, nil] OpenID Connect scopes; `groups` adds the user's groups to the ID token
+    # @param device_session [DeviceSession, nil] the signed-in device; becomes the access token's `sid`
     # @return [TokenSet]
-    def issue(user:, authenticated_at:, amr:, family_id: SecureRandom.uuid, refresh_expires_at: nil, nonce: nil, refresh: true, scope: nil)
+    def issue(user:, authenticated_at:, amr:, family_id: SecureRandom.uuid, refresh_expires_at: nil, nonce: nil, refresh: true, scope: nil,
+      device_session: nil)
       now = Time.current
       refresh_token = SecureRandom.base58(43) if refresh
 
@@ -26,6 +28,7 @@ module Auth
         RefreshToken.create!(
           subject: user,
           app_client_id: @app_client&.id,
+          device_session_id: device_session&.id,
           token_digest: RefreshToken.digest(refresh_token),
           family_id: family_id,
           authenticated_at: authenticated_at,
@@ -39,7 +42,7 @@ module Auth
       base = base_claims(user, authenticated_at, now)
 
       TokenSet.new(
-        access_token: sign(key, base.merge(token_use: "access", amr: amr, sid: family_id, jti: SecureRandom.uuid, scope: scope).compact.merge(client_claims)),
+        access_token: sign(key, base.merge(token_use: "access", amr: amr, sid: device_session&.uid || family_id, jti: SecureRandom.uuid, scope: scope).compact.merge(client_claims)),
         refresh_token: refresh_token,
         expires_in: @configuration.access_token_ttl.to_i,
         id_token: @app_client ? sign(key, base.merge(id_claims(user, scope)).merge({ nonce: nonce }.compact)) : nil

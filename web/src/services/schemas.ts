@@ -6,6 +6,7 @@ import type {
   Application,
   AttributeDefinition,
   AuditEvent,
+  DeviceSession,
   EndUser,
   Group,
   IdentityProvider,
@@ -206,3 +207,16 @@ export const auditEventSchema = z.object({
   metadata: z.record(z.string(), z.unknown()),
   occurred_at: timestamp,
 }) satisfies z.ZodType<AuditEvent>
+
+export const deviceSessionSchema = z.object({
+  uid: z.string(),
+  device_name: nullableString,
+  device_type: nullableString,
+  ip: nullableString,
+  user_agent: nullableString,
+  location: z.object({ city: nullableString, region: nullableString, country_code: nullableString }).nullable(),
+  amr: z.array(z.string()),
+  created_at: timestamp,
+  last_seen_at: timestamp,
+  current: z.boolean(),
+}) satisfies z.ZodType<DeviceSession>

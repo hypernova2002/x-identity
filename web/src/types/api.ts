@@ -391,3 +391,24 @@ export interface AuditEvent {
   metadata: Record<string, unknown>
   occurred_at: string
 }
+
+export interface DeviceSessionLocation {
+  city: string | null
+  region: string | null
+  country_code: string | null
+}
+
+/** A device a user is signed in on. Location is approximate, from an offline IP database. */
+export interface DeviceSession {
+  uid: string
+  device_name: string | null
+  device_type: string | null
+  ip: string | null
+  user_agent: string | null
+  location: DeviceSessionLocation | null
+  amr: string[]
+  created_at: string
+  last_seen_at: string
+  /** The device making the request. */
+  current: boolean
+}

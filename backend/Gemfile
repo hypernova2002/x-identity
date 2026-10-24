@@ -60,3 +60,6 @@ end
 group :test do
   gem "webmock", require: false
 end
+
+gem "device_detector", "~> 1.1"
+gem "maxmind-db", "~> 1.5"

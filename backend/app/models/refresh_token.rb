@@ -1,6 +1,7 @@
 # One link in a rotating chain of refresh tokens. All tokens issued from one sign-in share a `family_id`.
 class RefreshToken < ApplicationRecord
   belongs_to :subject, polymorphic: true
+  belongs_to :device_session, optional: true
 
   validates :token_digest, presence: true, uniqueness: true
   validates :family_id, :authenticated_at, :expires_at, presence: true

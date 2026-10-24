@@ -6,7 +6,7 @@ module V1
           def update
             ::Users::PasswordChange.new(user: current_user, **client_info).change!(
               **parse_request(::Me::ChangePasswordRequest).to_h,
-              keep_family_id: current_session_id
+              keep_session_id: current_session_id
             )
             head :no_content
           end

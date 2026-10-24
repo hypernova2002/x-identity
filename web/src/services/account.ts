@@ -1,12 +1,20 @@
 import { apiPage, apiRequest } from './http'
 import { LOOKUP, listQuery, type ListParams } from './list'
-import { auditEventSchema, invitationSchema, projectMemberSchema, projectSchema, userSchema } from './schemas'
+import { auditEventSchema, deviceSessionSchema, invitationSchema, projectMemberSchema, projectSchema, userSchema } from './schemas'
 import type { Account, AccountRole, AuthConfiguration, Invitation, Me, MfaEnrollment, Project, ProjectMember, ProjectRole, ProjectSettings, User, UserStatus } from '@/types/api'
 
 const base = (accountUid: string) => `/v1/accounts/${accountUid}`
 const authenticated = { authenticated: true } as const
 
 export const meService = {
+  listSessions: (accountUid: string, params: ListParams) =>
+    apiPage(`${base(accountUid)}/me/sessions`, deviceSessionSchema, { ...authenticated, query: listQuery(params) }),
+
+  signOutSession: (accountUid: string, sessionUid: string) =>
+    apiRequest<null>(`${base(accountUid)}/me/sessions/${sessionUid}`, { ...authenticated, method: 'DELETE' }),
+
+  signOutOtherSessions: (accountUid: string) => apiRequest<null>(`${base(accountUid)}/me/sessions`, { ...authenticated, method: 'DELETE' }),
+
   get: (accountUid: string) => apiRequest<Me>(`${base(accountUid)}/me`, authenticated),
 
   update: (accountUid: string, name: string) =>

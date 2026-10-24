@@ -40,9 +40,13 @@ module Oidc
       end_user = record.subject
       raise Error.new("invalid_grant", "The user can no longer sign in.") unless end_user.active?
 
+      device_session = DeviceSession.find_by(id: data["device_session_id"], subject: end_user)
+      raise Error.new("invalid_grant", "This device has been signed out.") if device_session&.revoked?
+
       tokens = Auth::TokenIssuer.new(realm: @project.realm, app_client: app_client).issue(
         user: end_user, authenticated_at: Time.iso8601(data["authenticated_at"]), amr: data["amr"],
-        nonce: data["nonce"], refresh: data["scope"].to_s.split(" ").include?("offline_access"), scope: data["scope"]
+        nonce: data["nonce"], refresh: data["scope"].to_s.split(" ").include?("offline_access"), scope: data["scope"],
+        device_session: device_session
       )
       response_for(tokens, scope: data["scope"])
     end

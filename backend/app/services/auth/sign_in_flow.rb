@@ -52,7 +52,8 @@ module Auth
         return SignInResult.completed(SignInCompletion.new(user: user, amr: amr, authenticated_at: authenticated_at), recovery_codes: recovery_codes)
       end
 
-      tokens = TokenIssuer.new(realm: @realm, app_client: @app_client).issue(user: user, authenticated_at: authenticated_at, amr: amr)
+      device_session = DeviceSession.start!(subject: user, amr: amr, authenticated_at: authenticated_at, **DeviceDetails.for(@app_client, ip: @ip, user_agent: @user_agent))
+      tokens = TokenIssuer.new(realm: @realm, app_client: @app_client).issue(user: user, authenticated_at: authenticated_at, amr: amr, device_session: device_session)
       SignInResult.authenticated(tokens, recovery_codes: recovery_codes)
     end
 

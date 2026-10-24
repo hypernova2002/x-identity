@@ -1191,6 +1191,103 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/sessions":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the devices you're signed in on
+      tags:
+      - Devices
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Device name, IP address, city or country code
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - last_seen_at
+          - "-last_seen_at"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: signed-in devices, most recently active first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/DeviceSession"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Sign out every other device
+      tags:
+      - Devices
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: signed out everywhere except this device
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/sessions/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Sign out a device
+      tags:
+      - Devices
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: signed out; its refresh tokens stop working, and its access
+            tokens expire as usual
+        '404':
+          description: not one of your devices
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects":
     parameters:
     - name: account_uid
@@ -2828,6 +2925,117 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{end_user_uid}/sessions":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: end_user_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the devices an end user is signed in on
+      tags:
+      - End users
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Device name, IP address, city or country code
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - last_seen_at
+          - "-last_seen_at"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: signed-in devices, most recently active first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/DeviceSession"
+        '403':
+          description: only project admins and developers can see devices
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{end_user_uid}/sessions/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: end_user_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Sign an end user out of one device
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: signed out
+        '404':
+          description: not one of this end user's devices
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}":
     parameters:
     - name: account_uid
@@ -3817,6 +4025,112 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '409':
           description: it's my only way to sign in
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/sessions":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the devices you're signed in on
+      tags:
+      - End-user devices
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Device name, IP address, city or country code
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - last_seen_at
+          - "-last_seen_at"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: signed-in devices, most recently active first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/DeviceSession"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Sign out every other device
+      tags:
+      - End-user devices
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: signed out everywhere except this device
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/sessions/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Sign out a device
+      tags:
+      - End-user devices
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: signed out
+        '404':
+          description: not one of your devices
           content:
             application/json:
               schema:
@@ -5115,6 +5429,81 @@ components:
           type: string
           format: date-time
       title: AuthConfiguration
+    DeviceSession:
+      type: object
+      required:
+      - uid
+      - device_name
+      - device_type
+      - ip
+      - user_agent
+      - location
+      - amr
+      - created_at
+      - last_seen_at
+      - current
+      properties:
+        uid:
+          type: string
+          example: ses_9Lq3Wm7Xc2Vb8Nz4Rt6Kj5Hd
+        device_name:
+          type:
+          - string
+          - 'null'
+          description: From the user agent, e.g. "Chrome on macOS"; null when unknown.
+        device_type:
+          type:
+          - string
+          - 'null'
+          example: desktop
+        ip:
+          type:
+          - string
+          - 'null'
+          description: The device's most recent IP address.
+        user_agent:
+          type:
+          - string
+          - 'null'
+        location:
+          type:
+          - object
+          - 'null'
+          description: Approximate, from an offline IP database (DB-IP Lite, CC BY
+            4.0).
+          required:
+          - city
+          - region
+          - country_code
+          properties:
+            city:
+              type:
+              - string
+              - 'null'
+            region:
+              type:
+              - string
+              - 'null'
+            country_code:
+              type:
+              - string
+              - 'null'
+        amr:
+          type: array
+          items:
+            type: string
+          description: How the user signed in, e.g. ["pwd", "otp"].
+        created_at:
+          type: string
+          format: date-time
+          description: When the device signed in.
+        last_seen_at:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+          description: The device making this request.
+      title: DeviceSession
     EndUser:
       type: object
       required:

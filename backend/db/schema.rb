@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_22_020001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -145,6 +145,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_020001) do
     t.string "upstream_name_id"
     t.string "upstream_name_id_format"
     t.string "upstream_session_index"
+    t.bigint "device_session_id"
+    t.index ["device_session_id"], name: "index_browser_sessions_on_device_session_id"
     t.index ["end_user_id"], name: "index_browser_sessions_on_end_user_id"
     t.index ["identity_provider_id"], name: "index_browser_sessions_on_identity_provider_id"
     t.index ["project_id"], name: "index_browser_sessions_on_project_id"
@@ -158,6 +160,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_020001) do
     t.datetime "created_at", null: false
     t.index ["expires_at"], name: "index_consumed_saml_assertions_on_expires_at"
     t.index ["identity_provider_id", "assertion_id"], name: "index_consumed_saml_assertions_uniqueness", unique: true
+  end
+
+  create_table "device_sessions", force: :cascade do |t|
+    t.string "uid", null: false
+    t.string "subject_type", null: false
+    t.bigint "subject_id", null: false
+    t.bigint "project_id"
+    t.string "created_ip"
+    t.string "created_user_agent"
+    t.string "last_ip"
+    t.string "last_user_agent"
+    t.string "device_name"
+    t.string "device_type"
+    t.string "city"
+    t.string "region"
+    t.string "country_code"
+    t.jsonb "amr", default: [], null: false
+    t.datetime "authenticated_at", null: false
+    t.datetime "last_seen_at", null: false
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id"], name: "index_device_sessions_on_project_id"
+    t.index ["subject_type", "subject_id"], name: "index_device_sessions_on_subject"
+    t.index ["uid"], name: "index_device_sessions_on_uid", unique: true
   end
 
   create_table "end_user_attribute_definitions", force: :cascade do |t|
@@ -372,7 +399,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_020001) do
     t.datetime "updated_at", null: false
     t.bigint "app_client_id"
     t.string "scope"
+    t.bigint "device_session_id"
     t.index ["app_client_id"], name: "index_refresh_tokens_on_app_client_id"
+    t.index ["device_session_id"], name: "index_refresh_tokens_on_device_session_id"
     t.index ["family_id"], name: "index_refresh_tokens_on_family_id"
     t.index ["subject_type", "subject_id"], name: "index_refresh_tokens_on_subject_type_and_subject_id"
     t.index ["token_digest"], name: "index_refresh_tokens_on_token_digest", unique: true
@@ -447,4 +476,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_020001) do
     t.index ["account_id", "email"], name: "index_users_on_account_id_and_email", unique: true
     t.index ["uid"], name: "index_users_on_uid", unique: true
   end
+
+  add_foreign_key "browser_sessions", "device_sessions", on_delete: :nullify
+  add_foreign_key "device_sessions", "projects", on_delete: :cascade
+  add_foreign_key "refresh_tokens", "device_sessions", on_delete: :nullify
 end

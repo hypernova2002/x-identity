@@ -5,6 +5,7 @@ module Authenticatable
 
   included do
     has_many :refresh_tokens, as: :subject, dependent: :delete_all
+    has_many :device_sessions, as: :subject, dependent: :delete_all
     has_many :one_time_tokens, as: :subject, dependent: :delete_all
     has_many :recovery_codes, as: :subject, dependent: :delete_all
     has_one :otp_credential, as: :subject, dependent: :delete
@@ -45,18 +46,26 @@ module Authenticatable
     update!(last_sign_in_at: Time.current)
   end
 
-  # Invalidates every access token issued so far and revokes all refresh tokens.
+  # Invalidates every access token issued so far and signs every device out.
   def revoke_all_sessions!
     transaction do
-      update!(tokens_valid_after: Time.current)
-      refresh_tokens.active.update_all(revoked_at: Time.current)
+      now = Time.current
+      update!(tokens_valid_after: now)
+      refresh_tokens.active.update_all(revoked_at: now)
+      device_sessions.where(revoked_at: nil).update_all(revoked_at: now)
     end
   end
 
-  # Revokes every refresh token family except `keep_family_id`.
-  # @param keep_family_id [String, nil]
-  def revoke_other_sessions!(keep_family_id:)
-    refresh_tokens.active.where.not(family_id: keep_family_id).update_all(revoked_at: Time.current)
+  # Signs every device out except the one the current access token belongs to.
+  # @param keep_session_id [String, nil] the access token's `sid`
+  def revoke_other_sessions!(keep_session_id:)
+    keep = DeviceSession.for_sid(keep_session_id)
+    transaction do
+      device_sessions.where(revoked_at: nil).where.not(id: keep&.id).find_each(&:revoke!)
+      others = refresh_tokens.active.where.not(family_id: keep_session_id)
+      others = others.where("device_session_id IS NULL OR device_session_id <> ?", keep.id) if keep
+      others.update_all(revoked_at: Time.current)
+    end
   end
 
   # Turns off MFA and deletes the user's recovery codes.

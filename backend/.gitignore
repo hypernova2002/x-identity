@@ -21,3 +21,6 @@
 
 /coverage
 /spec/examples.txt
+
+# Downloaded by bin/rails geoip:download
+/vendor/geoip/

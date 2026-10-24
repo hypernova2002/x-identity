@@ -6,6 +6,7 @@ import AccountLookupState from '@/components/auth/AccountLookupState.vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
+import DeviceSessionTable from '@/components/sessions/DeviceSessionTable.vue'
 import { useAccountFromRoute } from '@/composables/useAccountFromRoute'
 import { usePortal } from '@/composables/usePortal'
 
@@ -13,7 +14,7 @@ const route = useRoute()
 const router = useRouter()
 const { account, loading: accountLoading, error: accountError } = useAccountFromRoute()
 const portal = usePortal(String(route.params.projectUid))
-const { apps, email } = portal
+const { apps, email, accessToken } = portal
 
 const text = (key: string) => (typeof route.query[key] === 'string' ? (route.query[key] as string) : undefined)
 
@@ -51,5 +52,9 @@ watch(
     <template #footer>
       <BaseButton label="Log out" variant="ghost" @click="portal.logOut()" />
     </template>
+  </BaseCard>
+
+  <BaseCard v-if="accessToken && !portal.open.loading.value" title="Your devices" description="Where you're signed in. Sign out any device you don't recognise.">
+    <DeviceSessionTable :fetch-page="portal.fetchSessions" :sign-out="portal.signOutSession" :sign-out-others="portal.signOutOtherSessions" />
   </BaseCard>
 </template>

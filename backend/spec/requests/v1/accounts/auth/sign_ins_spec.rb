@@ -57,6 +57,14 @@ RSpec.describe "Sign in", type: :openapi do
     end
   end
 
+  it "records the device it signed in on, and names it in the access token" do
+    assert_api_response(:post, 200, body: credentials, path_params: path_params, headers: { "User-Agent" => CHROME_ON_MAC }) do
+      device = user.device_sessions.sole
+      expect(device).to have_attributes(device_name: "Chrome on Mac", created_ip: "127.0.0.1", amr: [ "pwd" ])
+      expect(Auth::AccessTokenVerifier.new(realm: account.realm).verify(parsed_body["access_token"])["sid"]).to eq(device.uid)
+    end
+  end
+
   it "rejects a wrong password" do
     sign_in(401, credentials.merge(password: "wrong password!!")) { expect(error_code).to eq("invalid_credentials") }
   end

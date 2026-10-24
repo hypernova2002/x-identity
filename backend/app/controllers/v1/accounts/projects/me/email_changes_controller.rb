@@ -9,7 +9,7 @@ module V1
           end
 
           def confirm
-            end_user = email_change.confirm(**parse_request(::EndUserMe::ConfirmEmailChangeRequest).to_h, keep_family_id: current_session_id)
+            end_user = email_change.confirm(**parse_request(::EndUserMe::ConfirmEmailChangeRequest).to_h, keep_session_id: current_session_id)
             render json: EndUserSerializer.new(end_user).serializable_hash
           end
 

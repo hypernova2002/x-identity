@@ -4,6 +4,9 @@
 # and recreated between test runs. Don't rely on the data there!
 
 Rails.application.configure do
+  # Specs don't depend on a downloaded GeoIP database; GeoIp is tested with a stand-in reader.
+  config.x.geoip_database_path = Rails.root.join("tmp/no-geoip-database-in-tests.mmdb").to_s
+
   # Settings specified here will take precedence over those in config/application.rb.
 
   # While tests run files are not watched, reloading is not necessary.

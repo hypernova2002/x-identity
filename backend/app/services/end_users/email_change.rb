@@ -44,10 +44,10 @@ module EndUsers
     end
 
     # @param code [String]
-    # @param keep_family_id [String] the current session, which stays signed in
+    # @param keep_session_id [String] the current session, which stays signed in
     # @return [EndUser]
     # @raise [ApiError] `invalid_code`, `email_taken`, or `too_many_attempts` when the caller's IP is blocked
-    def confirm(code:, keep_family_id:)
+    def confirm(code:, keep_session_id:)
       record = OneTimeToken.current_for(@end_user, purpose: :email_change)
       max_attempts = @project.auth_configuration!.email_code_max_attempts
       matched = CodeThrottle.new(project: @project, ip: @ip, user_agent: @user_agent).attempt(email: @end_user.email, code: code) do
@@ -63,7 +63,7 @@ module EndUsers
         raise ApiError.new(:invalid_code) unless record.consume!
 
         @end_user.update!(email: new_email, email_verified_at: Time.current)
-        @end_user.revoke_other_sessions!(keep_family_id: keep_family_id)
+        @end_user.revoke_other_sessions!(keep_session_id: keep_session_id)
       end
 
       recorder.record(action: "end_user.email_changed", actor: @end_user, target: @end_user, metadata: { old_email: old_email, new_email: new_email })

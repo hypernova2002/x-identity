@@ -46,6 +46,8 @@ module XIdentity
     config.x.app_base_url = ENV.fetch("APP_BASE_URL", "http://localhost:3000")
     config.x.console_base_url = ENV.fetch("CONSOLE_BASE_URL", "http://localhost:5173")
     config.x.mail_from = ENV.fetch("MAIL_FROM", "x-identity <no-reply@x-identity.localhost>")
+    # Offline IP location database (DB-IP Lite city, GeoIP2 format); see GeoIp. Location is blank without it.
+    config.x.geoip_database_path = ENV.fetch("GEOIP_DATABASE_PATH", Rails.root.join("vendor/geoip/dbip-city-lite.mmdb").to_s)
 
     config.active_record.encryption.primary_key = ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"]
     config.active_record.encryption.deterministic_key = ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"]

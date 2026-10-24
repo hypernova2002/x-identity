@@ -51,6 +51,13 @@ COPY . .
 # -j 1 disable parallel compilation to avoid a QEMU bug: https://github.com/rails/bootsnap/issues/495
 RUN bundle exec bootsnap precompile -j 1 app/ lib/
 
+# Offline IP location database for approximate device locations (DB-IP Lite, CC BY 4.0). Each month's
+# file appears early in the month, so fall back to last month's. Rebuild monthly to refresh it.
+RUN mkdir -p vendor/geoip && \
+    (curl -fsSL "https://download.db-ip.com/free/dbip-city-lite-$(date -u +%Y-%m).mmdb.gz" || \
+     curl -fsSL "https://download.db-ip.com/free/dbip-city-lite-$(date -u -d '-1 month' +%Y-%m).mmdb.gz") | \
+    gunzip > vendor/geoip/dbip-city-lite.mmdb
+
 
 # Local development and test image, used by docker compose. The app source is bind-mounted at runtime.
 FROM base AS development

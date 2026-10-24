@@ -6,6 +6,7 @@ import {
   applicationSchema,
   attributeDefinitionSchema,
   auditEventSchema,
+  deviceSessionSchema,
   endUserSchema,
   groupSchema,
   identityProviderSchema,
@@ -261,6 +262,12 @@ export const projectAdminService = {
 
   listEndUsers: (accountUid: string, projectUid: string, params: ListParams) =>
     apiPage(`${base(accountUid, projectUid)}/end-users`, endUserSchema, { ...authenticated, query: listQuery(params) }),
+
+  listEndUserSessions: (accountUid: string, projectUid: string, endUserUid: string, params: ListParams) =>
+    apiPage(`${base(accountUid, projectUid)}/end-users/${endUserUid}/sessions`, deviceSessionSchema, { ...authenticated, query: listQuery(params) }),
+
+  signOutEndUserSession: (accountUid: string, projectUid: string, endUserUid: string, sessionUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/end-users/${endUserUid}/sessions/${sessionUid}`, { ...authenticated, method: 'DELETE' }),
 
   getEndUser: (accountUid: string, projectUid: string, endUserUid: string) =>
     apiRequest<EndUser>(`${base(accountUid, projectUid)}/end-users/${endUserUid}`, authenticated),

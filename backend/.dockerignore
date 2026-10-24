@@ -36,3 +36,6 @@
 /coverage/
 /.yardoc/
 /doc/
+
+# The image downloads its own copy of the GeoIP database.
+/vendor/geoip/

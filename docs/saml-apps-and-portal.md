@@ -121,7 +121,8 @@ The same certificate signs AuthnRequests to [upstream SAML providers](end-user-a
 
 `/auth/:alias/:project_uid/apps` lists the apps a signed-in user is assigned: SAML apps, and app
 clients with a **launch URL**. SAML apps open with IdP-initiated sign-in; OIDC apps open at their
-launch URL. The portal link is on the project overview.
+launch URL. Below the apps, **Your devices** lists where the user is signed in and lets them sign
+devices out. The portal link is on the project overview.
 
 ```mermaid
 sequenceDiagram

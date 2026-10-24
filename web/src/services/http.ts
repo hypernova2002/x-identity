@@ -41,6 +41,8 @@ export interface RequestOptions {
   body?: unknown
   query?: Record<string, string | number | readonly string[] | undefined>
   authenticated?: boolean
+  /** A token other than the console session's, e.g. the app portal's own access token. */
+  accessToken?: string
 }
 
 export interface Page<T> {
@@ -95,7 +97,7 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
   const headers = new Headers({ Accept: 'application/json' })
   if (options.body !== undefined) headers.set('Content-Type', 'application/json')
 
-  const accessToken = options.authenticated ? authHandlers?.getAccessToken() : null
+  const accessToken = options.accessToken ?? (options.authenticated ? authHandlers?.getAccessToken() : null)
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
 
   try {

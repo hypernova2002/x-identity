@@ -27,13 +27,13 @@ module Users
     # Changes the password for a signed-in user and signs out their other sessions.
     # @param current_password [String]
     # @param new_password [String]
-    # @param keep_family_id [String] the refresh token family of the current session
+    # @param keep_session_id [String] the current access token's session (its `sid`), which stays signed in
     # @raise [ApiError] `validation_failed`
-    def change!(current_password:, new_password:, keep_family_id:)
+    def change!(current_password:, new_password:, keep_session_id:)
       raise ApiError.validation(current_password: "is incorrect") unless @hasher.matches?(current_password, @user.password_digest)
 
       set_password!(new_password)
-      @user.revoke_other_sessions!(keep_family_id: keep_family_id)
+      @user.revoke_other_sessions!(keep_session_id: keep_session_id)
       @realm.recorder(ip: @ip, user_agent: @user_agent)
         .record(action: "#{@realm.event_prefix}.password_changed", actor: @user, target: @user)
     end
