@@ -7,11 +7,12 @@ module V1
       private
 
       def set_account
-        Current.account = Account.find_by_uid!(params[:account_uid])
+        @current_account = Account.find_by_uid!(params[:account_uid])
       end
 
+      # @return [Account]
       def current_account
-        Current.account
+        @current_account
       end
     end
   end

@@ -19,7 +19,7 @@ module Authentication
     raise ApiError.new(:invalid_token) if user.tokens_valid_after && claims["iat"] < user.tokens_valid_after.to_i
 
     @access_token_claims = claims
-    Current.user = user
+    @current_user = user
   end
 
   # @return [Realms::AccountRealm, Realms::ProjectRealm]
@@ -29,7 +29,7 @@ module Authentication
 
   # @return [User, EndUser]
   def current_user
-    Current.user
+    @current_user
   end
 
   # @return [String] the refresh token family behind the current access token
