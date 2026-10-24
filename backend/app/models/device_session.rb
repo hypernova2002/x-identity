@@ -8,6 +8,8 @@ class DeviceSession < ApplicationRecord
 
   # Activity is recorded at most this often, so refreshing tokens doesn't write on every request.
   ACTIVITY_INTERVAL = 1.minute
+  # A device and country used within this long isn't new, so it doesn't trigger a sign-in alert.
+  FAMILIAR_FOR = 90.days
 
   belongs_to :subject, polymorphic: true
   belongs_to :project, optional: true
@@ -17,6 +19,8 @@ class DeviceSession < ApplicationRecord
   def self.ransackable_attributes(_auth_object = nil)
     %w[device_name last_ip city country_code]
   end
+
+  after_create_commit -> { NewDeviceEmailJob.perform_later(device_session_id: id) }
 
   # Not signed out, and still holding a refresh token or browser session that works.
   scope :current, lambda {
@@ -78,5 +82,24 @@ class DeviceSession < ApplicationRecord
 
   def revoked?
     revoked_at.present?
+  end
+
+  # Whether this sign-in is from somewhere the user hasn't signed in from lately: a device label and
+  # country with no other device session in the last 90 days. A user's first sign-in is never
+  # unfamiliar. Without a device label, or without a country, only a never-seen label counts, so
+  # unparseable user agents and private networks don't alert on every sign-in.
+  # @return [Boolean]
+  def unfamiliar?
+    earlier = subject.device_sessions.where.not(id: id).where(created_at: ...created_at)
+    return false if device_name.blank? || !earlier.exists?
+    return !earlier.exists?(device_name: device_name) if country_code.blank?
+
+    !earlier.where(created_at: (created_at - FAMILIAR_FOR)..).exists?(device_name: device_name, country_code: country_code)
+  end
+
+  # "Dublin, Leinster, IE", or nil when the location is unknown.
+  # @return [String, nil]
+  def location_label
+    [ city, region, country_code ].compact_blank.uniq.join(", ").presence
   end
 end

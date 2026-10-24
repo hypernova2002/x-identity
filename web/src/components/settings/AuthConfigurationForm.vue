@@ -58,6 +58,7 @@ const mfaRequirement = ref<MfaRequirement>('optional')
 const signingAlgorithm = ref<SigningAlgorithm>('ES256')
 const flags = ref({
   require_email_verification: false,
+  notify_new_devices: true,
   password_require_uppercase: false,
   password_require_lowercase: false,
   password_require_number: false,
@@ -103,6 +104,7 @@ function apply(configuration: AuthConfiguration) {
   signingAlgorithm.value = configuration.signing_algorithm
   flags.value = {
     require_email_verification: configuration.require_email_verification,
+    notify_new_devices: configuration.notify_new_devices,
     password_require_uppercase: configuration.password_require_uppercase,
     password_require_lowercase: configuration.password_require_lowercase,
     password_require_number: configuration.password_require_number,
@@ -348,6 +350,14 @@ onMounted(() => load.run())
             :error="save.error.value?.fieldError('lockout_duration_seconds')"
           />
         </div>
+      </BaseCard>
+
+      <BaseCard title="Sign-in alerts">
+        <BaseCheckbox
+          v-model="flags.notify_new_devices"
+          label="Email users about sign-ins from new devices"
+          hint="Sent when someone signs in with a device and country not used in the last 90 days, with the device, approximate location and time, and how to sign it out. Never sent for a user's first sign-in."
+        />
       </BaseCard>
     </template>
 

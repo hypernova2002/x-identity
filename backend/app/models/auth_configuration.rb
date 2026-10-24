@@ -27,6 +27,7 @@ class AuthConfiguration < ApplicationRecord
 
   attribute :mfa_requirement, default: "optional"
   attribute :require_email_verification, default: false
+  attribute :notify_new_devices, default: true
   attribute :password_min_length, default: 12
   attribute :password_require_uppercase, default: false
   attribute :password_require_lowercase, default: false
@@ -51,7 +52,7 @@ class AuthConfiguration < ApplicationRecord
   attribute :otp_hotp_look_ahead, default: 10
 
   validates :owner_id, uniqueness: { scope: :owner_type }
-  validates :require_email_verification,
+  validates :require_email_verification, :notify_new_devices,
     :password_require_uppercase, :password_require_lowercase, :password_require_number, :password_require_symbol,
     inclusion: { in: [ true, false ] }
   validates :password_min_length, numericality: { only_integer: true, in: 8..PASSWORD_MAX_LENGTH }

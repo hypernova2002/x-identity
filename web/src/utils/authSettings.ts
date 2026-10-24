@@ -23,6 +23,7 @@ export const AUTH_SETTINGS_FIELDS: Record<AuthSettingsSection, readonly AuthSett
     'lockout_threshold',
     'lockout_window_seconds',
     'lockout_duration_seconds',
+    'notify_new_devices',
   ],
   tokens: ['access_token_ttl_seconds', 'refresh_token_ttl_seconds', 'session_idle_timeout_seconds', 'sso_session_ttl_seconds'],
   signing: ['signing_algorithm', 'signing_key_rotation_seconds'],

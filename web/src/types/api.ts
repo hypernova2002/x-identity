@@ -345,6 +345,7 @@ export interface Invitation {
 export interface AuthConfiguration {
   mfa_requirement: MfaRequirement
   require_email_verification: boolean
+  notify_new_devices: boolean
   password_min_length: number
   password_require_uppercase: boolean
   password_require_lowercase: boolean

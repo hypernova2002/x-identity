@@ -1,0 +1,17 @@
+Hi <%= @user.name %>,
+
+Your <%= @user.account.name %> account on x-identity was just signed in to from a device we haven't seen you use recently:
+
+  Device:   <%= @device.device_name %>
+<% if @device.location_label %>  Location: approximately <%= @device.location_label %>
+<% end %><% if @device.created_ip %>  IP:       <%= @device.created_ip %>
+<% end %>  Time:     <%= @device.created_at.utc.strftime("%-d %B %Y at %H:%M UTC") %>
+
+If this was you, there's nothing to do.
+
+If it wasn't, sign that device out under "Where you're signed in" and change your password:
+<%= @url %>
+<% if @device.location_label -%>
+
+IP geolocation by DB-IP (https://db-ip.com).
+<% end -%>

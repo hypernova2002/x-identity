@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_010001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -117,6 +117,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_000001) do
     t.integer "otp_hotp_look_ahead", default: 10, null: false
     t.string "otp_method", default: "totp", null: false
     t.integer "sso_session_ttl_seconds", default: 28800, null: false
+    t.boolean "notify_new_devices", default: true, null: false
     t.index ["owner_type", "owner_id"], name: "index_auth_configurations_on_owner_type_and_owner_id", unique: true
   end
 

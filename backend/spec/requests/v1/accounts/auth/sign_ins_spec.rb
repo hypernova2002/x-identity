@@ -65,6 +65,10 @@ RSpec.describe "Sign in", type: :openapi do
     end
   end
 
+  it "queues the new-device email check for the sign-in" do
+    expect { sign_in(200) }.to have_enqueued_job(NewDeviceEmailJob)
+  end
+
   it "rejects a wrong password" do
     sign_in(401, credentials.merge(password: "wrong password!!")) { expect(error_code).to eq("invalid_credentials") }
   end

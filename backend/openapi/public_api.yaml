@@ -227,6 +227,9 @@ paths:
                   - 'off'
                   - optional
                   - required
+                notify_new_devices:
+                  anyOf:
+                  - type: boolean
                 otp_digits:
                   type: integer
                   minimum: 6
@@ -5292,6 +5295,7 @@ components:
       required:
       - mfa_requirement
       - require_email_verification
+      - notify_new_devices
       - password_min_length
       - password_require_uppercase
       - password_require_lowercase
@@ -5324,6 +5328,10 @@ components:
           - required
         require_email_verification:
           type: boolean
+        notify_new_devices:
+          type: boolean
+          description: Email users when they sign in from a device and country they
+            haven't used in 90 days.
         password_min_length:
           type: integer
           minimum: 8

@@ -57,6 +57,10 @@ Links carry a separate opaque token.
   an offline database (DB-IP Lite, CC BY 4.0): nothing is sent to another service. Requests from
   confidential clients come from the app's servers, so their IP address and user agent aren't
   recorded as the user's device. Locations are approximate, and blank for private addresses.
+- Users are emailed when they sign in with a device and country they haven't used in the last 90
+  days (never on their first sign-in, and not for unrecognised devices), with the device,
+  approximate location, IP address and a link to sign it out. Each account and project can turn
+  this off in its authentication settings (Security policies); sends are audited.
 - Sign-in challenge sessions last 5 minutes and are bound to the app client and, for hosted login,
   the interaction.
 

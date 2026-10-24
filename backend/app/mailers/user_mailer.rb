@@ -22,6 +22,13 @@ class UserMailer < ApplicationMailer
     mail(to: user.email, subject: "Your x-identity user has been disabled")
   end
 
+  def new_device_sign_in(user, device)
+    @user = user
+    @device = device
+    @url = "#{Rails.configuration.x.console_base_url}/console/security"
+    mail(to: user.email, subject: "New sign-in to your #{user.account.name} account")
+  end
+
   def email_change_notice(user, new_email)
     @user = user
     @new_email = new_email

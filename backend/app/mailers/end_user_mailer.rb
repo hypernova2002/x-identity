@@ -30,6 +30,12 @@ class EndUserMailer < ApplicationMailer
     mail(to: end_user.email, subject: "Your #{@project.name} account has been disabled")
   end
 
+  def new_device_sign_in(end_user, device)
+    assign(end_user, link: Oidc::Urls.hosted_page(end_user.project, "apps"))
+    @device = device
+    mail(to: end_user.email, subject: "New sign-in to your #{@project.name} account")
+  end
+
   def email_change_notice(end_user, new_email)
     assign(end_user)
     @new_email = new_email

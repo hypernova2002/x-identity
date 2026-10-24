@@ -4,6 +4,7 @@ class AuthConfigurationSerializer
   ATTRIBUTES = %i[
     mfa_requirement
     require_email_verification
+    notify_new_devices
     password_min_length
     password_require_uppercase
     password_require_lowercase
