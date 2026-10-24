@@ -7,6 +7,7 @@ class AuthConfiguration < ApplicationRecord
   # OTP codes come from a 31-bit number (RFC 4226), so digits beyond 10 add no strength.
   OTP_DIGITS = 6..10
   OTP_STEP_SECONDS = 30..900
+  TOKEN_REQUESTS_PER_MINUTE = 10..10_000
 
   DURATION_RANGES = {
     password_max_age_seconds: 1.day.to_i..365.days.to_i,
@@ -17,7 +18,8 @@ class AuthConfiguration < ApplicationRecord
     session_idle_timeout_seconds: 5.minutes.to_i..30.days.to_i,
     signing_key_rotation_seconds: 30.days.to_i..365.days.to_i,
     email_code_failure_window_seconds: 5.minutes.to_i..1.day.to_i,
-    sso_session_ttl_seconds: 5.minutes.to_i..30.days.to_i
+    sso_session_ttl_seconds: 5.minutes.to_i..30.days.to_i,
+    client_secret_rotation_overlap_seconds: 0..30.days.to_i
   }.freeze
   OPTIONAL_DURATIONS = %i[password_max_age_seconds session_idle_timeout_seconds].freeze
 
@@ -50,6 +52,8 @@ class AuthConfiguration < ApplicationRecord
   attribute :otp_step_seconds, default: 30
   attribute :otp_drift_steps, default: 1
   attribute :otp_hotp_look_ahead, default: 10
+  attribute :client_secret_rotation_overlap_seconds, default: 7.days.to_i
+  attribute :token_requests_per_minute, default: 120
 
   validates :owner_id, uniqueness: { scope: :owner_type }
   validates :require_email_verification, :notify_new_devices,
@@ -59,6 +63,7 @@ class AuthConfiguration < ApplicationRecord
   validates :lockout_threshold, numericality: { only_integer: true, in: 3..100 }
   validates :signing_algorithm, inclusion: { in: SigningKey::ALGORITHMS }
   validates :mfa_max_failed_attempts, numericality: { only_integer: true, in: 3..20 }
+  validates :token_requests_per_minute, numericality: { only_integer: true, in: TOKEN_REQUESTS_PER_MINUTE }
   validates :email_code_max_attempts, numericality: { only_integer: true, in: 3..10 }
   validates :email_code_max_failures_per_email, numericality: { only_integer: true, in: 3..100 }
   validates :email_code_max_failures_per_code, numericality: { only_integer: true, in: 2..100 }

@@ -19,27 +19,31 @@ module AppClients
     # @param redirect_uris [Array<String>]
     # @param post_logout_redirect_uris [Array<String>]
     # @param launch_url [String, nil]
+    # @param machine [Boolean] a machine-to-machine app, which only gets tokens for APIs (client credentials)
     # @return [Created] the client, and its secret for confidential clients (shown once)
     # @raise [ApiError] `forbidden` or `validation_failed`
-    def create(name:, client_type:, allowed_origins: [], redirect_uris: [], post_logout_redirect_uris: [], launch_url: nil)
+    def create(name:, client_type:, allowed_origins: [], redirect_uris: [], post_logout_redirect_uris: [], launch_url: nil, machine: false)
       authorize!
       app_client = @project.app_clients.new(
-        name: name, client_type: client_type, allowed_origins: allowed_origins,
+        name: name, client_type: client_type, allowed_origins: allowed_origins, machine: machine,
         redirect_uris: redirect_uris, post_logout_redirect_uris: post_logout_redirect_uris, launch_url: launch_url.presence
       )
-      secret = app_client.generate_secret if app_client.client_type_confidential?
-      raise ApiError.from_record(app_client) unless app_client.save
+      secret = AppClient.transaction do
+        raise ApiError.from_record(app_client) unless app_client.save
 
-      recorder.record(action: "app_client.created", actor: @actor, target: app_client, metadata: { client_type: client_type })
+        AppClientSecret.issue!(app_client).last if app_client.client_type_confidential?
+      end
+
+      recorder.record(action: "app_client.created", actor: @actor, target: app_client, metadata: { client_type: client_type, machine: machine })
       Created.new(app_client: app_client, client_secret: secret)
     end
 
     # @param app_client [AppClient]
-    # @param changes [Hash] any of name, allowed_origins, redirect_uris, post_logout_redirect_uris, launch_url, enabled
+    # @param changes [Hash] any of name, allowed_origins, redirect_uris, post_logout_redirect_uris, launch_url, enabled, token_requests_per_minute
     # @return [AppClient]
     def update(app_client, **changes)
       authorize!
-      app_client.assign_attributes(changes.slice(:name, :allowed_origins, :redirect_uris, :post_logout_redirect_uris, :launch_url, :enabled)
+      app_client.assign_attributes(changes.slice(:name, :allowed_origins, :redirect_uris, :post_logout_redirect_uris, :launch_url, :enabled, :token_requests_per_minute)
         .tap { |slice| slice[:launch_url] = slice[:launch_url].presence if slice.key?(:launch_url) })
       changed = app_client.changes.transform_values { |from, to| { from: from, to: to } }
 
@@ -53,7 +57,8 @@ module AppClients
       app_client
     end
 
-    # Replaces a confidential client's secret. The old secret stops working immediately.
+    # Gives a confidential client a new secret. Its other secrets keep working for the project's
+    # rotation overlap, so services can switch over, unless revoked sooner.
     # @param app_client [AppClient]
     # @return [Created]
     # @raise [ApiError] `conflict` for public clients
@@ -61,10 +66,23 @@ module AppClients
       authorize!
       raise ApiError.new(:conflict, message: "Public clients don't have a secret.") unless app_client.client_type_confidential?
 
-      secret = app_client.generate_secret
-      app_client.save!
+      secret = app_client.rotate_secret!
       recorder.record(action: "app_client.secret_rotated", actor: @actor, target: app_client)
       Created.new(app_client: app_client, client_secret: secret)
+    end
+
+    # Stops one of a client's secrets working at once, e.g. after a rotation or a leak.
+    # @param app_client [AppClient]
+    # @param secret [AppClientSecret]
+    # @raise [ApiError] `conflict` when it's the client's only usable secret
+    def revoke_secret(app_client, secret)
+      authorize!
+      if app_client.secrets.usable.where.not(id: secret.id).none?
+        raise ApiError.new(:conflict, message: "This is the client's only working secret. Rotate the secret first.")
+      end
+
+      secret.revoke!
+      recorder.record(action: "app_client.secret_revoked", actor: @actor, target: app_client, metadata: { secret: secret.uid })
     end
 
     # Deletes the client and signs out every session that was started through it.

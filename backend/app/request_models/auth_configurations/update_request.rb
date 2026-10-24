@@ -27,6 +27,11 @@ module AuthConfigurations
     attribute? :refresh_token_ttl_seconds, seconds(:refresh_token_ttl_seconds, "Session lifetime from sign-in.")
     attribute? :session_idle_timeout_seconds, seconds(:session_idle_timeout_seconds, "Unused sessions end after this; null means never.")
     attribute? :sso_session_ttl_seconds, seconds(:sso_session_ttl_seconds, "Projects only: how long a hosted login session signs users in to other apps.")
+    attribute? :client_secret_rotation_overlap_seconds,
+      seconds(:client_secret_rotation_overlap_seconds, "Projects only: how long a confidential client's previous secrets keep working after it's rotated; 0 stops them at once.")
+    attribute? :token_requests_per_minute,
+      T::Integer.constrained(gteq: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.min, lteq: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.max)
+        .meta(description: "Projects only: token endpoint requests allowed per app client per minute, unless the app sets its own limit.")
     attribute? :signing_algorithm, T::String.enum(*SigningKey::ALGORITHMS)
     attribute? :signing_key_rotation_seconds, seconds(:signing_key_rotation_seconds, "How often signing keys are replaced.")
     attribute? :mfa_max_failed_attempts, T::Integer.constrained(gteq: 3, lteq: 20)

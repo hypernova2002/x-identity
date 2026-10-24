@@ -41,7 +41,13 @@ end
 OAUTH_PATH = %r{\A/v1/accounts/[^/]+/projects/[^/]+/oauth2/}
 
 Rack::Attack.throttle("oauth2/ip", limit: 60, period: 1.minute) do |request|
-  request.ip if request.path.match?(OAUTH_PATH)
+  request.ip if request.path.match?(OAUTH_PATH) && !request.path.match?(%r{#{OAUTH_PATH}token\z})
+end
+
+# The token endpoint is limited per app client, by its project's setting (Oidc::TokenRateLimit); this
+# only caps how much a single address can send, since one server may run many clients.
+Rack::Attack.throttle("oauth2-token/ip", limit: 1200, period: 1.minute) do |request|
+  request.ip if request.post? && request.path.match?(%r{#{OAUTH_PATH}token\z})
 end
 
 Rack::Attack.throttle("oauth2-email/ip", limit: 10, period: 1.minute) do |request|

@@ -33,9 +33,12 @@ type NumberField =
   | 'otp_step_seconds'
   | 'otp_drift_steps'
   | 'otp_hotp_look_ahead'
+  | 'client_secret_rotation_overlap_seconds'
+  | 'token_requests_per_minute'
 
 const OPTIONAL_FIELDS: NumberField[] = ['password_max_age_seconds', 'session_idle_timeout_seconds']
 const ALL_SECTIONS: AuthSettingsSection[] = ['sign-in', 'mfa', 'policies', 'tokens', 'signing']
+const PROJECT_FIELDS: AuthSettingsField[] = ['sso_session_ttl_seconds', 'client_secret_rotation_overlap_seconds', 'token_requests_per_minute']
 
 const props = withDefaults(
   defineProps<{
@@ -44,11 +47,12 @@ const props = withDefaults(
     readonly?: boolean
     emailVerificationHint: string
     showEmailCodeLimits?: boolean
-    showSsoSession?: boolean
+    /** A project's settings, which include the hosted login session and app client limits. */
+    forProject?: boolean
     /** The sections to show; saving sends only their fields, so other settings are never reset. */
     sections?: AuthSettingsSection[]
   }>(),
-  { readonly: false, showEmailCodeLimits: false, showSsoSession: false, sections: () => ['sign-in', 'mfa', 'policies', 'tokens', 'signing'] },
+  { readonly: false, showEmailCodeLimits: false, forProject: false, sections: () => ['sign-in', 'mfa', 'policies', 'tokens', 'signing'] },
 )
 
 /** Whether the form has changes that aren't saved yet. */
@@ -84,6 +88,8 @@ const numbers = ref<Record<NumberField, string>>({
   otp_step_seconds: '',
   otp_drift_steps: '',
   otp_hotp_look_ahead: '',
+  client_secret_rotation_overlap_seconds: '',
+  token_requests_per_minute: '',
 })
 const otpMethod = ref<OtpType>('totp')
 const saved = ref(false)
@@ -95,7 +101,7 @@ const shown = (section: AuthSettingsSection) => props.sections.includes(section)
 const visibleFields = computed<AuthSettingsField[]>(() =>
   ALL_SECTIONS.filter(shown)
     .flatMap((section) => AUTH_SETTINGS_FIELDS[section])
-    .filter((field) => (props.showEmailCodeLimits || !EMAIL_CODE_FIELDS.includes(field)) && (props.showSsoSession || field !== 'sso_session_ttl_seconds')),
+    .filter((field) => (props.showEmailCodeLimits || !EMAIL_CODE_FIELDS.includes(field)) && (props.forProject || !PROJECT_FIELDS.includes(field))),
 )
 
 function apply(configuration: AuthConfiguration) {
@@ -385,7 +391,7 @@ onMounted(() => load.run())
           :error="save.error.value?.fieldError('session_idle_timeout_seconds')"
         />
         <BaseInput
-          v-if="showSsoSession"
+          v-if="forProject"
           v-model="numbers.sso_session_ttl_seconds"
           label="Hosted login session (seconds)"
           type="number"
@@ -397,6 +403,25 @@ onMounted(() => load.run())
         Refresh tokens always rotate on use; reusing an old one signs out that whole session. Logging out ends the hosted login session
         and the user's SAML app sessions.
       </p>
+    </BaseCard>
+
+    <BaseCard v-if="shown('tokens') && forProject" title="App clients" description="Limits for applications calling the token endpoint, and their client secrets.">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <BaseInput
+          v-model="numbers.token_requests_per_minute"
+          label="Token requests per client per minute"
+          type="number"
+          hint="10–10,000. Requests over the limit get HTTP 429 until the next minute. Each app can set its own limit."
+          :error="save.error.value?.fieldError('token_requests_per_minute')"
+        />
+        <BaseInput
+          v-model="numbers.client_secret_rotation_overlap_seconds"
+          label="Old secrets keep working after rotation for (seconds)"
+          type="number"
+          :hint="durationHint('client_secret_rotation_overlap_seconds', '0 to 30 days.', '0 stops the old secret at once.')"
+          :error="save.error.value?.fieldError('client_secret_rotation_overlap_seconds')"
+        />
+      </div>
     </BaseCard>
 
     <BaseCard v-if="shown('signing')" title="Token signing">

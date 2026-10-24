@@ -1,6 +1,7 @@
 module Oidc
   # The token endpoint: redeems authorization codes (checking the redirect URI and PKCE) and
-  # refresh tokens. Refresh tokens are only issued when the app asked for offline_access.
+  # refresh tokens, and issues client credentials tokens to machine-to-machine apps. Refresh tokens
+  # are only issued when the app asked for offline_access.
   class TokenExchange
     VERIFIER_FORMAT = /\A[A-Za-z0-9\-._~]{43,128}\z/
 
@@ -18,10 +19,16 @@ module Oidc
     # @return [Hash] the token response
     # @raise [Error]
     def call(app_client:, params:)
-      case params["grant_type"]
+      grant = params["grant_type"]
+      if app_client.machine? && grant != "client_credentials"
+        raise Error.new("unauthorized_client", "Machine-to-machine apps only use the client_credentials grant.")
+      end
+
+      case grant
       when "authorization_code" then redeem_code(app_client, params)
       when "refresh_token" then refresh(app_client, params)
-      else raise Error.new("unsupported_grant_type", "Use the authorization_code or refresh_token grant.")
+      when "client_credentials" then ClientCredentials.new(project: @project, ip: @ip, user_agent: @user_agent).call(app_client: app_client, params: params)
+      else raise Error.new("unsupported_grant_type", "Use the authorization_code, refresh_token or client_credentials grant.")
       end
     end
 

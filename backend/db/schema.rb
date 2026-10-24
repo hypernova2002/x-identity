@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_010001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_030001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -22,6 +22,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_010001) do
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_accounts_on_slug", unique: true
     t.index ["uid"], name: "index_accounts_on_uid", unique: true
+  end
+
+  create_table "api_grants", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "app_client_id", null: false
+    t.bigint "api_resource_id", null: false
+    t.jsonb "scopes", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["api_resource_id"], name: "index_api_grants_on_api_resource_id"
+    t.index ["app_client_id", "api_resource_id"], name: "index_api_grants_on_app_client_id_and_api_resource_id", unique: true
+    t.index ["app_client_id"], name: "index_api_grants_on_app_client_id"
+    t.index ["uid"], name: "index_api_grants_on_uid", unique: true
+  end
+
+  create_table "api_resources", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.string "name", null: false
+    t.string "identifier", null: false
+    t.jsonb "scopes", default: [], null: false
+    t.integer "access_token_ttl_seconds"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id", "identifier"], name: "index_api_resources_on_project_id_and_identifier", unique: true
+    t.index ["project_id"], name: "index_api_resources_on_project_id"
+    t.index ["uid"], name: "index_api_resources_on_uid", unique: true
   end
 
   create_table "app_assignments", force: :cascade do |t|
@@ -39,12 +66,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_010001) do
     t.index ["uid"], name: "index_app_assignments_on_uid", unique: true
   end
 
+  create_table "app_client_secrets", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "app_client_id", null: false
+    t.string "digest", null: false
+    t.string "last_four"
+    t.datetime "expires_at"
+    t.datetime "revoked_at"
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_client_id", "digest"], name: "index_app_client_secrets_on_app_client_id_and_digest"
+    t.index ["app_client_id"], name: "index_app_client_secrets_on_app_client_id"
+    t.index ["uid"], name: "index_app_client_secrets_on_uid", unique: true
+  end
+
   create_table "app_clients", force: :cascade do |t|
     t.string "uid", null: false
     t.bigint "project_id", null: false
     t.string "name", null: false
     t.string "client_type", null: false
-    t.string "client_secret_digest"
     t.jsonb "allowed_origins", default: [], null: false
     t.boolean "enabled", default: true, null: false
     t.datetime "created_at", null: false
@@ -53,6 +94,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_010001) do
     t.jsonb "post_logout_redirect_uris", default: [], null: false
     t.string "launch_url"
     t.string "system_kind"
+    t.boolean "machine", default: false, null: false
+    t.integer "token_requests_per_minute"
     t.index ["allowed_origins"], name: "index_app_clients_on_allowed_origins", using: :gin
     t.index ["project_id", "system_kind"], name: "index_app_clients_on_project_id_and_system_kind", unique: true, where: "(system_kind IS NOT NULL)"
     t.index ["project_id"], name: "index_app_clients_on_project_id"
@@ -118,6 +161,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_010001) do
     t.string "otp_method", default: "totp", null: false
     t.integer "sso_session_ttl_seconds", default: 28800, null: false
     t.boolean "notify_new_devices", default: true, null: false
+    t.integer "client_secret_rotation_overlap_seconds", default: 604800, null: false
+    t.integer "token_requests_per_minute", default: 120, null: false
     t.index ["owner_type", "owner_id"], name: "index_auth_configurations_on_owner_type_and_owner_id", unique: true
   end
 
@@ -479,6 +524,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_010001) do
     t.index ["uid"], name: "index_users_on_uid", unique: true
   end
 
+  add_foreign_key "api_grants", "api_resources", on_delete: :cascade
+  add_foreign_key "api_grants", "app_clients", on_delete: :cascade
+  add_foreign_key "api_resources", "projects", on_delete: :cascade
+  add_foreign_key "app_client_secrets", "app_clients", on_delete: :cascade
   add_foreign_key "browser_sessions", "device_sessions", on_delete: :nullify
   add_foreign_key "device_sessions", "projects", on_delete: :cascade
   add_foreign_key "refresh_tokens", "device_sessions", on_delete: :nullify

@@ -23,13 +23,15 @@ import { emptySamlAppDraft, samlAppInputFrom, withMetadata, type SamlAppDraft } 
 const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
-const typeOptions: SelectOption<AppKind>[] = [
-  { label: 'OpenID Connect or API client', value: 'app_client' },
-  { label: 'SAML application', value: 'saml_app' },
+const typeOptions: SelectOption<'oidc' | 'machine' | 'saml'>[] = [
+  { label: 'OpenID Connect / API', value: 'oidc' },
+  { label: 'Machine-to-machine', value: 'machine' },
+  { label: 'SAML', value: 'saml' },
 ]
-const newKindOptions: SelectOption<'oidc' | 'saml'>[] = [
+const newKindOptions: SelectOption<'oidc' | 'saml' | 'machine'>[] = [
   { label: 'OpenID Connect or API client: your own apps, using hosted login, an OIDC library or the sign-in API', value: 'oidc' },
   { label: 'SAML application: apps that only support SAML 2.0, such as many SaaS tools', value: 'saml' },
+  { label: 'Machine-to-machine: a service or job that calls your APIs with its own credentials, no user involved', value: 'machine' },
 ]
 
 const columns: DataTableColumn[] = [
@@ -39,7 +41,7 @@ const columns: DataTableColumn[] = [
   { key: 'created_at', label: 'Created', sortKey: 'created_at' },
 ]
 const filters: DataTableFilter[] = [
-  { type: 'select', key: 'app_type_eq', label: 'Type', options: typeOptions },
+  { type: 'select', key: 'kind_eq', label: 'Type', options: typeOptions },
   { type: 'select', key: 'enabled_eq', label: 'Enabled', options: yesNoOptions },
 ]
 
@@ -57,8 +59,8 @@ const detailRoute = (row: Pick<Application, 'app_type' | 'uid'>) =>
 
 // Adding an application: choose the kind, then fill in its form.
 const addOpen = ref(false)
-const newKind = ref<'oidc' | 'saml'>('oidc')
-const step = ref<'kind' | 'oidc' | 'saml'>('kind')
+const newKind = ref<'oidc' | 'saml' | 'machine'>('oidc')
+const step = ref<'kind' | 'oidc' | 'saml' | 'machine'>('kind')
 const clientName = ref('')
 const clientType = ref<AppClientType>('public')
 const samlDraft = ref<SamlAppDraft>(emptySamlAppDraft())
@@ -76,9 +78,11 @@ function startAdding() {
 
 const createClient = useAsyncAction(async () => {
   if (!project.value) return
+  const machine = step.value === 'machine'
   const client = await projectAdminService.createAppClient(accountUid.value, project.value.uid, {
     name: clientName.value,
-    client_type: clientType.value,
+    client_type: machine ? 'confidential' : clientType.value,
+    machine,
     allowed_origins: [],
     redirect_uris: [],
     post_logout_redirect_uris: [],
@@ -127,9 +131,17 @@ const createSamlApp = useAsyncAction(async () => {
       <code class="block font-mono text-xs break-all text-text-muted">{{ row.uid }}</code>
     </template>
     <template #cell-app_type="{ row }">
-      <StatusBadge tone="info" :label="row.app_type === 'saml_app' ? 'SAML' : 'OpenID Connect / API'" />
+      <StatusBadge tone="info" :label="row.app_type === 'saml_app' ? 'SAML' : row.machine ? 'Machine-to-machine' : 'OpenID Connect / API'" />
       <span class="mt-1 block text-xs break-all text-text-muted">
-        {{ row.app_type === 'saml_app' ? row.entity_id : row.client_type === 'public' ? 'Public client (no secret)' : 'Confidential client' }}
+        {{
+          row.app_type === 'saml_app'
+            ? row.entity_id
+            : row.machine
+              ? 'Gets tokens for your APIs'
+              : row.client_type === 'public'
+                ? 'Public client (no secret)'
+                : 'Confidential client'
+        }}
       </span>
     </template>
     <template #cell-enabled="{ row }">
@@ -149,18 +161,28 @@ const createSamlApp = useAsyncAction(async () => {
       <BaseSelect v-model="newKind" label="What kind of application?" :options="newKindOptions" />
     </template>
 
-    <form v-else-if="step === 'oidc'" id="create-client" class="flex flex-col gap-4" novalidate @submit.prevent="createClient.run()">
+    <form v-else-if="step === 'oidc' || step === 'machine'" id="create-client" class="flex flex-col gap-4" novalidate @submit.prevent="createClient.run()">
       <BaseAlert v-if="createClient.error.value && createClient.error.value.details.length === 0" variant="danger">
         {{ createClient.error.value.message }}
       </BaseAlert>
-      <BaseInput v-model="clientName" label="Name" required hint="For example Web shop or iOS app." :error="createClient.error.value?.fieldError('name')" />
+      <BaseInput
+        v-model="clientName"
+        label="Name"
+        required
+        :hint="step === 'machine' ? 'For example Billing job or Inventory sync.' : 'For example Web shop or iOS app.'"
+        :error="createClient.error.value?.fieldError('name')"
+      />
+      <p v-if="step === 'machine'" class="text-xs text-text-muted">
+        It gets a client secret. Next, give it access to your APIs; it can't get tokens until it has some.
+      </p>
       <BaseSelect
+        v-if="step === 'oidc'"
         v-model="clientType"
         label="Client type"
         :options="appClientTypeOptions"
         hint="Public for browser and mobile apps; confidential for server-side apps that can keep a secret. It can't be changed later."
       />
-      <p class="text-xs text-text-muted">Next, add its redirect URIs and give users access. Nobody can sign in until it's assigned.</p>
+      <p v-if="step === 'oidc'" class="text-xs text-text-muted">Next, add its redirect URIs and give users access. Nobody can sign in until it's assigned.</p>
     </form>
 
     <SamlAppForm
@@ -177,7 +199,7 @@ const createSamlApp = useAsyncAction(async () => {
     <template #footer>
       <BaseButton label="Cancel" variant="secondary" @click="addOpen = false" />
       <BaseButton v-if="step === 'kind'" label="Continue" @click="step = newKind" />
-      <BaseButton v-else-if="step === 'oidc'" label="Create client" type="submit" form="create-client" :loading="createClient.loading.value" />
+      <BaseButton v-else-if="step === 'oidc' || step === 'machine'" label="Create client" type="submit" form="create-client" :loading="createClient.loading.value" />
       <BaseButton v-else label="Add SAML application" type="submit" form="create-saml-app" :loading="createSamlApp.loading.value" />
     </template>
   </BaseDialog>
@@ -193,7 +215,17 @@ const createSamlApp = useAsyncAction(async () => {
       Keep it on your server only; never put it in a browser or mobile app. You can rotate it later.
     </BaseAlert>
     <template #footer>
-      <BaseButton v-if="created" label="I've copied it" @click="router.push(detailRoute({ app_type: 'app_client', uid: created.uid }))" />
+      <BaseButton
+        v-if="created"
+        label="I've copied it"
+        @click="
+          router.push(
+            created.machine
+              ? { name: 'project-app-client-api-access', params: { projectUid: project?.uid, clientUid: created.uid } }
+              : detailRoute({ app_type: 'app_client', uid: created.uid }),
+          )
+        "
+      />
     </template>
   </BaseDialog>
 </template>

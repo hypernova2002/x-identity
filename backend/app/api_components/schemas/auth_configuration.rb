@@ -29,6 +29,10 @@ class Schemas::AuthConfiguration
       otp_step_seconds: { type: :integer, minimum: AuthConfiguration::OTP_STEP_SECONDS.min, maximum: AuthConfiguration::OTP_STEP_SECONDS.max },
       otp_drift_steps: { type: :integer, minimum: 0, maximum: 2 },
       otp_hotp_look_ahead: { type: :integer, minimum: 1, maximum: 20 },
+      token_requests_per_minute: {
+        type: :integer, minimum: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.min, maximum: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.max,
+        description: "Projects only: token endpoint requests allowed per app client per minute, unless the app sets its own limit."
+      },
       **durations,
       updated_at: { type: :string, format: "date-time" }
     }

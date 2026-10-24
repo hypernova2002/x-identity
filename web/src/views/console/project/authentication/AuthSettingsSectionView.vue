@@ -65,7 +65,7 @@ function save(changes: Partial<AuthConfiguration>) {
     :readonly="!access.admin"
     :sections="[section]"
     show-email-code-limits
-    show-sso-session
+    for-project
     email-verification-hint="On by default for projects. When off, end users can sign in before confirming their email."
   />
 

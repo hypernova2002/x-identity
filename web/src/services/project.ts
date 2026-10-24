@@ -2,6 +2,7 @@ import { apiPage, apiRequest } from './http'
 import { LOOKUP, listQuery, type ListParams } from './list'
 import {
   appAssignmentSchema,
+  apiResourceSchema,
   appClientSchema,
   applicationSchema,
   attributeDefinitionSchema,
@@ -13,7 +14,11 @@ import {
   samlAppSchema,
 } from './schemas'
 import type {
+  ApiGrant,
+  ApiResource,
+  ApiScope,
   AppClient,
+  AppClientSecret,
   AppClientType,
   AppClientWithSecret,
   AttributeDataType,
@@ -47,10 +52,18 @@ function base(accountUid: string, projectUid: string) {
 export interface NewAppClient {
   name: string
   client_type: AppClientType
+  machine?: boolean
   allowed_origins: string[]
   redirect_uris: string[]
   post_logout_redirect_uris: string[]
   launch_url: string | null
+}
+
+export interface ApiResourceInput {
+  name: string
+  identifier: string
+  scopes: ApiScope[]
+  access_token_ttl_seconds: number | null
 }
 
 export interface GroupInput {
@@ -141,8 +154,54 @@ export const projectAdminService = {
   createAppClient: (accountUid: string, projectUid: string, client: NewAppClient) =>
     apiRequest<AppClientWithSecret>(`${base(accountUid, projectUid)}/app-clients`, { ...authenticated, method: 'POST', body: client }),
 
-  updateAppClient: (accountUid: string, projectUid: string, clientUid: string, changes: Partial<Omit<NewAppClient, 'client_type'>> & { enabled?: boolean }) =>
+  updateAppClient: (
+    accountUid: string,
+    projectUid: string,
+    clientUid: string,
+    changes: Partial<Omit<NewAppClient, 'client_type'>> & { enabled?: boolean; token_requests_per_minute?: number | null },
+  ) =>
     apiRequest<AppClient>(`${base(accountUid, projectUid)}/app-clients/${clientUid}`, { ...authenticated, method: 'PATCH', body: changes }),
+
+  listAppClientSecrets: (accountUid: string, projectUid: string, clientUid: string) =>
+    apiRequest<AppClientSecret[]>(`${base(accountUid, projectUid)}/app-clients/${clientUid}/secrets`, authenticated),
+
+  revokeAppClientSecret: (accountUid: string, projectUid: string, clientUid: string, secretUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/app-clients/${clientUid}/secrets/${secretUid}`, { ...authenticated, method: 'DELETE' }),
+
+  listApis: (accountUid: string, projectUid: string, params: ListParams = LOOKUP) =>
+    apiPage(`${base(accountUid, projectUid)}/apis`, apiResourceSchema, { ...authenticated, query: listQuery(params) }),
+
+  getApi: (accountUid: string, projectUid: string, apiUid: string) =>
+    apiRequest<ApiResource>(`${base(accountUid, projectUid)}/apis/${apiUid}`, authenticated),
+
+  createApi: (accountUid: string, projectUid: string, api: ApiResourceInput) =>
+    apiRequest<ApiResource>(`${base(accountUid, projectUid)}/apis`, { ...authenticated, method: 'POST', body: api }),
+
+  updateApi: (accountUid: string, projectUid: string, apiUid: string, changes: Partial<Omit<ApiResourceInput, 'identifier'>>) =>
+    apiRequest<ApiResource>(`${base(accountUid, projectUid)}/apis/${apiUid}`, { ...authenticated, method: 'PATCH', body: changes }),
+
+  deleteApi: (accountUid: string, projectUid: string, apiUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/apis/${apiUid}`, { ...authenticated, method: 'DELETE' }),
+
+  listApiGrants: (accountUid: string, projectUid: string, clientUid: string) =>
+    apiRequest<ApiGrant[]>(`${base(accountUid, projectUid)}/app-clients/${clientUid}/api-grants`, authenticated),
+
+  grantApi: (accountUid: string, projectUid: string, clientUid: string, apiUid: string, scopes: string[]) =>
+    apiRequest<ApiGrant>(`${base(accountUid, projectUid)}/app-clients/${clientUid}/api-grants`, {
+      ...authenticated,
+      method: 'POST',
+      body: { api_uid: apiUid, scopes },
+    }),
+
+  updateApiGrant: (accountUid: string, projectUid: string, clientUid: string, grantUid: string, scopes: string[]) =>
+    apiRequest<ApiGrant>(`${base(accountUid, projectUid)}/app-clients/${clientUid}/api-grants/${grantUid}`, {
+      ...authenticated,
+      method: 'PATCH',
+      body: { scopes },
+    }),
+
+  revokeApiGrant: (accountUid: string, projectUid: string, clientUid: string, grantUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/app-clients/${clientUid}/api-grants/${grantUid}`, { ...authenticated, method: 'DELETE' }),
 
   rotateAppClientSecret: (accountUid: string, projectUid: string, clientUid: string) =>
     apiRequest<AppClientWithSecret>(`${base(accountUid, projectUid)}/app-clients/${clientUid}/rotate-secret`, {

@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import type {
   AppAssignment,
+  ApiResource,
   AppClient,
   Application,
   AttributeDefinition,
@@ -149,6 +150,7 @@ export const applicationSchema = z.object({
   name: z.string(),
   enabled: z.boolean(),
   client_type: appClientType.nullable(),
+  machine: z.boolean(),
   entity_id: nullableString,
   created_at: timestamp,
 }) satisfies z.ZodType<Application>
@@ -157,11 +159,13 @@ export const appClientSchema = z.object({
   uid: z.string(),
   name: z.string(),
   client_type: appClientType,
+  machine: z.boolean(),
   allowed_origins: z.array(z.string()),
   redirect_uris: z.array(z.string()),
   post_logout_redirect_uris: z.array(z.string()),
   launch_url: nullableString,
   enabled: z.boolean(),
+  token_requests_per_minute: z.number().nullable(),
   created_at: timestamp,
   updated_at: timestamp,
 }) satisfies z.ZodType<AppClient>
@@ -221,3 +225,14 @@ export const deviceSessionSchema = z.object({
   last_seen_at: timestamp,
   current: z.boolean(),
 }) satisfies z.ZodType<DeviceSession>
+
+export const apiResourceSchema = z.object({
+  uid: z.string(),
+  name: z.string(),
+  identifier: z.string(),
+  scopes: z.array(z.object({ name: z.string(), description: nullableString })),
+  access_token_ttl_seconds: z.number().nullable(),
+  app_count: z.number(),
+  created_at: timestamp,
+  updated_at: timestamp,
+}) satisfies z.ZodType<ApiResource>

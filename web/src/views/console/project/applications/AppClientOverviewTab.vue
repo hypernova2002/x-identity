@@ -18,13 +18,25 @@ const { accountUid, project, access } = useProjectContext()
 const { record: client, replace } = useAppClient()
 
 const assignmentCount = ref<number | null>(null)
+const grantCount = ref<number | null>(null)
 const disableOpen = ref(false)
 const deleteOpen = ref(false)
 
 const params = computed(() => ({ projectUid: project.value?.uid, clientUid: client.value.uid }))
 
 /** What this client is set up for, from its actual settings. */
-const checks = computed(() => [
+const checks = computed(() => (client.value.machine ? machineChecks.value : signInChecks.value))
+
+const machineChecks = computed(() => [
+  {
+    done: (grantCount.value ?? 0) > 0,
+    label: 'Can get tokens for an API',
+    detail: grantCount.value === null ? 'Checking…' : grantCount.value > 0 ? `Has access to ${grantCount.value} API(s).` : 'No API access yet.',
+    to: 'project-app-client-api-access',
+  },
+])
+
+const signInChecks = computed(() => [
   {
     done: (assignmentCount.value ?? 0) > 0,
     label: 'People can sign in',
@@ -53,7 +65,8 @@ const checks = computed(() => [
 
 const loadAssignments = useAsyncAction(async () => {
   if (!project.value) return
-  assignmentCount.value = (await projectAdminService.listAssignments(accountUid.value, project.value.uid, 'app_client', client.value.uid)).total
+  if (client.value.machine) grantCount.value = (await projectAdminService.listApiGrants(accountUid.value, project.value.uid, client.value.uid)).length
+  else assignmentCount.value = (await projectAdminService.listAssignments(accountUid.value, project.value.uid, 'app_client', client.value.uid)).total
 })
 
 const toggle = useAsyncAction(async () => {
@@ -77,7 +90,8 @@ onMounted(() => loadAssignments.run())
       <dt class="font-medium">Client ID</dt>
       <dd class="font-mono text-xs break-all">{{ client.uid }}</dd>
       <dt class="font-medium">Client type</dt>
-      <dd>{{ client.client_type === 'public' ? 'Public: browser or mobile app, no secret' : 'Confidential: server-side app with a secret' }}</dd>
+      <dd v-if="client.machine">Machine-to-machine: a service with a secret, getting tokens for your APIs</dd>
+      <dd v-else>{{ client.client_type === 'public' ? 'Public: browser or mobile app, no secret' : 'Confidential: server-side app with a secret' }}</dd>
       <dt class="font-medium">Created</dt>
       <dd>{{ formatDateTime(client.created_at) }}</dd>
       <dt class="font-medium">Last changed</dt>
@@ -101,7 +115,7 @@ onMounted(() => loadAssignments.run())
     </ul>
   </BaseCard>
 
-  <BaseCard title="Try it">
+  <BaseCard v-if="!client.machine" title="Try it">
     <p class="text-sm">Sign an end user in through this client to check the setup, step through challenges and inspect the tokens.</p>
     <RouterLink
       :to="{ name: 'project-test-sign-in', params: { projectUid: project?.uid }, query: { client: client.uid } }"
@@ -121,13 +135,21 @@ onMounted(() => loadAssignments.run())
   </BaseCard>
 
   <ConfirmDialog v-model:visible="disableOpen" title="Disable this client?" confirm-label="Disable" danger :loading="toggle.loading.value" :error="toggle.error.value" @confirm="toggle.run()">
-    <p>
+    <p v-if="client.machine">
+      <strong>{{ client.name }}</strong> can't get new tokens while it's disabled. Tokens it already has keep working until they expire.
+      You can enable it again later.
+    </p>
+    <p v-else>
       Nobody can sign in through <strong>{{ client.name }}</strong> while it's disabled, and everyone currently signed in through it is
       signed out. You can enable it again later.
     </p>
   </ConfirmDialog>
   <ConfirmDialog v-model:visible="deleteOpen" title="Delete this client?" confirm-label="Delete application" danger :loading="destroy.loading.value" :error="destroy.error.value" @confirm="destroy.run()">
-    <p>
+    <p v-if="client.machine">
+      <strong>{{ client.name }}</strong> can't get new tokens, and its API access is removed. Tokens it already has keep working until they
+      expire. This can't be undone.
+    </p>
+    <p v-else>
       Apps using <strong>{{ client.name }}</strong> stop being able to sign end users in, and everyone signed in through it is signed
       out. Its access assignments are removed. This can't be undone.
     </p>

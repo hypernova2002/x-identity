@@ -27,6 +27,8 @@ module Auth
         required_claims: REQUIRED_CLAIMS
       )
       raise ApiError.new(:invalid_token) unless claims["token_use"] == "access" && @realm.accepts_audience?(claims["aud"])
+      # Tokens machine-to-machine apps get for themselves name no user, and are only for the project's APIs.
+      raise ApiError.new(:invalid_token) if claims.key?("gty")
 
       claims
     rescue JWT::DecodeError

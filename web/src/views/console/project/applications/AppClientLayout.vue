@@ -28,14 +28,22 @@ const load = useAsyncAction(async () => {
 
 const tabs = computed<RouteTab[]>(() => {
   const params = { projectUid: project.value?.uid, clientUid: clientUid.value }
-  return [
-    ['Overview', 'project-app-client'],
-    ['Sign-in', 'project-app-client-sign-in'],
-    ['Access', 'project-app-client-access'],
-    ['Tokens & claims', 'project-app-client-tokens'],
-    ['Credentials', 'project-app-client-credentials'],
-    ['Activity', 'project-app-client-activity'],
-  ].map(([label, name]) => ({ label: label!, name: name!, to: { name: name!, params } }))
+  const shown = client.value?.machine
+    ? [
+        ['Overview', 'project-app-client'],
+        ['Credentials', 'project-app-client-credentials'],
+        ['API access', 'project-app-client-api-access'],
+        ['Activity', 'project-app-client-activity'],
+      ]
+    : [
+        ['Overview', 'project-app-client'],
+        ['Sign-in', 'project-app-client-sign-in'],
+        ['Access', 'project-app-client-access'],
+        ['Tokens & claims', 'project-app-client-tokens'],
+        ['Credentials', 'project-app-client-credentials'],
+        ['Activity', 'project-app-client-activity'],
+      ]
+  return shown.map(([label, name]) => ({ label: label!, name: name!, to: { name: name!, params } }))
 })
 
 watch(clientUid, () => load.run(), { immediate: true })
@@ -56,10 +64,18 @@ watch(clientUid, () => load.run(), { immediate: true })
   <p v-else-if="!client" class="text-sm text-text-muted" role="status">Loading application…</p>
 
   <template v-if="client">
-    <PageHeader :title="client.name" description="An OpenID Connect or API client: your own app, signing users in through hosted login, an OIDC library or the sign-in API.">
+    <PageHeader
+      :title="client.name"
+      :description="
+        client.machine
+          ? 'A machine-to-machine app: a service that gets access tokens for your APIs with its own credentials, with no user involved.'
+          : 'An OpenID Connect or API client: your own app, signing users in through hosted login, an OIDC library or the sign-in API.'
+      "
+    >
       <template #actions>
-        <StatusBadge tone="info" label="OpenID Connect / API" />
-        <StatusBadge tone="neutral" :label="client.client_type === 'public' ? 'Public client' : 'Confidential client'" />
+        <StatusBadge v-if="client.machine" tone="info" label="Machine-to-machine" />
+        <StatusBadge v-else tone="info" label="OpenID Connect / API" />
+        <StatusBadge v-if="!client.machine" tone="neutral" :label="client.client_type === 'public' ? 'Public client' : 'Confidential client'" />
         <StatusBadge :tone="client.enabled ? 'success' : 'neutral'" :label="client.enabled ? 'Enabled' : 'Disabled'" />
       </template>
     </PageHeader>

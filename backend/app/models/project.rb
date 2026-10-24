@@ -10,6 +10,7 @@ class Project < ApplicationRecord
   has_many :members, through: :project_memberships, source: :user
   has_many :end_users
   has_many :app_clients
+  has_many :api_resources
   has_many :identity_providers
   has_many :groups
   has_many :saml_apps

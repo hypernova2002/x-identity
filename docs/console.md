@@ -29,7 +29,8 @@ pages renamed in the redesign (`app-clients`, `saml-apps`, `sign-in-providers`) 
 | Group | Page | What it manages | Who can change it |
 | --- | --- | --- | --- |
 | | Overview | Project ID, issuer, discovery and portal URLs; common tasks; a setup checklist and "needs attention" items worked out from the project's real state; failed sign-ins and access refusals in the last 24 hours, and recent events (developers). | — |
-| | Applications | OpenID Connect/API clients and SAML apps in one list, searchable and filterable by type. Each app has tabs: Overview, Sign-in (redirect URIs, origins, launch URL) or Configuration (SAML), Access (group and direct assignments), Tokens & claims (OIDC), Credentials (client secret rotation, or the SAML signing certificate), Activity. | Developers (certificates: admins) |
+| Applications | Applications | OpenID Connect/API clients, machine-to-machine apps and SAML apps in one list, searchable and filterable by type. Each app has tabs: Overview, Sign-in (redirect URIs, origins, launch URL) or Configuration (SAML), Access (group and direct assignments), Tokens & claims (OIDC), Credentials (client secrets with the project's rotation overlap, a machine app's rate limit, or the SAML signing certificate), API access (machine-to-machine apps), Activity. | Developers (certificates: admins) |
+| Applications | APIs | Your own APIs for [machine-to-machine apps](machine-to-machine.md): identifier (the tokens' audience), scopes and token lifetime. | Developers |
 | Directory | End users | Search by email, name or ID (`eu_…`); filters for status, email verification, MFA, group and pending invitation, kept in the URL. Each user has a page: identity and attributes, linked providers, groups and app access (including access through groups), authentication state and actions, signed-in devices (sign out one device, or everywhere), activity. Disabling, resetting MFA, signing out and deleting are confirmed first. | Developers |
 | Directory | Groups | Groups, members, and whether new users join automatically. | Developers |
 | Directory | Attributes | Custom attributes: key, label, type, max length, required, user-editable, included in the ID token. Up to 50. | Project admins |
@@ -95,6 +96,9 @@ in seconds.
 | OTP digits / time step | 6 / 30 seconds | 6–10 / 30–900 seconds |
 | TOTP drift / HOTP look-ahead | 1 step / 10 codes | 0–2 / 1–20 |
 | Hosted login session (projects only) | 8 hours | 5 minutes – 30 days |
+| Token requests per app client per minute (projects only; apps can override) | 120 | 10–10,000 |
+| Old client secrets keep working after rotation (projects only) | 7 days | 0 – 30 days |
+| Email users about sign-ins from new devices | on | |
 
 Changes apply from each user's next sign-in or token refresh. Changing the OTP method or format only
 affects new setups; existing authenticators keep working.

@@ -190,6 +190,10 @@ paths:
                   type: integer
                   minimum: 300
                   maximum: 3600
+                client_secret_rotation_overlap_seconds:
+                  type: integer
+                  minimum: 0
+                  maximum: 2592000
                 email_code_failure_window_seconds:
                   type: integer
                   minimum: 300
@@ -298,6 +302,10 @@ paths:
                   type: integer
                   minimum: 300
                   maximum: 2592000
+                token_requests_per_minute:
+                  type: integer
+                  minimum: 10
+                  maximum: 10000
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -1453,6 +1461,237 @@ paths:
                 - jwks_uri
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/apis":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the project's APIs
+      tags:
+      - APIs
+      parameters:
+      - name: q
+        in: query
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          properties:
+            search:
+              type: string
+              description: Name or identifier
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - name
+          - "-name"
+          - identifier
+          - "-identifier"
+          - created_at
+          - "-created_at"
+        description: "`-` sorts descending."
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+        description: Values above 100 are capped.
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: APIs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/ApiResource"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Add an API
+      tags:
+      - APIs
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                access_token_ttl_seconds:
+                  anyOf:
+                  - type: 'null'
+                  - type: integer
+                    minimum: 300
+                    maximum: 3600
+                identifier:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                scopes:
+                  type: array
+                  items:
+                    properties:
+                      description:
+                        anyOf:
+                        - type: 'null'
+                        - type: string
+                          maxLength: 200
+                      name:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - name
+                    additionalProperties: false
+                  maxItems: 50
+              type: object
+              unevaluatedProperties: false
+              required:
+              - identifier
+              - name
+              additionalProperties: false
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiResource"
+        '403':
+          description: only project admins and developers can manage APIs
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid identifier or scopes
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/apis/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: An API
+      tags:
+      - APIs
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the API
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiResource"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    patch:
+      summary: Change an API's name, scopes or token lifetime
+      tags:
+      - APIs
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                access_token_ttl_seconds:
+                  anyOf:
+                  - type: 'null'
+                  - type: integer
+                    minimum: 300
+                    maximum: 3600
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                scopes:
+                  type: array
+                  items:
+                    properties:
+                      description:
+                        anyOf:
+                        - type: 'null'
+                        - type: string
+                          maxLength: 200
+                      name:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - name
+                    additionalProperties: false
+                  maxItems: 50
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiResource"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Delete an API; apps lose access
+      tags:
+      - APIs
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: deleted
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients":
     parameters:
     - name: account_uid
@@ -1509,6 +1748,9 @@ paths:
                   - type: 'null'
                   - type: string
                     maxLength: 2048
+                machine:
+                  anyOf:
+                  - type: boolean
                 name:
                   type: string
                   minLength: 1
@@ -1546,6 +1788,84 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '422':
           description: invalid name, type or origins
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/api-grants":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: app_client_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the APIs a machine-to-machine app may get tokens for
+      tags:
+      - APIs
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: grants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/ApiGrant"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Let a machine-to-machine app get tokens for an API
+      tags:
+      - APIs
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                api_uid:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 64
+                  maxItems: 50
+              type: object
+              unevaluatedProperties: false
+              required:
+              - api_uid
+              - scopes
+              additionalProperties: false
+      responses:
+        '201':
+          description: granted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiGrant"
+        '422':
+          description: not a machine-to-machine app, already granted, or scopes the
+            API doesn't define
           content:
             application/json:
               schema:
@@ -1633,6 +1953,80 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/secrets":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: app_client_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List a confidential client's secrets
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: secrets, newest first; only their last four characters are
+            shown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/AppClientSecret"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/secrets/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: app_client_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Revoke a secret now
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: revoked
+        '409':
+          description: the client's only working secret
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{uid}/rotate-secret":
     parameters:
     - name: account_uid
@@ -1703,6 +2097,17 @@ paths:
               enum:
               - app_client
               - saml_app
+            kind_eq:
+              type: string
+              enum:
+              - oidc
+              - machine
+              - saml
+            machine_eq:
+              type: string
+              enum:
+              - 'true'
+              - 'false'
             enabled_eq:
               type: string
               enum:
@@ -4998,6 +5403,86 @@ components:
           type: string
           format: date-time
       title: Account
+    ApiGrant:
+      type: object
+      required:
+      - uid
+      - api_uid
+      - api_name
+      - api_identifier
+      - scopes
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+        api_uid:
+          type: string
+        api_name:
+          type: string
+        api_identifier:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+          description: What the app may request in tokens for the API.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: ApiGrant
+    ApiResource:
+      type: object
+      required:
+      - uid
+      - name
+      - identifier
+      - scopes
+      - access_token_ttl_seconds
+      - app_count
+      - created_at
+      - updated_at
+      properties:
+        uid:
+          type: string
+          example: api_8Hd2Lq6Wm3Xc9Vb5Nz7Rt4Kj
+        name:
+          type: string
+        identifier:
+          type: string
+          description: The `aud` of access tokens for this API.
+        scopes:
+          type: array
+          items:
+            type: object
+            required:
+            - name
+            - description
+            properties:
+              name:
+                type: string
+              description:
+                type:
+                - string
+                - 'null'
+        access_token_ttl_seconds:
+          type:
+          - integer
+          - 'null'
+          description: Null uses the project's access token lifetime.
+        app_count:
+          type: integer
+          description: Machine-to-machine apps with access.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      title: ApiResource
     AppAssignment:
       type: object
       required:
@@ -5030,6 +5515,8 @@ components:
       - uid
       - name
       - client_type
+      - machine
+      - token_requests_per_minute
       - allowed_origins
       - redirect_uris
       - post_logout_redirect_uris
@@ -5049,6 +5536,10 @@ components:
           enum:
           - public
           - confidential
+        machine:
+          type: boolean
+          description: A machine-to-machine app, which gets tokens for APIs with the
+            client_credentials grant.
         allowed_origins:
           type: array
           items:
@@ -5068,6 +5559,12 @@ components:
           description: Where the app portal opens the app.
         enabled:
           type: boolean
+        token_requests_per_minute:
+          type:
+          - integer
+          - 'null'
+          description: Token endpoint requests allowed per minute; null uses the project's
+            limit.
         created_at:
           type: string
           format: date-time
@@ -5075,12 +5572,55 @@ components:
           type: string
           format: date-time
       title: AppClient
+    AppClientSecret:
+      type: object
+      required:
+      - uid
+      - last_four
+      - expires_at
+      - revoked_at
+      - last_used_at
+      - created_at
+      - usable
+      properties:
+        uid:
+          type: string
+        last_four:
+          type:
+          - string
+          - 'null'
+          description: The secret's last four characters, to tell secrets apart. Null
+            for secrets from before rotation overlap.
+        expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Set when a newer secret replaces this one.
+        revoked_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        last_used_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        usable:
+          type: boolean
+      title: AppClientSecret
     AppClientWithSecret:
       type: object
       required:
       - uid
       - name
       - client_type
+      - machine
+      - token_requests_per_minute
       - allowed_origins
       - redirect_uris
       - post_logout_redirect_uris
@@ -5100,6 +5640,10 @@ components:
           enum:
           - public
           - confidential
+        machine:
+          type: boolean
+          description: A machine-to-machine app, which gets tokens for APIs with the
+            client_credentials grant.
         allowed_origins:
           type: array
           items:
@@ -5119,6 +5663,12 @@ components:
           description: Where the app portal opens the app.
         enabled:
           type: boolean
+        token_requests_per_minute:
+          type:
+          - integer
+          - 'null'
+          description: Token endpoint requests allowed per minute; null uses the project's
+            limit.
         created_at:
           type: string
           format: date-time
@@ -5139,6 +5689,7 @@ components:
       - name
       - enabled
       - client_type
+      - machine
       - entity_id
       - created_at
       properties:
@@ -5162,6 +5713,9 @@ components:
           - confidential
           -
           description: App clients only.
+        machine:
+          type: boolean
+          description: A machine-to-machine app (always false for SAML apps).
         entity_id:
           type:
           - string
@@ -5319,6 +5873,8 @@ components:
       - otp_step_seconds
       - otp_drift_steps
       - otp_hotp_look_ahead
+      - client_secret_rotation_overlap_seconds
+      - token_requests_per_minute
       properties:
         mfa_requirement:
           type: string
@@ -5393,6 +5949,12 @@ components:
           type: integer
           minimum: 1
           maximum: 20
+        token_requests_per_minute:
+          type: integer
+          minimum: 10
+          maximum: 10000
+          description: 'Projects only: token endpoint requests allowed per app client
+            per minute, unless the app sets its own limit.'
         password_max_age_seconds:
           type:
           - integer
@@ -5440,6 +6002,11 @@ components:
         sso_session_ttl_seconds:
           type: integer
           minimum: 300
+          maximum: 2592000
+          description: Seconds.
+        client_secret_rotation_overlap_seconds:
+          type: integer
+          minimum: 0
           maximum: 2592000
           description: Seconds.
         updated_at:

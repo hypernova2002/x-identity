@@ -15,6 +15,8 @@ class AppClient < ApplicationRecord
 
   belongs_to :project
   has_many :app_assignments, as: :app, dependent: :delete_all
+  has_many :secrets, class_name: "AppClientSecret", dependent: :delete_all
+  has_many :api_grants, dependent: :delete_all
 
   enum :client_type, { public: "public", confidential: "confidential" }, validate: true, prefix: true
 
@@ -25,6 +27,8 @@ class AppClient < ApplicationRecord
   validates :launch_url, length: { maximum: WebUrl::MAX_LENGTH }, allow_nil: true
   validate :launch_url_is_a_web_url
   validates :system_kind, inclusion: { in: [ PORTAL ] }, allow_nil: true
+  validate :machine_apps_are_confidential_and_browserless
+  validates :token_requests_per_minute, numericality: { only_integer: true, in: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE }, allow_nil: true
 
   scope :enabled, -> { where(enabled: true) }
   # Clients admins create; the system's own clients (the app portal) are managed by x-identity.
@@ -38,13 +42,27 @@ class AppClient < ApplicationRecord
 
   # Generates a new secret, replacing any earlier one.
   # @return [String] the plaintext secret, shown to the admin once
-  def generate_secret
-    secret = SecureRandom.base58(48)
-    self.client_secret_digest = OpenSSL::Digest::SHA256.hexdigest(secret)
-    secret
+  # A new secret. Older secrets keep working for the project's rotation overlap (none when it's 0),
+  # unless revoked sooner.
+  # @return [String] the secret, which can't be read again
+  def rotate_secret!
+    overlap = project.auth_configuration!.client_secret_rotation_overlap_seconds.seconds
+    transaction do
+      older = secrets.usable
+      if overlap.zero?
+        older.update_all(revoked_at: Time.current)
+      else
+        older.where("expires_at IS NULL OR expires_at > ?", overlap.from_now).update_all(expires_at: overlap.from_now)
+      end
+      AppClientSecret.issue!(self).last
+    end
   end
 
-  # @return [Boolean] the app portal, which every end user may use
+  # @return [Integer] token endpoint requests allowed per minute
+  def token_rate_limit
+    token_requests_per_minute || project.auth_configuration!.token_requests_per_minute
+  end
+
   def portal?
     system_kind == PORTAL
   end
@@ -68,14 +86,28 @@ class AppClient < ApplicationRecord
   # Public clients need no secret; confidential clients must present theirs.
   # @param secret [String, nil]
   # @return [Boolean]
+  # @param secret [String, nil]
+  # @return [Boolean] true for public clients; for confidential ones, whether a usable secret matches
   def authenticate(secret)
     return true if client_type_public?
-    return false if secret.blank? || client_secret_digest.blank?
+    return false if secret.blank?
 
-    ActiveSupport::SecurityUtils.secure_compare(client_secret_digest, OpenSSL::Digest::SHA256.hexdigest(secret.to_s))
+    match = secrets.usable.find_by(digest: AppClientSecret.digest(secret))
+    match&.record_use!
+    match.present?
   end
 
   private
+
+  def machine_apps_are_confidential_and_browserless
+    return unless machine?
+
+    errors.add(:client_type, "must be confidential for machine-to-machine apps") unless client_type_confidential?
+    { allowed_origins: allowed_origins, redirect_uris: redirect_uris, post_logout_redirect_uris: post_logout_redirect_uris }.each do |field, values|
+      errors.add(field, "aren't used by machine-to-machine apps") if values.present?
+    end
+    errors.add(:launch_url, "isn't used by machine-to-machine apps") if launch_url.present?
+  end
 
   def allowed_origins_are_origins
     unless allowed_origins.is_a?(Array) && allowed_origins.size <= MAX_ORIGINS

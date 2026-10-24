@@ -9,6 +9,7 @@ module V1
 
           rescue_from ::Oidc::Error do |error|
             response.headers["WWW-Authenticate"] = 'Basic realm="x-identity"' if error.status == 401
+            response.headers["Retry-After"] = error.retry_after.to_s if error.retry_after
             render json: error.body, status: error.status
           end
 

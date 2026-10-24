@@ -141,9 +141,12 @@ Rails.application.routes.draw do
           post "parse-saml-metadata", on: :collection, action: :parse_saml_metadata
         end
         resources :applications, only: :index
+        resources :api_resources, path: "apis", param: :uid, only: %i[index show create update destroy]
         resources :app_clients, path: "app-clients", param: :uid, only: %i[index show create update destroy] do
           post "rotate-secret", on: :member, action: :rotate_secret
           resources :assignments, controller: "app_assignments", param: :uid, only: %i[index create destroy], defaults: { app_kind: "app_client" }
+          resources :secrets, controller: "app_client_secrets", param: :uid, only: %i[index destroy]
+          resources :api_grants, path: "api-grants", param: :uid, only: %i[index create update destroy]
         end
         resources :saml_apps, path: "saml-apps", param: :uid, only: %i[index show create update destroy] do
           post "parse-metadata", on: :collection, action: :parse_metadata

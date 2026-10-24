@@ -187,7 +187,7 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
 
     it "authenticates confidential clients with Basic credentials" do
       app_client.update!(client_type: "confidential")
-      secret = app_client.generate_secret.tap { app_client.save! }
+      _record, secret = AppClientSecret.issue!(app_client)
       code = code_for_app
 
       exchange(code)

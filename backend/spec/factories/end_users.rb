@@ -67,7 +67,16 @@ FactoryBot.define do
         secret { "client-secret-for-specs" }
       end
 
-      client_secret_digest { OpenSSL::Digest::SHA256.hexdigest(secret) }
+      after(:create) do |app_client, evaluator|
+        app_client.secrets.create!(digest: AppClientSecret.digest(evaluator.secret), last_four: evaluator.secret.last(4))
+      end
+    end
+
+    trait :machine do
+      confidential
+      machine { true }
+      redirect_uris { [] }
+      assigned_to_everyone { false }
     end
   end
 

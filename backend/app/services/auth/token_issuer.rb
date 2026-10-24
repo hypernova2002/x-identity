@@ -1,6 +1,9 @@
 module Auth
   # Issues a signed JWT access token and a rotating refresh token, plus an ID token for end users.
   class TokenIssuer
+    # The `gty` claim of tokens a machine-to-machine app gets for itself, which no user endpoint accepts.
+    CLIENT_CREDENTIALS = "client-credentials".freeze
+
     # @param realm [Realms::AccountRealm, Realms::ProjectRealm]
     # @param app_client [AppClient, nil] required for end users; becomes the token audience
     def initialize(realm:, app_client: nil)
@@ -47,6 +50,22 @@ module Auth
         expires_in: @configuration.access_token_ttl.to_i,
         id_token: @app_client ? sign(key, base.merge(id_claims(user, scope)).merge({ nonce: nonce }.compact)) : nil
       )
+    end
+
+    # An access token for a machine-to-machine app itself (client credentials): its subject is the
+    # app, its audience the API. There's no user, refresh token or ID token.
+    # @param api [ApiResource]
+    # @param scope [String] space-separated scopes granted
+    # @return [TokenSet]
+    def issue_for_client(api:, scope:)
+      now = Time.current
+      ttl = api.access_token_ttl
+      key = SigningKeys::Rotator.new(owner: @realm.owner, configuration: @configuration).current
+      claims = {
+        iss: @realm.token_issuer, sub: @app_client.uid, aud: api.identifier, client_id: @app_client.uid, scope: scope,
+        token_use: "access", gty: CLIENT_CREDENTIALS, iat: now.to_i, exp: (now + ttl).to_i, jti: SecureRandom.uuid
+      }
+      TokenSet.new(access_token: sign(key, claims), refresh_token: nil, expires_in: ttl.to_i, id_token: nil)
     end
 
     private

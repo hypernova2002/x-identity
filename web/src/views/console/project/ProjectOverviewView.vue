@@ -19,6 +19,9 @@ interface AppSummary {
   kind: AppKind
   uid: string
   name: string
+  /** Machine-to-machine apps have API access instead of assigned users. */
+  machine: boolean
+  /** Users and groups assigned, or for machine apps, APIs it may get tokens for. */
   assignments: number
 }
 
@@ -43,7 +46,7 @@ const tasks = [
   { label: 'Test a sign-in', detail: 'Sign an end user in and inspect the tokens.', to: 'project-test-sign-in' },
 ]
 
-const anyAssigned = computed(() => apps.value.some((app) => app.assignments > 0))
+const anyAssigned = computed(() => apps.value.some((app) => !app.machine && app.assignments > 0))
 
 const checklist = computed(() => [
   {
@@ -76,7 +79,8 @@ const checklist = computed(() => [
       ]),
 ])
 
-const unassignedApps = computed(() => apps.value.filter((app) => app.assignments === 0))
+const unassignedApps = computed(() => apps.value.filter((app) => !app.machine && app.assignments === 0))
+const machineAppsWithoutApis = computed(() => apps.value.filter((app) => app.machine && app.assignments === 0))
 const samlProvidersWithoutDomains = computed(() => providers.value.filter((provider) => provider.kind === 'saml' && provider.enabled && provider.domains.length === 0))
 
 const appAccessRoute = (app: AppSummary) =>
@@ -103,11 +107,16 @@ const load = useAsyncAction(async () => {
   providers.value = loadedProviders.items
 
   const summaries = [
-    ...clients.items.map((client) => ({ kind: 'app_client' as const, uid: client.uid, name: client.name })),
-    ...samlApps.items.map((app) => ({ kind: 'saml_app' as const, uid: app.uid, name: app.name })),
+    ...clients.items.map((client) => ({ kind: 'app_client' as const, uid: client.uid, name: client.name, machine: client.machine })),
+    ...samlApps.items.map((app) => ({ kind: 'saml_app' as const, uid: app.uid, name: app.name, machine: false })),
   ]
   apps.value = await Promise.all(
-    summaries.map(async (app) => ({ ...app, assignments: (await projectAdminService.listAssignments(accountUid.value, projectUid, app.kind, app.uid)).total })),
+    summaries.map(async (app) => ({
+      ...app,
+      assignments: app.machine
+        ? (await projectAdminService.listApiGrants(accountUid.value, projectUid, app.uid)).length
+        : (await projectAdminService.listAssignments(accountUid.value, projectUid, app.kind, app.uid)).total,
+    })),
   )
 
   if (access.value.developer) {
@@ -174,11 +183,20 @@ onMounted(() => load.run())
       </BaseCard>
     </div>
 
-    <BaseCard v-if="!load.loading.value && (unassignedApps.length > 0 || samlProvidersWithoutDomains.length > 0)" title="Needs attention">
+    <BaseCard
+      v-if="!load.loading.value && (unassignedApps.length > 0 || machineAppsWithoutApis.length > 0 || samlProvidersWithoutDomains.length > 0)"
+      title="Needs attention"
+    >
       <ul class="flex flex-col divide-y divide-border">
         <li v-for="app in unassignedApps" :key="app.uid" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
           <span><strong>{{ app.name }}</strong> isn't assigned to anyone, so nobody can sign in to it.</span>
           <RouterLink :to="appAccessRoute(app)" class="font-medium text-primary underline">Give access</RouterLink>
+        </li>
+        <li v-for="app in machineAppsWithoutApis" :key="app.uid" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+          <span><strong>{{ app.name }}</strong> doesn't have access to any API, so it can't get tokens.</span>
+          <RouterLink :to="{ name: 'project-app-client-api-access', params: { projectUid: project.uid, clientUid: app.uid } }" class="font-medium text-primary underline">
+            Give API access
+          </RouterLink>
         </li>
         <li v-for="provider in samlProvidersWithoutDomains" :key="provider.uid" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
           <span><strong>{{ provider.name }}</strong> has no email domains, so sign-ins through it are refused.</span>

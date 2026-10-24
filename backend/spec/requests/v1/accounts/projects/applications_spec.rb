@@ -20,7 +20,10 @@ RSpec.describe "Applications", type: :openapi do
       ListParameters.build(
         search: "Name or uid",
         sorts: %w[name type created_at],
-        filters: { app_type_eq: { type: :string, enum: %w[app_client saml_app] }, enabled_eq: { type: :string, enum: %w[true false] } }
+        filters: {
+          app_type_eq: { type: :string, enum: %w[app_client saml_app] }, kind_eq: { type: :string, enum: %w[oidc machine saml] },
+          machine_eq: { type: :string, enum: %w[true false] }, enabled_eq: { type: :string, enum: %w[true false] }
+        }
       ).each { |list_parameter| parameter(**list_parameter) }
 
       response 200, "applications, paginated with Total, Per-Page and Link headers" do
@@ -56,6 +59,18 @@ RSpec.describe "Applications", type: :openapi do
     expect(names.call(q: { app_type_eq: "app_client" })).to eq([ "Billing API", "Web shop" ])
     expect(names.call(q: { enabled_eq: "false" })).to eq([ "Wiki" ])
     expect(names.call(sort: "-name")).to eq([ "Wiki", "Web shop", "Billing API" ])
+  end
+
+  it "filters by kind: OpenID Connect, machine-to-machine or SAML" do
+    machine = create(:app_client, :machine, project: project, name: "Billing job")
+    names = lambda do |kind|
+      get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/applications", params: { q: { kind_eq: kind } }, headers: auth_headers_for(viewer)
+      response.parsed_body.pluck("name")
+    end
+
+    expect(names.call("oidc")).to eq([ "Billing API", "Web shop" ])
+    expect(names.call("machine")).to eq([ machine.name ])
+    expect(names.call("saml")).to eq([ "Wiki" ])
   end
 
   it "pages across both kinds with a total" do

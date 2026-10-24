@@ -25,7 +25,14 @@ export const AUTH_SETTINGS_FIELDS: Record<AuthSettingsSection, readonly AuthSett
     'lockout_duration_seconds',
     'notify_new_devices',
   ],
-  tokens: ['access_token_ttl_seconds', 'refresh_token_ttl_seconds', 'session_idle_timeout_seconds', 'sso_session_ttl_seconds'],
+  tokens: [
+    'access_token_ttl_seconds',
+    'refresh_token_ttl_seconds',
+    'session_idle_timeout_seconds',
+    'sso_session_ttl_seconds',
+    'client_secret_rotation_overlap_seconds',
+    'token_requests_per_minute',
+  ],
   signing: ['signing_algorithm', 'signing_key_rotation_seconds'],
 }
 
@@ -40,7 +47,7 @@ export const authSettingsSections: { section: AuthSettingsSection; label: string
   { section: 'sign-in', label: 'Sign-in methods', description: 'Password sign-in, email verification and the codes sent by email.' },
   { section: 'mfa', label: 'Multi-factor authentication', description: 'The project-wide MFA policy. Each user\'s own MFA setup is shown on their end user page.' },
   { section: 'policies', label: 'Security policies', description: 'Password rules, password expiry and lockouts after failed sign-ins.' },
-  { section: 'tokens', label: 'Tokens and sessions', description: 'How long tokens, sessions and the hosted login session last.' },
+  { section: 'tokens', label: 'Tokens and sessions', description: 'How long tokens, sessions and the hosted login session last, and limits for app clients.' },
   { section: 'signing', label: 'Signing keys', description: 'How tokens and SAML messages are signed, and key rotation.' },
 ]
 

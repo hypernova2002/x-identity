@@ -43,6 +43,7 @@ export const projectRoutes: RouteRecordRaw[] = [
       ['access', 'project-app-client-access', () => import('../views/console/project/applications/AppAccessTab.vue')],
       ['tokens', 'project-app-client-tokens', () => import('../views/console/project/applications/AppClientTokensTab.vue')],
       ['credentials', 'project-app-client-credentials', () => import('../views/console/project/applications/AppClientCredentialsTab.vue')],
+      ['api-access', 'project-app-client-api-access', () => import('../views/console/project/applications/AppClientApiAccessTab.vue')],
       ['activity', 'project-app-client-activity', () => import('../views/console/project/applications/AppActivityTab.vue')],
     ]),
   },
@@ -57,8 +58,18 @@ export const projectRoutes: RouteRecordRaw[] = [
       ['activity', 'project-saml-app-activity', () => import('../views/console/project/applications/AppActivityTab.vue')],
     ]),
   },
-  { path: 'app-clients', redirect: withQuery('project-applications', { app_type_eq: 'app_client' }) },
-  { path: 'saml-apps', redirect: withQuery('project-applications', { app_type_eq: 'saml_app' }) },
+  {
+    path: 'apis',
+    name: 'project-apis',
+    component: () => import('../views/console/project/applications/ApisView.vue'),
+    meta: {
+      title: 'APIs',
+      navItem: 'apis',
+      description: 'Your own APIs that machine-to-machine apps get access tokens for, and the scopes they define.',
+    },
+  },
+  { path: 'app-clients', redirect: withQuery('project-applications', { kind_eq: 'oidc' }) },
+  { path: 'saml-apps', redirect: withQuery('project-applications', { kind_eq: 'saml' }) },
 
   {
     path: 'end-users',

@@ -14,7 +14,7 @@ module V1
             end_session_endpoint: "#{issuer}/oauth2/logout",
             response_types_supported: [ "code" ],
             response_modes_supported: [ "query" ],
-            grant_types_supported: %w[authorization_code refresh_token],
+            grant_types_supported: %w[authorization_code refresh_token client_credentials],
             subject_types_supported: [ "public" ],
             id_token_signing_alg_values_supported: [ current_project.auth_configuration!.signing_algorithm ],
             scopes_supported: ::Oidc::Authorization::SUPPORTED_SCOPES,

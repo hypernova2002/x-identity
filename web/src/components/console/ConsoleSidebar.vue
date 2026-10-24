@@ -37,7 +37,11 @@ const projectNavigation = computed<NavGroup[]>(() => {
   const canReadAuditLog = project.value?.uid === projectUid && access.value.developer
   return [
     { key: 'overview', label: 'Overview', items: [item('overview', 'Overview', 'project')] },
-    { key: 'applications', label: 'Applications', items: [item('applications', 'Applications', 'project-applications')] },
+    {
+      key: 'applications',
+      label: 'Applications',
+      items: [item('applications', 'Applications', 'project-applications'), item('apis', 'APIs', 'project-apis')],
+    },
     {
       key: 'directory',
       label: 'Directory',

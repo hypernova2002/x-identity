@@ -17,6 +17,7 @@ itself trust Google, Apple, OpenID Connect and SAML providers.
 | [SAML providers](end-user-auth/saml-providers.md) | Trusting a customer's SAML identity provider, domains, group sync, upstream logout |
 | [Hosted login and OpenID Connect](hosted-login-and-oidc.md) | The hosted login page, the OIDC provider, single sign-on sessions |
 | [Groups and app access](groups-and-access.md) | Groups, assignment-only access, the groups claim |
+| [Machine-to-machine apps](machine-to-machine.md) | APIs, the client credentials grant, checking tokens, secret rotation |
 | [SAML apps and the app portal](saml-apps-and-portal.md) | The project as a SAML identity provider, single logout, the portal |
 | [Security model](security.md) | Enumeration resistance, lockouts, token rotation, trust rules, key management |
 | [Example apps](examples.md) | Two tiny OIDC apps for trying hosted login, SSO and the portal |
@@ -81,6 +82,7 @@ The HTTP API reference is generated from the request specs into
 - A standard OpenID Connect provider per project: discovery, authorization code with PKCE, token,
   userinfo, revocation and logout endpoints.
 - Single sign-on sessions across a project's apps.
+- Machine-to-machine apps: the client credentials grant, for your own APIs with their own scopes.
 - A SAML 2.0 identity provider per project: SP- and IdP-initiated sign-on, signed assertions,
   attribute mapping, single logout, certificate rotation.
 - An app portal listing each user's apps.

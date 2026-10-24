@@ -33,7 +33,7 @@ module Oidc
     # @return [Outcome]
     # @raise [Error] redirected to the app once its client and redirect URI are known to be valid
     def authorize(params, session_token: nil)
-      app_client = @project.app_clients.enabled.find_by(uid: params["client_id"].to_s)
+      app_client = @project.app_clients.enabled.where(machine: false).find_by(uid: params["client_id"].to_s)
       raise Error.new("invalid_request", "This app isn't registered with the project, or is disabled.") unless app_client
 
       redirect_uri = params["redirect_uri"].to_s

@@ -111,11 +111,17 @@ RSpec.describe "App clients", type: :openapi do
       end
     end
 
-    it "rotates the secret" do
+    it "rotates the secret, keeping the old one working for a week" do
       client = create(:app_client, :confidential, project: project)
+      new_secret = nil
 
       assert_api_response :post, 200, headers: auth_headers_for(admin), path_params: project_path_params(project, uid: client.uid) do
-        expect([ client.reload.authenticate("client-secret-for-specs"), client.authenticate(parsed_body["client_secret"]) ]).to eq([ false, true ])
+        new_secret = parsed_body["client_secret"]
+        expect([ client.reload.authenticate("client-secret-for-specs"), client.authenticate(new_secret) ]).to eq([ true, true ])
+      end
+
+      travel 7.days + 1.minute do
+        expect([ client.authenticate("client-secret-for-specs"), client.authenticate(new_secret) ]).to eq([ false, true ])
       end
     end
 

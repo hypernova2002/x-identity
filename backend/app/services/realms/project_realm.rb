@@ -50,7 +50,7 @@ module Realms
     # @param audience [String]
     # @return [Boolean] whether the audience is one of the project's enabled app clients
     def accepts_audience?(audience)
-      project.app_clients.enabled.exists?(uid: audience.to_s)
+      project.app_clients.enabled.where(machine: false).exists?(uid: audience.to_s)
     end
 
     # @return [String] shown next to codes in authenticator apps

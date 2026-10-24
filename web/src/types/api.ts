@@ -88,11 +88,15 @@ export interface AppClient {
   uid: string
   name: string
   client_type: AppClientType
+  /** A machine-to-machine app: gets tokens for APIs with client credentials, signs no users in. */
+  machine: boolean
   allowed_origins: string[]
   redirect_uris: string[]
   post_logout_redirect_uris: string[]
   launch_url: string | null
   enabled: boolean
+  /** Null uses the project's limit. */
+  token_requests_per_minute: number | null
   created_at: string
   updated_at: string
 }
@@ -126,6 +130,7 @@ export interface Application {
   enabled: boolean
   /** App clients only. */
   client_type: AppClientType | null
+  machine: boolean
   /** SAML apps only. */
   entity_id: string | null
   created_at: string
@@ -371,6 +376,10 @@ export interface AuthConfiguration {
   otp_step_seconds: number
   otp_drift_steps: number
   otp_hotp_look_ahead: number
+  /** Projects only: how long previous client secrets keep working after a rotation. */
+  client_secret_rotation_overlap_seconds: number
+  /** Projects only: token requests per app client per minute, unless the app sets its own. */
+  token_requests_per_minute: number
   updated_at: string
 }
 
@@ -414,4 +423,45 @@ export interface DeviceSession {
   last_seen_at: string
   /** The device making the request. */
   current: boolean
+}
+
+export interface ApiScope {
+  name: string
+  description: string | null
+}
+
+/** One of the project's own APIs, which machine-to-machine apps get access tokens for. */
+export interface ApiResource {
+  uid: string
+  name: string
+  /** The `aud` of tokens for the API. */
+  identifier: string
+  scopes: ApiScope[]
+  /** Null uses the project's access token lifetime. */
+  access_token_ttl_seconds: number | null
+  app_count: number
+  created_at: string
+  updated_at: string
+}
+
+/** The scopes a machine-to-machine app may request on one API. */
+export interface ApiGrant {
+  uid: string
+  api_uid: string
+  api_name: string
+  api_identifier: string
+  scopes: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface AppClientSecret {
+  uid: string
+  /** Null for secrets from before rotation overlap. */
+  last_four: string | null
+  expires_at: string | null
+  revoked_at: string | null
+  last_used_at: string | null
+  created_at: string
+  usable: boolean
 }

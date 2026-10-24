@@ -30,6 +30,8 @@ class AuthConfigurationSerializer
     otp_step_seconds
     otp_drift_steps
     otp_hotp_look_ahead
+    client_secret_rotation_overlap_seconds
+    token_requests_per_minute
   ].freeze
 
   attributes(*ATTRIBUTES, :updated_at)

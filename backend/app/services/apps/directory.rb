@@ -3,14 +3,19 @@ module Apps
   # database. It answers `count`, `offset` and `limit` like a relation, so it paginates like one.
   #
   # Requests use `q[search]` (name or uid), `q[app_type_eq]` (`app_client` or `saml_app`),
-  # `q[enabled_eq]` and `sort` (`name`, `type` or `created_at`, `-` for descending).
+  # `q[kind_eq]` (`oidc`, `machine` or `saml`), `q[enabled_eq]`, `q[machine_eq]` and `sort` (`name`, `type` or `created_at`, `-` for descending).
   class Directory
     include Enumerable
 
-    Row = Data.define(:app_type, :uid, :name, :enabled, :client_type, :entity_id, :created_at)
+    Row = Data.define(:app_type, :uid, :name, :enabled, :client_type, :machine, :entity_id, :created_at)
 
     SORTS = { "name" => :name, "type" => :app_type, "created_at" => :created_at }.freeze
     TABLE = Arel::Table.new(:applications)
+    KINDS = {
+      "oidc" => TABLE[:app_type].eq("app_client").and(TABLE[:machine].eq(false)),
+      "machine" => TABLE[:machine].eq(true),
+      "saml" => TABLE[:app_type].eq("saml_app")
+    }.freeze
 
     # @param project [Project]
     # @param params [ActionController::Parameters]
@@ -18,7 +23,7 @@ module Apps
     def initialize(project, params, offset: 0, limit: nil)
       @project = project
       @params = params
-      @query = params.fetch(:q, {}).permit(:search, :app_type_eq, :enabled_eq)
+      @query = params.fetch(:q, {}).permit(:search, :app_type_eq, :kind_eq, :enabled_eq, :machine_eq)
       @sort = params[:sort].presence || "name"
       @offset = offset
       @limit = limit
@@ -61,15 +66,18 @@ module Apps
       end
       manager.where(TABLE[:app_type].eq(@query[:app_type_eq])) if @query[:app_type_eq].present?
       manager.where(TABLE[:enabled].eq(ActiveModel::Type::Boolean.new.cast(@query[:enabled_eq]))) if @query[:enabled_eq].present?
+      manager.where(TABLE[:machine].eq(ActiveModel::Type::Boolean.new.cast(@query[:machine_eq]))) if @query[:machine_eq].present?
+      manager.where(KINDS[@query[:kind_eq]]) if KINDS.key?(@query[:kind_eq])
       manager
     end
 
     def source
       clients = @project.app_clients.managed.select(
-        Arel.sql("'app_client'").as("app_type"), :id, :uid, :name, :enabled, :client_type, Arel.sql("NULL").as("entity_id"), :created_at
+        Arel.sql("'app_client'").as("app_type"), :id, :uid, :name, :enabled, :client_type, :machine, Arel.sql("NULL").as("entity_id"), :created_at
       )
       saml_apps = @project.saml_apps.select(
-        Arel.sql("'saml_app'").as("app_type"), :id, :uid, :name, :enabled, Arel.sql("NULL").as("client_type"), :entity_id, :created_at
+        Arel.sql("'saml_app'").as("app_type"), :id, :uid, :name, :enabled, Arel.sql("NULL").as("client_type"), Arel.sql("FALSE").as("machine"), :entity_id,
+        :created_at
       )
       Arel::Nodes::TableAlias.new(Arel.sql("(#{clients.to_sql} UNION ALL #{saml_apps.to_sql})"), "applications")
     end

@@ -12,7 +12,7 @@ module V1
           def parse_client_request(request_model_class)
             input = parse_request(request_model_class).to_h
             app_client = current_project.app_clients.enabled.find_by(uid: input[:client_id])
-            raise ApiError.new(:invalid_client) unless app_client&.authenticate(input[:client_secret])
+            raise ApiError.new(:invalid_client) unless app_client&.authenticate(input[:client_secret]) && !app_client.machine?
 
             [ app_client, input.except(:client_id, :client_secret) ]
           end
