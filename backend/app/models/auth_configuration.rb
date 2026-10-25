@@ -32,6 +32,7 @@ class AuthConfiguration < ApplicationRecord
 
   attribute :mfa_requirement, default: "optional"
   attribute :passkeys, default: "off"
+  attribute :passwordless_after_passkey, default: false
   attribute :require_email_verification, default: false
   attribute :notify_new_devices, default: true
   attribute :password_min_length, default: 12
@@ -80,6 +81,8 @@ class AuthConfiguration < ApplicationRecord
     validates attribute, numericality: { only_integer: true, in: range }, allow_nil: OPTIONAL_DURATIONS.include?(attribute)
   end
   validate :passkeys_can_be_required, if: -> { passkeys_required? && (will_save_change_to_passkeys? || will_save_change_to_mfa_requirement?) }
+  validates :passwordless_after_passkey, inclusion: { in: [ true, false ] }
+  validate :passwordless_needs_passkeys, if: :passwordless_after_passkey
 
   # @return [Boolean] whether users can add passkeys and sign in with them
   def passkeys_enabled?
@@ -142,6 +145,10 @@ class AuthConfiguration < ApplicationRecord
   end
 
   private
+
+  def passwordless_needs_passkeys
+    errors.add(:passwordless_after_passkey, "needs passkeys to be on") if passkeys_off?
+  end
 
   # Sign-ins where a passkey can't be used fall back to requiring MFA, so MFA can't be off; a
   # project's passkeys need its custom domain.

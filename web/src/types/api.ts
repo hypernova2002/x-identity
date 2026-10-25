@@ -479,6 +479,8 @@ export interface AuthConfiguration {
   mfa_requirement: MfaRequirement
   require_email_verification: boolean
   notify_new_devices: boolean
+  /** Users with a passkey that works where they sign in can't use their password there. */
+  passwordless_after_passkey: boolean
   password_min_length: number
   password_require_uppercase: boolean
   password_require_lowercase: boolean

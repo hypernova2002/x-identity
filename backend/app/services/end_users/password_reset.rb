@@ -52,6 +52,7 @@ module EndUsers
 
         end_user.verify_email!
         end_user.revoke_all_sessions!
+        end_user.start_passkey_recovery! if end_user.webauthn_credentials.exists?
       end
 
       Auth::Lockout.new(owner: @project, configuration: @project.auth_configuration!).reset(end_user.email)

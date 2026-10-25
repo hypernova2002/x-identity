@@ -13,6 +13,8 @@ module AuthConfigurations
     attribute? :mfa_requirement, T::String.enum(*AuthConfiguration.mfa_requirements.keys)
     attribute? :require_email_verification, T::Bool
     attribute? :notify_new_devices, T::Bool
+    attribute? :passwordless_after_passkey, T::Bool
+      .meta(description: "Users who have a passkey that works where they sign in can't sign in with a password there. Resetting the password by email lets them in to add a new passkey. Needs passkeys on.")
     attribute? :passkeys, T::String.enum(*AuthConfiguration.passkeys.keys)
       .meta(description: "off, optional (users can add passkeys and sign in with them) or required (sign-ins must use a passkey wherever passkeys work, and require MFA elsewhere). Projects need a verified custom domain; required needs MFA not off.")
       .meta(description: "Email users when they sign in from a device and country they haven't used in 90 days.")

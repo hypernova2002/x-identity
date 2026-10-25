@@ -33,12 +33,23 @@ module Auth
 
       lockout.reset(email)
       raise ApiError.new(:email_not_verified) if @configuration.require_email_verification && !user.email_verified?
+      # Only after a correct password, so it doesn't reveal who has a passkey.
+      raise ApiError.new(:passkey_required) if passkey_instead?(user)
 
       SignInFlow.new(realm: @realm, app_client: @app_client, ip: @ip, user_agent: @user_agent, interaction: @interaction)
         .continue(user: user, amr: [ "pwd" ], authenticated_at: Time.current)
     end
 
     private
+
+    # Users with a passkey that works here sign in with it, when the configuration says so, unless
+    # they're recovering after a password reset.
+    def passkey_instead?(user)
+      return false unless @configuration.passwordless_after_passkey && @configuration.passkeys_enabled? && !user.recovering_passkey?
+
+      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
+      relying_party.present? && user.webauthn_credentials.exists?(rp_id: relying_party.id)
+    end
 
     def recorder
       @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)

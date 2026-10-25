@@ -49,10 +49,12 @@ const props = withDefaults(
     showEmailCodeLimits?: boolean
     /** A project's settings, which include the hosted login session and app client limits. */
     forProject?: boolean
+    /** A project's verified custom domain, which its passkeys need; null without one. */
+    customDomain?: string | null
     /** The sections to show; saving sends only their fields, so other settings are never reset. */
     sections?: AuthSettingsSection[]
   }>(),
-  { readonly: false, showEmailCodeLimits: false, forProject: false, sections: () => ['sign-in', 'mfa', 'policies', 'tokens', 'signing'] },
+  { readonly: false, showEmailCodeLimits: false, forProject: false, customDomain: null, sections: () => ['sign-in', 'mfa', 'policies', 'tokens', 'signing'] },
 )
 
 /** Whether the form has changes that aren't saved yet. */
@@ -60,10 +62,25 @@ const dirty = defineModel<boolean>('dirty', { default: false })
 
 const mfaRequirement = ref<MfaRequirement>('optional')
 const passkeys = ref<PasskeysSetting>('off')
+
+/** What stops the chosen passkey setting working, before it's saved. */
+const passkeysWarning = computed(() => {
+  if (passkeys.value === 'off') return null
+  if (props.forProject && !props.customDomain) {
+    return passkeys.value === 'required'
+      ? "Required needs the project's verified custom domain, which passkeys belong to. Add one in Project settings › Custom domain."
+      : "Passkeys can't be used until the project has a verified custom domain, which passkeys belong to."
+  }
+  if (passkeys.value === 'required' && mfaRequirement.value === 'off') {
+    return "Required needs multi-factor authentication to be optional or required: sign-ins where passkeys can't be used require MFA instead."
+  }
+  return null
+})
 const signingAlgorithm = ref<SigningAlgorithm>('ES256')
 const flags = ref({
   require_email_verification: false,
   notify_new_devices: true,
+  passwordless_after_passkey: false,
   password_require_uppercase: false,
   password_require_lowercase: false,
   password_require_number: false,
@@ -113,6 +130,7 @@ function apply(configuration: AuthConfiguration) {
   flags.value = {
     require_email_verification: configuration.require_email_verification,
     notify_new_devices: configuration.notify_new_devices,
+    passwordless_after_passkey: configuration.passwordless_after_passkey,
     password_require_uppercase: configuration.password_require_uppercase,
     password_require_lowercase: configuration.password_require_lowercase,
     password_require_number: configuration.password_require_number,
@@ -255,6 +273,20 @@ onMounted(() => load.run())
           "
           :error="save.error.value?.fieldError('passkeys')"
         />
+        <BaseAlert v-if="passkeysWarning" variant="warning">{{ passkeysWarning }}</BaseAlert>
+              <BaseCheckbox
+          v-model="flags.passwordless_after_passkey"
+          label="No passwords once a user has a passkey"
+          :disabled="passkeys === 'off'"
+          :hint="
+            passkeys === 'off'
+              ? 'Turn passkeys on first.'
+              : 'Users with a passkey that works where they sign in must use it there; a correct password is refused. Where their passkey can\'t be used (e.g. an app without allowed origins), the password still works. Lost the passkey? Resetting the password by email lets them sign in for an hour to add a new one.'
+          "
+        />
+        <p v-if="save.error.value?.fieldError('passwordless_after_passkey')" class="text-xs font-medium text-danger">
+          Error: {{ save.error.value?.fieldError('passwordless_after_passkey') }}
+        </p>
       </BaseCard>
     </template>
 

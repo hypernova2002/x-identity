@@ -70,6 +70,11 @@ module Auth
       relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
       passkey = relying_party.present? && user.webauthn_credentials.exists?(rp_id: relying_party.id)
 
+      # Recovering after a password reset: add a new passkey before going on.
+      if user.recovering_passkey? && @configuration.passwordless_after_passkey && relying_party && !Factors.passkey?(amr)
+        return [ "passkey_setup", nil ]
+      end
+
       # Required passkeys must be used wherever they work: set one up here if there's none yet.
       if @configuration.passkeys_required? && relying_party && !Factors.passkey?(amr)
         return passkey ? [ "passkey", %w[passkey] ] : [ "passkey_setup", nil ]

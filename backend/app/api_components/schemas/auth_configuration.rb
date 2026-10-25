@@ -13,6 +13,9 @@ class Schemas::AuthConfiguration
       mfa_requirement: { type: :string, enum: AuthConfiguration.mfa_requirements.keys },
       require_email_verification: { type: :boolean },
       passkeys: { type: :string, enum: AuthConfiguration.passkeys.keys, description: "off; optional: users can add passkeys and sign in with them; required: sign-ins must use a passkey wherever passkeys work (others require MFA). Projects need a verified custom domain." },
+      passwordless_after_passkey: {
+        type: :boolean, description: "Users with a passkey that works where they sign in can't use their password there; a password reset by email lets them add a new passkey."
+      },
       notify_new_devices: { type: :boolean, description: "Email users when they sign in from a device and country they haven't used in 90 days." },
       password_min_length: { type: :integer, minimum: 8, maximum: AuthConfiguration::PASSWORD_MAX_LENGTH },
       password_require_uppercase: { type: :boolean },

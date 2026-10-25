@@ -7,6 +7,7 @@ import SamlCertificatesPanel from '@/components/project/SamlCertificatesPanel.vu
 import AuthConfigurationForm from '@/components/settings/AuthConfigurationForm.vue'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { useUnsavedChanges } from '@/composables/useUnsavedChanges'
+import { useVerifiedDomain } from '@/composables/useVerifiedDomain'
 import { projectAdminService } from '@/services/project'
 import type { AuthConfiguration } from '@/types/api'
 import { authSettingsSections, type AuthSettingsSection } from '@/utils/authSettings'
@@ -17,6 +18,7 @@ const { accountUid, project, access } = useProjectContext()
 const section = computed<AuthSettingsSection>(() => route.meta.authSection ?? 'sign-in')
 const description = computed(() => authSettingsSections.find((entry) => entry.section === section.value)?.description)
 const dirty = ref(false)
+const { hostname: customDomain } = useVerifiedDomain(() => (project.value ? { accountUid: accountUid.value, projectUid: project.value.uid } : null))
 
 useUnsavedChanges(dirty)
 
@@ -66,6 +68,7 @@ function save(changes: Partial<AuthConfiguration>) {
     :sections="[section]"
     show-email-code-limits
     for-project
+    :custom-domain="customDomain"
     email-verification-hint="On by default for projects. When off, end users can sign in before confirming their email."
   />
 

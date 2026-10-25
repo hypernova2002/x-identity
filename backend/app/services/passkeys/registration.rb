@@ -53,6 +53,8 @@ module Passkeys
       )
       raise ApiError.from_record(passkey) unless passkey.save
 
+      @user.update!(passkey_recovery_until: nil) if @user.passkey_recovery_until
+
       @user.realm.recorder(ip: @ip, user_agent: @user_agent).record(
         action: "#{@user.realm.event_prefix}.passkey_added", actor: @user, target: @user, metadata: { passkey: passkey.uid, name: passkey.name }
       )

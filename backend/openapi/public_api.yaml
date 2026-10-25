@@ -294,6 +294,9 @@ paths:
                 password_require_uppercase:
                   anyOf:
                   - type: boolean
+                passwordless_after_passkey:
+                  anyOf:
+                  - type: boolean
                 refresh_token_ttl_seconds:
                   type: integer
                   minimum: 86400
@@ -6702,6 +6705,7 @@ components:
       - require_email_verification
       - notify_new_devices
       - passkeys
+      - passwordless_after_passkey
       - password_min_length
       - password_require_uppercase
       - password_require_lowercase
@@ -6745,6 +6749,10 @@ components:
           description: 'off; optional: users can add passkeys and sign in with them;
             required: sign-ins must use a passkey wherever passkeys work (others require
             MFA). Projects need a verified custom domain.'
+        passwordless_after_passkey:
+          type: boolean
+          description: Users with a passkey that works where they sign in can't use
+            their password there; a password reset by email lets them add a new passkey.
         notify_new_devices:
           type: boolean
           description: Email users when they sign in from a device and country they
@@ -7167,6 +7175,7 @@ components:
         - `forbidden` (403): You do not have permission to perform this action.
         - `email_not_verified` (403): Verify your email address before signing in.
         - `mfa_required_by_policy` (403): Multi-factor authentication is required by your account's policy and can't be turned off.
+        - `passkey_required` (403): This account signs in with a passkey. Use your passkey, or reset your password if you've lost it.
         - `reauthentication_required` (403): Sign in again to continue: this needs a sign-in in the last 15 minutes.
         - `user_disabled` (403): Too many failed verification attempts. This account has been disabled; ask an administrator to re-enable it.
         - `sign_up_disabled` (403): Self sign-up is turned off for this project.
@@ -7219,6 +7228,7 @@ components:
               - forbidden
               - email_not_verified
               - mfa_required_by_policy
+              - passkey_required
               - reauthentication_required
               - user_disabled
               - sign_up_disabled

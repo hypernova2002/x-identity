@@ -49,6 +49,7 @@ module Auth
 
         user.verify_email!
         user.revoke_all_sessions!
+        user.start_passkey_recovery! if user.webauthn_credentials.exists?
       end
 
       Lockout.new(owner: @account, configuration: @account.auth_configuration!).reset(user.email)

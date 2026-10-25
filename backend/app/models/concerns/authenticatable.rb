@@ -79,6 +79,19 @@ module Authenticatable
     association(:otp_credential).reset
   end
 
+  PASSKEY_RECOVERY_FOR = 1.hour
+
+  # After a password reset by email, the user may sign in with their password until they add a new
+  # passkey, for {PASSKEY_RECOVERY_FOR}, even where passwords give way to passkeys.
+  def start_passkey_recovery!
+    update!(passkey_recovery_until: PASSKEY_RECOVERY_FOR.from_now)
+  end
+
+  # @return [Boolean]
+  def recovering_passkey?
+    passkey_recovery_until.present? && passkey_recovery_until.future?
+  end
+
   # @return [String] the opaque, random user handle stored in the user's passkeys, created on first use
   def webauthn_id!
     update!(webauthn_id: WebAuthn.generate_user_id) if webauthn_id.nil?

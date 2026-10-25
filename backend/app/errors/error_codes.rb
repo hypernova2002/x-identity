@@ -20,6 +20,7 @@ module ErrorCodes
     forbidden: { status: 403, default_message: "You do not have permission to perform this action." },
     email_not_verified: { status: 403, default_message: "Verify your email address before signing in." },
     mfa_required_by_policy: { status: 403, default_message: "Multi-factor authentication is required by your account's policy and can't be turned off." },
+    passkey_required: { status: 403, default_message: "This account signs in with a passkey. Use your passkey, or reset your password if you've lost it." },
     reauthentication_required: { status: 403, default_message: "Sign in again to continue: this needs a sign-in in the last 15 minutes." },
     user_disabled: { status: 403, default_message: "Too many failed verification attempts. This account has been disabled; ask an administrator to re-enable it." },
     sign_up_disabled: { status: 403, default_message: "Self sign-up is turned off for this project." },

@@ -130,6 +130,21 @@ hosted login: `…/interactions/:interaction/passkey-setup`), have the browser c
 send `respond-to-challenge` with `challenge: passkey_setup`, the `registration_id` and the
 `credential`. The new passkey is audited as `passkey_added`.
 
+## No passwords once a passkey is set up
+
+With **No passwords once a user has a passkey** (next to the Passkeys setting; needs passkeys on), a
+user who has a passkey that works where they're signing in must use it there: a correct password is
+refused with `passkey_required` (403). The refusal only comes after a correct password, so it doesn't
+reveal who has a passkey. Where their passkey can't be used (an app without allowed origins), the
+password still works.
+
+**Lost passkey.** Resetting the password by email lets the user sign in with the new password for an
+hour; that sign-in ends with `passkey_setup`, and adding the passkey ends the hour early. An admin's
+**Reset MFA** removes their passkeys, so the password works again.
+
+The settings warn before saving when a choice can't work yet: Required with MFA off, or a project's
+passkeys without a verified custom domain.
+
 ## Multi-factor authentication
 
 A sign-in counts as multi-factor when it used a one-time code, or a passkey the user unlocked

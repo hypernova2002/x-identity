@@ -8,6 +8,7 @@ export const AUTH_SETTINGS_FIELDS: Record<AuthSettingsSection, readonly AuthSett
   'sign-in': [
     'require_email_verification',
     'passkeys',
+    'passwordless_after_passkey',
     'email_code_max_attempts',
     'email_code_max_failures_per_email',
     'email_code_max_failures_per_code',
