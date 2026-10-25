@@ -54,7 +54,7 @@ module V1
           def provider
             redirect_to hosted_login.provider_url(params[:uid]), allow_other_host: true
           rescue ApiError => error
-            redirect_to ::Oidc::Urls.hosted_page(current_project, "error", error: error.code, error_description: error.message), allow_other_host: true
+            redirect_to current_endpoints.hosted_page("error", error: error.code, error_description: error.message), allow_other_host: true
           end
 
           private

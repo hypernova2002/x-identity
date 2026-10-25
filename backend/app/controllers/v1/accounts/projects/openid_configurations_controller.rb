@@ -4,7 +4,7 @@ module V1
       class OpenidConfigurationsController < BaseController
         def show
           cache_publicly(1.hour)
-          issuer = current_project.token_issuer
+          issuer = current_endpoints.issuer
           render json: {
             issuer: issuer,
             authorization_endpoint: "#{issuer}/oauth2/authorize",

@@ -10,10 +10,12 @@ module SamlIdp
     end
 
     # @param project [Project]
+    # @param endpoints [ProjectEndpoints] where the request arrived, for the pages and URLs it hands out
     # @param ip [String, nil] the caller's IP address, for the audit log
     # @param user_agent [String, nil]
-    def initialize(project:, ip: nil, user_agent: nil)
+    def initialize(project:, endpoints: ProjectEndpoints.new(project), ip: nil, user_agent: nil)
       @project = project
+      @endpoints = endpoints
       @ip = ip
       @user_agent = user_agent
     end
@@ -96,8 +98,8 @@ module SamlIdp
         return Outcome.new(html: PostForm.html(data["acs_url"], "SAMLResponse" => failure, "RelayState" => data["relay_state"]))
       end
 
-      _record, interaction = OneTimeToken.issue!(subject: app, purpose: :oidc_interaction, replace: false, data: data)
-      Outcome.new(redirect_url: Oidc::Urls.hosted_page(@project, "login", interaction: interaction))
+      _record, interaction = OneTimeToken.issue!(subject: app, purpose: :oidc_interaction, replace: false, data: data.merge("issuer" => @endpoints.issuer))
+      Outcome.new(redirect_url: @endpoints.hosted_page("login", interaction: interaction))
     end
 
     def signature_valid?(app, binding, raw_query, xml)
@@ -110,7 +112,7 @@ module SamlIdp
     end
 
     def error_page(description, code: "invalid_request")
-      Outcome.new(redirect_url: Oidc::Urls.hosted_page(@project, "error", error: code, error_description: description))
+      Outcome.new(redirect_url: @endpoints.hosted_page("error", error: code, error_description: description))
     end
 
     def recorder

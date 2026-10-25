@@ -28,7 +28,7 @@ module Auth
         next rejection if rejection
 
         record.mark_used!
-        TokenIssuer.new(realm: @realm, app_client: @app_client).issue(
+        TokenIssuer.new(realm: @realm.with_issuer(record.issuer), app_client: @app_client).issue(
           user: user,
           authenticated_at: record.authenticated_at,
           amr: record.amr,

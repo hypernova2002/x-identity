@@ -4,9 +4,14 @@ module Realms
     attr_reader :project
 
     # @param project [Project]
-    def initialize(project)
+    # @param issuer [String, nil] tokens' `iss` when they're issued on a custom domain
+    def initialize(project, issuer: nil)
       @project = project
+      @custom_issuer = issuer.presence unless issuer == project.token_issuer
     end
+
+    # @return [String, nil] the custom domain's issuer tokens are issued with, if not the standard one
+    attr_reader :custom_issuer
 
     # @return [Project] owns the signing keys, lockout counters and auth configuration
     def owner
@@ -36,7 +41,18 @@ module Realms
 
     # @return [String]
     def token_issuer
-      project.token_issuer
+      custom_issuer || project.token_issuer
+    end
+
+    # @return [Array<String>] the standard issuer and the custom domain's: tokens from either are accepted anywhere
+    def accepted_issuers
+      ProjectEndpoints.issuers(project)
+    end
+
+    # @param issuer [String, nil]
+    # @return [ProjectRealm]
+    def with_issuer(issuer)
+      self.class.new(project, issuer: issuer)
     end
 
     # @param app_client [AppClient]

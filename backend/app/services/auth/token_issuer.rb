@@ -37,6 +37,7 @@ module Auth
           authenticated_at: authenticated_at,
           amr: amr,
           scope: scope,
+          issuer: @realm.custom_issuer,
           expires_at: refresh_expires_at || now + @configuration.refresh_token_ttl
         )
       end

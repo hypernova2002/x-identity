@@ -7,9 +7,9 @@ module V1
           rescue_from ::Oidc::Error do |error|
             url =
               if error.redirect_uri
-                ::Oidc::Urls.append_query(error.redirect_uri, error: error.code, error_description: error.message, state: error.state, iss: current_project.token_issuer)
+                ::Oidc::Urls.append_query(error.redirect_uri, error: error.code, error_description: error.message, state: error.state, iss: current_endpoints.issuer)
               else
-                ::Oidc::Urls.hosted_page(current_project, "error", error: error.code, error_description: error.message)
+                current_endpoints.hosted_page("error", error: error.code, error_description: error.message)
               end
             redirect_to url, allow_other_host: true
           end
@@ -30,7 +30,7 @@ module V1
           private
 
           def authorization
-            ::Oidc::Authorization.new(project: current_project, **client_info)
+            ::Oidc::Authorization.new(project: current_project, endpoints: current_endpoints, **client_info)
           end
         end
       end

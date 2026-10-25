@@ -1,16 +1,15 @@
 module Oidc
-  # Builds hosted login page URLs in the web app and appends parameters to redirect URIs.
+  # Builds hosted login page URLs and appends parameters to redirect URIs.
   module Urls
     module_function
 
+    # A hosted page on the project's standard URLs; see {ProjectEndpoints#hosted_page} for a custom domain's.
     # @param project [Project]
-    # @param page [String] "login", "error" or "signed-out"
+    # @param page [String] "login", "error", "signed-out" or "apps"
     # @param params [Hash]
     # @return [String]
     def hosted_page(project, page, **params)
-      base = "#{Rails.configuration.x.console_base_url}/auth/#{project.account.slug}/#{project.uid}/#{page}"
-      query = params.compact.to_query
-      query.empty? ? base : "#{base}?#{query}"
+      ProjectEndpoints.new(project).hosted_page(page, **params)
     end
 
     # @param uri [String]

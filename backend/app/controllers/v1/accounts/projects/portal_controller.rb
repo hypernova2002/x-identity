@@ -8,10 +8,10 @@ module V1
         def show
           client = current_project.portal_client!
           render json: {
-            issuer: current_project.token_issuer,
+            issuer: current_endpoints.issuer,
             client_id: client.uid,
-            redirect_uri: ::Oidc::Urls.hosted_page(current_project, "apps"),
-            post_logout_redirect_uri: ::Oidc::Urls.hosted_page(current_project, "signed-out")
+            redirect_uri: current_endpoints.hosted_page("apps"),
+            post_logout_redirect_uri: current_endpoints.hosted_page("signed-out")
           }
         end
 
@@ -22,7 +22,7 @@ module V1
           saml_apps = current_project.saml_apps.enabled.where(id: assignments.where(app_type: "SamlApp").select(:app_id))
 
           apps = clients.map { |client| { uid: client.uid, kind: "oidc", name: client.name, launch_url: client.launch_url } } +
-            saml_apps.map { |app| { uid: app.uid, kind: "saml", name: app.name, launch_url: app.launch_url } }
+            saml_apps.map { |app| { uid: app.uid, kind: "saml", name: app.name, launch_url: current_endpoints.url("/saml/apps/#{app.uid}/launch") } }
           render json: apps.sort_by { |app| [ app[:name].downcase, app[:uid] ] }
         end
       end

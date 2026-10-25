@@ -3,10 +3,12 @@ module Oidc
   # project's APIs, limited to the scopes it was granted there. Every request is audited.
   class ClientCredentials
     # @param project [Project]
+    # @param issuer [String, nil] the custom domain's issuer when the request arrived on one
     # @param ip [String, nil] the caller's IP address, for the audit log
     # @param user_agent [String, nil]
-    def initialize(project:, ip: nil, user_agent: nil)
+    def initialize(project:, issuer: nil, ip: nil, user_agent: nil)
       @project = project
+      @issuer = issuer
       @ip = ip
       @user_agent = user_agent
     end
@@ -25,7 +27,7 @@ module Oidc
         refuse(app_client, "invalid_scope", "The app hasn't been granted #{(scopes - grant.scopes).join(' ')} on this API.", api: grant.api_resource)
       end
 
-      tokens = Auth::TokenIssuer.new(realm: @project.realm, app_client: app_client).issue_for_client(api: grant.api_resource, scope: scopes.join(" "))
+      tokens = Auth::TokenIssuer.new(realm: @project.realm(issuer: @issuer), app_client: app_client).issue_for_client(api: grant.api_resource, scope: scopes.join(" "))
       recorder(app_client).record(
         action: "app_client.token_issued", actor: app_client, target: grant.api_resource,
         metadata: { audience: grant.api_resource.identifier, scope: scopes.join(" ") }

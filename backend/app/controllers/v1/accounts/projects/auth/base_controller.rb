@@ -18,7 +18,7 @@ module V1
           end
 
           def realm
-            current_project.realm
+            current_project.realm(issuer: current_endpoints.issuer)
           end
         end
       end

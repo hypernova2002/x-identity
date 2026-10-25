@@ -31,7 +31,7 @@ class EndUserMailer < ApplicationMailer
   end
 
   def new_device_sign_in(end_user, device)
-    assign(end_user, link: Oidc::Urls.hosted_page(end_user.project, "apps"))
+    assign(end_user, link: ProjectEndpoints.preferred(end_user.project).hosted_page("apps"))
     @device = device
     mail(to: end_user.email, subject: "New sign-in to your #{@project.name} account")
   end

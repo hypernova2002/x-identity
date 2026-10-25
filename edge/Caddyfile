@@ -1,0 +1,16 @@
+# Development only: serves *.localhost custom domains on one origin, as the production proxy will,
+# sending each project's endpoints to the backend and everything else (its hosted pages) to the web app.
+{
+	auto_https off
+	admin off
+}
+
+:80 {
+	@backend path /.well-known/* /oauth2/* /saml/* /auth/* /portal /portal/* /me /me/*
+	handle @backend {
+		reverse_proxy backend:3000
+	}
+	handle {
+		reverse_proxy web:5173
+	}
+}

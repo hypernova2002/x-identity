@@ -1,5 +1,6 @@
 # The hosted login's single sign-on session cookie, shared by a project's OpenID Connect and SAML
-# endpoints. Scoped to the project's path, so each project has its own session.
+# endpoints. Scoped to the project's path on x-identity's host, or to its custom domain, so each
+# project (and each of its hosts) has its own session.
 module SsoSessionCookie
   extend ActiveSupport::Concern
 
@@ -23,10 +24,10 @@ module SsoSessionCookie
 
   def sso_cookie_options
     {
-      path: URI.parse(current_project.token_issuer).path,
+      path: current_endpoints.cookie_path,
       httponly: true,
       same_site: :lax,
-      secure: Rails.configuration.x.app_base_url.start_with?("https://")
+      secure: current_endpoints.secure_cookie?
     }
   end
 end

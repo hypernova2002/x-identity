@@ -11,10 +11,12 @@ module SamlIdp
     SUCCESS = "urn:oasis:names:tc:SAML:2.0:status:Success".freeze
 
     # @param project [Project]
+    # @param endpoints [ProjectEndpoints] where the request arrived, for the pages and URLs it hands out
     # @param ip [String, nil] the caller's IP address, for the audit log
     # @param user_agent [String, nil]
-    def initialize(project:, ip: nil, user_agent: nil)
+    def initialize(project:, endpoints: ProjectEndpoints.new(project), ip: nil, user_agent: nil)
       @project = project
+      @endpoints = endpoints
       @ip = ip
       @user_agent = user_agent
     end
@@ -104,7 +106,7 @@ module SamlIdp
 
     def response_received(params)
       chain = params["RelayState"].present? && OneTimeToken.find_usable(params["RelayState"], purpose: :saml_logout)
-      return Oidc::Urls.hosted_page(@project, "signed-out") unless chain
+      return @endpoints.hosted_page("signed-out") unless chain
 
       continue_chain(chain, token: params["RelayState"])
     end
@@ -150,7 +152,7 @@ module SamlIdp
       return finish_upstream(origin) if origin["type"] == "idp"
 
       app = @project.saml_apps.find_by(id: origin["app_id"])
-      return Oidc::Urls.hosted_page(@project, "signed-out") if app&.slo_url.blank?
+      return @endpoints.hosted_page("signed-out") if app&.slo_url.blank?
 
       xml = logout_response_xml(issuer: issuer, destination: app.slo_url, request_id: origin["request_id"])
       Messages.redirect_url(app.slo_url, type: "SAMLResponse", xml: xml, relay_state: origin["relay_state"], certificate: certificate)
@@ -158,7 +160,7 @@ module SamlIdp
 
     def finish_upstream(origin)
       provider = @project.identity_providers.find_by(id: origin["provider_id"])
-      return Oidc::Urls.hosted_page(@project, "signed-out") if provider&.saml_slo_url.blank?
+      return @endpoints.hosted_page("signed-out") if provider&.saml_slo_url.blank?
 
       xml = logout_response_xml(issuer: provider.sp_entity_id, destination: provider.saml_slo_url, request_id: origin["request_id"])
       Messages.redirect_url(provider.saml_slo_url, type: "SAMLResponse", xml: xml, relay_state: origin["relay_state"], certificate: certificate)
@@ -217,7 +219,7 @@ module SamlIdp
     end
 
     def error_page(description)
-      Oidc::Urls.hosted_page(@project, "error", error: "invalid_request", error_description: description)
+      @endpoints.hosted_page("error", error: "invalid_request", error_description: description)
     end
 
     def escape(value)

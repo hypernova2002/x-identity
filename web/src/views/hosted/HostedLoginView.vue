@@ -9,14 +9,14 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import HostedChallengeForm from '@/components/hosted/HostedChallengeForm.vue'
-import { useAccountFromRoute } from '@/composables/useAccountFromRoute'
+import { useHostedProject } from '@/composables/useHostedProject'
 import { useHostedLogin } from '@/composables/useHostedLogin'
 import type { SignInChallengeName } from '@/types/api'
 
 const CHALLENGES: SignInChallengeName[] = ['otp', 'new_password', 'mfa_setup']
 
 const route = useRoute()
-const { account, loading: accountLoading, error: accountError } = useAccountFromRoute()
+const { account, projectUid, loading: accountLoading, error: accountError } = useHostedProject()
 const login = useHostedLogin()
 const { details, step, email, challenge, enrollment, recoveryCodes, notice, passwordStep } = login
 
@@ -65,7 +65,7 @@ watch(
     if (!loaded) return
     const resumeChallenge = query('challenge') as SignInChallengeName
     const resume = CHALLENGES.includes(resumeChallenge) && query('session') ? { challenge: resumeChallenge, session: query('session') } : undefined
-    login.load.run({ accountUid: loaded.uid, projectUid: String(route.params.projectUid), interaction: query('interaction') }, resume)
+    login.load.run({ accountUid: loaded.uid, projectUid: projectUid.value, interaction: query('interaction') }, resume)
   },
   { immediate: true },
 )

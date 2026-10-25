@@ -38,6 +38,14 @@ class ProjectDomain < ApplicationRecord
     created_at + VERIFY_FOR
   end
 
+  # @return [String] e.g. https://login.acme.com, the issuer and base of everything served on the domain
+  def base_url
+    return "https://#{hostname}" unless local?
+
+    port = Rails.configuration.x.custom_domain_local_port
+    "http://#{hostname}#{":#{port}" if port.present?}"
+  end
+
   # @return [Boolean] a *.localhost domain, which verifies without DNS outside production
   def local?
     hostname.end_with?(".localhost")

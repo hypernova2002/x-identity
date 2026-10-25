@@ -12,6 +12,7 @@ docker compose up --build
 | --- | --- | --- |
 | `backend` | http://localhost:3000 | Rails API |
 | `worker` | | Background and scheduled jobs (`bin/jobs`) |
+| `edge` | http://*.localhost:8080 | Serves `*.localhost` [custom domains](custom-domains.md) |
 | `web` | http://localhost:5173 | Console and hosted pages |
 | `yard` | http://localhost:8808 | Backend code reference |
 | `mailpit` | http://localhost:8025 | Every email sent locally |

@@ -14,6 +14,16 @@ export interface Account {
   updated_at: string
 }
 
+/** The project a custom domain serves, for its hosted pages. */
+export interface HostedDomain {
+  account_uid: string
+  account_slug: string
+  account_name: string
+  project_uid: string
+  project_name: string
+  issuer: string
+}
+
 export interface AccountSummary {
   uid: string
   name: string

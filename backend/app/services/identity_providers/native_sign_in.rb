@@ -7,9 +7,11 @@ module IdentityProviders
     # @param ip [String, nil] the caller's IP address, for the audit log
     # @param user_agent [String, nil]
     # @param key_set [KeySet]
-    def initialize(provider:, app_client:, ip: nil, user_agent: nil, key_set: KeySet.new)
+    # @param issuer [String, nil] the custom domain's issuer when the request arrived on one
+    def initialize(provider:, app_client:, ip: nil, user_agent: nil, key_set: KeySet.new, issuer: nil)
       @provider = provider
       @app_client = app_client
+      @issuer = issuer
       @ip = ip
       @user_agent = user_agent
       @key_set = key_set
@@ -25,7 +27,7 @@ module IdentityProviders
       end_user = UserResolver.new(provider: @provider, app_client: @app_client, ip: @ip, user_agent: @user_agent)
         .resolve(claims, name: name).end_user
 
-      Auth::SignInFlow.new(realm: @provider.project.realm, app_client: @app_client, ip: @ip, user_agent: @user_agent)
+      Auth::SignInFlow.new(realm: @provider.project.realm(issuer: @issuer), app_client: @app_client, ip: @ip, user_agent: @user_agent)
         .continue(user: end_user, amr: [ "fed" ], authenticated_at: Time.current)
     end
   end

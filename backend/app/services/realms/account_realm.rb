@@ -41,6 +41,21 @@ module Realms
       account.token_issuer
     end
 
+    # @return [nil] console tokens are only issued on x-identity's own host
+    def custom_issuer
+      nil
+    end
+
+    # @return [Array<String>]
+    def accepted_issuers
+      [ token_issuer ]
+    end
+
+    # @return [AccountRealm]
+    def with_issuer(_issuer)
+      self
+    end
+
     # @param app_client [nil] console tokens are never issued through an app client
     # @return [String]
     def audience_for(app_client)

@@ -70,7 +70,7 @@ class AppClient < ApplicationRecord
   # @param uri [String, nil]
   # @return [Boolean] whether the uri is registered, compared exactly
   def redirect_uri_allowed?(uri)
-    return uri == Oidc::Urls.hosted_page(project, "apps") if portal?
+    return ProjectEndpoints.all(project).any? { |endpoints| uri == endpoints.hosted_page("apps") } if portal?
 
     uri.present? && redirect_uris.include?(uri)
   end
@@ -78,7 +78,7 @@ class AppClient < ApplicationRecord
   # @param uri [String, nil]
   # @return [Boolean] whether the uri is a registered post-logout redirect URI, compared exactly
   def post_logout_redirect_uri_allowed?(uri)
-    return uri == Oidc::Urls.hosted_page(project, "signed-out") if portal?
+    return ProjectEndpoints.all(project).any? { |endpoints| uri == endpoints.hosted_page("signed-out") } if portal?
 
     uri.present? && post_logout_redirect_uris.include?(uri)
   end

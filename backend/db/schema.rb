@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -480,6 +480,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_000001) do
     t.bigint "app_client_id"
     t.string "scope"
     t.bigint "device_session_id"
+    t.string "issuer"
     t.index ["app_client_id"], name: "index_refresh_tokens_on_app_client_id"
     t.index ["device_session_id"], name: "index_refresh_tokens_on_device_session_id"
     t.index ["family_id"], name: "index_refresh_tokens_on_family_id"

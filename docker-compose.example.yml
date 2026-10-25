@@ -19,6 +19,8 @@ x-backend: &backend
     CONSOLE_BASE_URL: http://localhost:5173
     # Customers point their custom domains (CNAME) here.
     CUSTOM_DOMAIN_TARGET: domains.x-identity.localhost
+    # The edge service's port, for *.localhost custom domains in development.
+    CUSTOM_DOMAIN_LOCAL_PORT: "8080"
     MAIL_FROM: "x-identity <no-reply@x-identity.localhost>"
     # Development-only keys. Generate new ones (bin/rails db:encryption:init) for any other environment.
     ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: b31a5e01f80d018c57b4ef1864942804
@@ -55,8 +57,21 @@ services:
       - /app/node_modules
     environment:
       VITE_API_BASE_URL: http://localhost:3000
+      VITE_CONSOLE_URL: http://localhost:5173
     ports:
       - "5173:5173"
+
+  # Development only: serves *.localhost custom domains (e.g. http://login.acme.localhost:8080),
+  # sending each project's endpoints to the backend and its hosted pages to the web app.
+  edge:
+    image: caddy:2.8.4-alpine
+    volumes:
+      - ./edge/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - backend
+      - web
+    ports:
+      - "8080:80"
 
   yard:
     <<: *backend

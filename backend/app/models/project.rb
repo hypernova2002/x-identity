@@ -34,9 +34,10 @@ class Project < ApplicationRecord
     %w[uid name created_at]
   end
 
+  # @param issuer [String, nil] tokens' `iss` when they're issued on a custom domain
   # @return [Realms::ProjectRealm]
-  def realm
-    Realms::ProjectRealm.new(self)
+  def realm(issuer: nil)
+    Realms::ProjectRealm.new(self, issuer: issuer)
   end
 
   # The project's auth configuration, created with end-user defaults if it doesn't exist yet.

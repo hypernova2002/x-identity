@@ -8,7 +8,7 @@ module V1
             form = oauth_params(request.request_parameters)
             app_client = ::Oidc::ClientAuthentication.new(project: current_project).authenticate(authorization: request.authorization, params: form)
             rate_limit(app_client)
-            render json: ::Oidc::TokenExchange.new(project: current_project, **client_info).call(app_client: app_client, params: form)
+            render json: ::Oidc::TokenExchange.new(project: current_project, issuer: current_endpoints.issuer, **client_info).call(app_client: app_client, params: form)
           end
 
           private

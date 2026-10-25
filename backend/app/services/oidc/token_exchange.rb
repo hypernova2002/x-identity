@@ -6,10 +6,12 @@ module Oidc
     VERIFIER_FORMAT = /\A[A-Za-z0-9\-._~]{43,128}\z/
 
     # @param project [Project]
+    # @param issuer [String, nil] the custom domain's issuer when the request arrived on one, for client credentials tokens
     # @param ip [String, nil] the caller's IP address, for the audit log
     # @param user_agent [String, nil]
-    def initialize(project:, ip: nil, user_agent: nil)
+    def initialize(project:, issuer: nil, ip: nil, user_agent: nil)
       @project = project
+      @issuer = issuer
       @ip = ip
       @user_agent = user_agent
     end
@@ -27,7 +29,7 @@ module Oidc
       case grant
       when "authorization_code" then redeem_code(app_client, params)
       when "refresh_token" then refresh(app_client, params)
-      when "client_credentials" then ClientCredentials.new(project: @project, ip: @ip, user_agent: @user_agent).call(app_client: app_client, params: params)
+      when "client_credentials" then ClientCredentials.new(project: @project, issuer: @issuer, ip: @ip, user_agent: @user_agent).call(app_client: app_client, params: params)
       else raise Error.new("unsupported_grant_type", "Use the authorization_code, refresh_token or client_credentials grant.")
       end
     end
@@ -50,7 +52,7 @@ module Oidc
       device_session = DeviceSession.find_by(id: data["device_session_id"], subject: end_user)
       raise Error.new("invalid_grant", "This device has been signed out.") if device_session&.revoked?
 
-      tokens = Auth::TokenIssuer.new(realm: @project.realm, app_client: app_client).issue(
+      tokens = Auth::TokenIssuer.new(realm: @project.realm(issuer: data["issuer"]), app_client: app_client).issue(
         user: end_user, authenticated_at: Time.iso8601(data["authenticated_at"]), amr: data["amr"],
         nonce: data["nonce"], refresh: data["scope"].to_s.split(" ").include?("offline_access"), scope: data["scope"],
         device_session: device_session

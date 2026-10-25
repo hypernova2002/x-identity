@@ -2,9 +2,10 @@ import { ApiError, apiPage, apiRequest } from './http'
 import { listQuery, type ListParams } from './list'
 import { deviceSessionSchema } from './schemas'
 import type { PortalApp, PortalConfig } from '@/types/api'
+import { apiBaseUrl, projectPath } from '@/utils/customDomain'
 
-const portalPath = (accountUid: string, projectUid: string) => `/v1/accounts/${accountUid}/projects/${projectUid}/portal`
-const mePath = (accountUid: string, projectUid: string) => `/v1/accounts/${accountUid}/projects/${projectUid}/me`
+const portalPath = (accountUid: string, projectUid: string) => `${projectPath(accountUid, projectUid)}/portal`
+const mePath = (accountUid: string, projectUid: string) => `${projectPath(accountUid, projectUid)}/me`
 
 /** The app portal: its own OpenID Connect client, and the apps a signed-in end user can open. */
 export const portalService = {
@@ -14,7 +15,7 @@ export const portalService = {
   async apps(accountUid: string, projectUid: string, accessToken: string): Promise<PortalApp[]> {
     let response: Response
     try {
-      response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${portalPath(accountUid, projectUid)}/apps`, {
+      response = await fetch(`${apiBaseUrl()}${portalPath(accountUid, projectUid)}/apps`, {
         headers: { Accept: 'application/json', Authorization: `Bearer ${accessToken}` },
       })
     } catch {

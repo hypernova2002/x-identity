@@ -4,6 +4,10 @@ Rails.application.configure do
   # Jobs run in the worker service (bin/jobs), as in production.
   config.active_job.queue_adapter = :solid_queue
 
+  # Custom domains are *.localhost in development, served through the edge proxy. The default
+  # ".localhost" entry allows only one subdomain level, e.g. not login.acme.localhost.
+  config.hosts << /(?:[a-z0-9-]+\.)+localhost/
+
   # Settings specified here will take precedence over those in config/application.rb.
 
   # Make code changes take effect immediately without server restart.

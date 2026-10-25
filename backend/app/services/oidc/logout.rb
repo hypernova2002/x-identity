@@ -5,10 +5,12 @@ module Oidc
   # revocation endpoint is for.
   class Logout
     # @param project [Project]
+    # @param endpoints [ProjectEndpoints] where the request arrived, for the pages and URLs it hands out
     # @param ip [String, nil] the caller's IP address, for the audit log
     # @param user_agent [String, nil]
-    def initialize(project:, ip: nil, user_agent: nil)
+    def initialize(project:, endpoints: ProjectEndpoints.new(project), ip: nil, user_agent: nil)
       @project = project
+      @endpoints = endpoints
       @ip = ip
       @user_agent = user_agent
     end
@@ -26,12 +28,12 @@ module Oidc
 
     def destination_for(params)
       redirect_uri = params["post_logout_redirect_uri"].presence
-      return Urls.hosted_page(@project, "signed-out") unless redirect_uri
+      return @endpoints.hosted_page("signed-out") unless redirect_uri
 
       app_client = client_for(params)
       return Urls.append_query(redirect_uri, state: params["state"].presence) if app_client&.post_logout_redirect_uri_allowed?(redirect_uri)
 
-      Urls.hosted_page(@project, "error", error: "invalid_request", error_description: "You're signed out, but the app's post-logout address isn't registered.")
+      @endpoints.hosted_page("error", error: "invalid_request", error_description: "You're signed out, but the app's post-logout address isn't registered.")
     end
 
     # @return [BrowserSession, nil] the session that was ended
@@ -59,7 +61,7 @@ module Oidc
       key = @project.signing_keys.published.find_by(kid: header["kid"])
       return nil unless key
 
-      claims, = JWT.decode(id_token, key.verification_key, true, algorithm: key.algorithm, iss: @project.token_issuer, verify_iss: true, verify_expiration: false)
+      claims, = JWT.decode(id_token, key.verification_key, true, algorithm: key.algorithm, iss: ProjectEndpoints.issuers(@project), verify_iss: true, verify_expiration: false)
       Array(claims["aud"]).first
     rescue JWT::DecodeError
       nil

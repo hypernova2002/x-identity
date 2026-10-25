@@ -36,13 +36,14 @@ module IdentityProviders
     # @param redirect_uri [String] one of the app client's redirect URIs
     # @param state [String] returned to the app unchanged
     # @param code_challenge [String] base64url SHA-256 of the app's code verifier
+    # @param issuer [String, nil] the custom domain's issuer when the app started on one; its tokens carry it
     # @return [String] the provider URL to send the user to
     # @raise [ApiError] `invalid_redirect_uri` or `validation_failed`
-    def authorize(provider:, app_client:, redirect_uri:, state:, code_challenge:)
+    def authorize(provider:, app_client:, redirect_uri:, state:, code_challenge:, issuer: nil)
       raise ApiError.new(:invalid_redirect_uri) unless app_client.redirect_uri_allowed?(redirect_uri)
       raise ApiError.validation(code_challenge: "must be the base64url SHA-256 of the code verifier") unless code_challenge.match?(CODE_CHALLENGE_FORMAT)
 
-      provider_url(provider, "app_client_id" => app_client.id, "redirect_uri" => redirect_uri, "state" => state, "code_challenge" => code_challenge)
+      provider_url(provider, "app_client_id" => app_client.id, "redirect_uri" => redirect_uri, "state" => state, "code_challenge" => code_challenge, "issuer" => issuer)
     end
 
     # @param provider [IdentityProvider]
@@ -108,7 +109,7 @@ module IdentityProviders
       end_user = record.subject
       raise ApiError.new(:user_disabled, message: DISABLED_MESSAGE) unless end_user.active?
 
-      Auth::SignInFlow.new(realm: @project.realm, app_client: app_client, ip: @ip, user_agent: @user_agent)
+      Auth::SignInFlow.new(realm: @project.realm(issuer: data["issuer"]), app_client: app_client, ip: @ip, user_agent: @user_agent)
         .continue(user: end_user, amr: [ "fed" ], authenticated_at: Time.zone.parse(data["authenticated_at"]))
     end
 
@@ -157,7 +158,7 @@ module IdentityProviders
         replace: false,
         data: {
           "app_client_id" => app_client.id, "redirect_uri" => data["redirect_uri"], "code_challenge" => data["code_challenge"],
-          "identity_provider_id" => provider.id, "authenticated_at" => Time.current.utc.iso8601(6)
+          "identity_provider_id" => provider.id, "authenticated_at" => Time.current.utc.iso8601(6), "issuer" => data["issuer"]
         }
       )
       Oidc::Urls.append_query(data["redirect_uri"], code: app_code, state: data["state"])
@@ -173,6 +174,9 @@ module IdentityProviders
         return Oidc::Urls.hosted_page(@project, "error", error: "invalid_request", error_description: Oidc::Authorization::EXPIRED)
       end
 
+      # Back to the hosted page on the domain the sign-in started on.
+      endpoints = ProjectEndpoints.for_issuer(@project, interaction.data["issuer"])
+
       # SAML interactions have no app client; the interaction itself names the app.
       app_client = interaction.subject if interaction.subject.is_a?(AppClient)
 
@@ -182,9 +186,9 @@ module IdentityProviders
           .continue(user: end_user, amr: [ "fed" ], authenticated_at: Time.current)
         return Oidc::Authorization.new(project: @project, ip: @ip, user_agent: @user_agent).complete(interaction, result.completion) if result.completed?
 
-        Oidc::Urls.hosted_page(@project, "login", interaction: data["interaction_token"], challenge: result.challenge, session: result.session)
+        endpoints.hosted_page("login", interaction: data["interaction_token"], challenge: result.challenge, session: result.session)
       rescue ApiError => failure
-        Oidc::Urls.hosted_page(@project, "login", interaction: data["interaction_token"], error: failure.code, error_description: failure.message)
+        endpoints.hosted_page("login", interaction: data["interaction_token"], error: failure.code, error_description: failure.message)
       end
     end
 

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { apiBaseUrl } from '@/utils/customDomain'
+
 export interface ApiErrorDetail {
   field: string
   message: string
@@ -84,7 +86,7 @@ async function parseJson(response: Response): Promise<unknown> {
 }
 
 function buildUrl(path: string, query: RequestOptions['query']): string {
-  const url = `${import.meta.env.VITE_API_BASE_URL}${path}`
+  const url = `${apiBaseUrl()}${path}`
   if (!query) return url
 
   const search = new URLSearchParams()

@@ -1,8 +1,9 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 import { projectRoutes } from './projectRoutes'
 import { useSessionStore } from '@/stores/session'
 import type { AuthSettingsSection } from '@/utils/authSettings'
+import { onCustomDomain } from '@/utils/customDomain'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -21,9 +22,21 @@ declare module 'vue-router' {
   }
 }
 
+/** Hosted login and the app portal, under /auth/:slug/:projectUid here, or at the root of a custom domain. */
+const hostedPages: RouteRecordRaw[] = [
+  { path: 'login', name: 'hosted-login', component: () => import('../views/hosted/HostedLoginView.vue') },
+  { path: 'error', name: 'hosted-error', component: () => import('../views/hosted/HostedErrorView.vue') },
+  { path: 'signed-out', name: 'hosted-signed-out', component: () => import('../views/hosted/HostedSignedOutView.vue') },
+  { path: 'apps', name: 'hosted-portal', component: () => import('../views/hosted/HostedPortalView.vue') },
+]
+
+const notFound: RouteRecordRaw = { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('../views/NotFoundView.vue') }
+
+const customDomainRoutes: RouteRecordRaw[] = [{ path: '/', component: () => import('../layouts/HostedLayout.vue'), children: hostedPages }, notFound]
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
+  routes: onCustomDomain() ? customDomainRoutes : [
     { path: '/', redirect: '/console' },
     {
       path: '/',
@@ -50,12 +63,7 @@ const router = createRouter({
     {
       path: '/auth/:slug/:projectUid',
       component: () => import('../layouts/HostedLayout.vue'),
-      children: [
-        { path: 'login', name: 'hosted-login', component: () => import('../views/hosted/HostedLoginView.vue') },
-        { path: 'error', name: 'hosted-error', component: () => import('../views/hosted/HostedErrorView.vue') },
-        { path: 'signed-out', name: 'hosted-signed-out', component: () => import('../views/hosted/HostedSignedOutView.vue') },
-        { path: 'apps', name: 'hosted-portal', component: () => import('../views/hosted/HostedPortalView.vue') },
-      ],
+      children: hostedPages,
     },
     {
       path: '/console',
@@ -91,11 +99,7 @@ const router = createRouter({
         { path: 'security', name: 'security', component: () => import('../views/console/SecurityView.vue'), meta: { navItem: 'security' } },
       ],
     },
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'not-found',
-      component: () => import('../views/NotFoundView.vue'),
-    },
+    notFound,
   ],
 })
 

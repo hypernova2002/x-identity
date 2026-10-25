@@ -19,7 +19,7 @@ module V1
 
             url = browser_sign_in.authorize(
               provider: enabled_provider, app_client: app_client,
-              **input.slice(:redirect_uri, :state, :code_challenge)
+              **input.slice(:redirect_uri, :state, :code_challenge), issuer: current_endpoints.issuer
             )
             redirect_to url, allow_other_host: true
           end
@@ -42,7 +42,7 @@ module V1
           def id_token
             app_client, input = parse_client_request(::EndUserAuth::ProviderIdTokenRequest)
             provider = current_project.identity_providers.enabled.where.not(kind: "saml").find_by_uid!(params[:uid])
-            result = ::IdentityProviders::NativeSignIn.new(provider: provider, app_client: app_client, **client_info).call(**input)
+            result = ::IdentityProviders::NativeSignIn.new(provider: provider, app_client: app_client, issuer: current_endpoints.issuer, **client_info).call(**input)
             render json: SignInResultSerializer.new(result).serializable_hash
           end
 

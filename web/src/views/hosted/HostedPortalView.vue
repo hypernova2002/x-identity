@@ -7,13 +7,15 @@ import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import DeviceSessionTable from '@/components/sessions/DeviceSessionTable.vue'
-import { useAccountFromRoute } from '@/composables/useAccountFromRoute'
+import { useHostedProject } from '@/composables/useHostedProject'
 import { usePortal } from '@/composables/usePortal'
+import { onCustomDomain } from '@/utils/customDomain'
 
 const route = useRoute()
 const router = useRouter()
-const { account, loading: accountLoading, error: accountError } = useAccountFromRoute()
-const portal = usePortal(String(route.params.projectUid))
+const { account, loading: accountLoading, error: accountError } = useHostedProject()
+// Names the portal's session storage; a custom domain's storage is its own already.
+const portal = usePortal(onCustomDomain() ? window.location.host : String(route.params.projectUid))
 const { apps, email, accessToken } = portal
 
 const text = (key: string) => (typeof route.query[key] === 'string' ? (route.query[key] as string) : undefined)

@@ -11,17 +11,17 @@ module V1
         end
 
         def sso
-          deliver ::SamlIdp::SignOn.new(project: current_project, **client_info)
+          deliver ::SamlIdp::SignOn.new(project: current_project, endpoints: current_endpoints, **client_info)
             .sso(params: saml_params, raw_query: request.query_string, binding: binding_used, session_token: session_token)
         end
 
         def launch
           app = current_project.saml_apps.enabled.find_by_uid!(params[:uid])
-          deliver ::SamlIdp::SignOn.new(project: current_project, **client_info).launch(app, session_token: session_token)
+          deliver ::SamlIdp::SignOn.new(project: current_project, endpoints: current_endpoints, **client_info).launch(app, session_token: session_token)
         end
 
         def slo
-          url = ::SamlIdp::Logout.new(project: current_project, **client_info)
+          url = ::SamlIdp::Logout.new(project: current_project, endpoints: current_endpoints, **client_info)
             .receive(params: saml_params, raw_query: request.query_string, binding: binding_used, session_token: session_token)
           clear_session if params[:SAMLRequest].present?
           redirect_to url, allow_other_host: true, status: :see_other

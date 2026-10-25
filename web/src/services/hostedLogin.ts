@@ -1,5 +1,6 @@
 import { apiRequest } from './http'
 import type { HostedLoginDetails, HostedSignInResult, MfaEnrollment, SignInChallengeName } from '@/types/api'
+import { apiBaseUrl, projectPath } from '@/utils/customDomain'
 
 /** One sign-in on a project's hosted login page, identified by its interaction. */
 export interface InteractionRef {
@@ -22,7 +23,7 @@ export interface HostedSignUpInput {
 }
 
 const interactionPath = (ref: InteractionRef, action = '') =>
-  `/v1/accounts/${ref.accountUid}/projects/${ref.projectUid}/oauth2/interactions/${encodeURIComponent(ref.interaction)}${action ? `/${action}` : ''}`
+  `${projectPath(ref.accountUid, ref.projectUid)}/oauth2/interactions/${encodeURIComponent(ref.interaction)}${action ? `/${action}` : ''}`
 
 export const hostedLoginService = {
   details: (ref: InteractionRef) => apiRequest<HostedLoginDetails>(interactionPath(ref)),
@@ -56,5 +57,5 @@ export const hostedLoginService = {
 
   /** A browser navigation, not an API call: the backend redirects to the provider. */
   providerUrl: (ref: InteractionRef, providerUid: string) =>
-    `${import.meta.env.VITE_API_BASE_URL}${interactionPath(ref, `providers/${encodeURIComponent(providerUid)}`)}`,
+    `${apiBaseUrl()}${interactionPath(ref, `providers/${encodeURIComponent(providerUid)}`)}`,
 }

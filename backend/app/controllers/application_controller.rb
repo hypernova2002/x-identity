@@ -40,6 +40,11 @@ class ApplicationController < ActionController::API
     expires_in max_age, public: true, stale_while_revalidate: 1.minute
   end
 
+  # @return [ProjectDomain, nil] the verified custom domain the request arrived on
+  def custom_domain
+    CustomDomainConstraint.domain(request)
+  end
+
   # Who is calling, for the audit log. Passed to services as plain keyword arguments.
   # @return [Hash{Symbol => String, nil}]
   def client_info

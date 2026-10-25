@@ -22,7 +22,7 @@ module Auth
         key.verification_key,
         true,
         algorithm: key.algorithm,
-        iss: @realm.token_issuer,
+        iss: @realm.accepted_issuers,
         verify_iss: true,
         required_claims: REQUIRED_CLAIMS
       )
