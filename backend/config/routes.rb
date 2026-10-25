@@ -89,6 +89,11 @@ Rails.application.routes.draw do
       get "sessions", to: "sessions#index"
       delete "sessions", to: "sessions#destroy_others"
       delete "sessions/:uid", to: "sessions#destroy", as: :session
+      get "passkeys", to: "passkeys#index"
+      post "passkeys/options", to: "passkeys#options"
+      post "passkeys", to: "passkeys#create"
+      patch "passkeys/:uid", to: "passkeys#update", as: :passkey
+      delete "passkeys/:uid", to: "passkeys#destroy"
     end
   end
 
@@ -137,6 +142,11 @@ Rails.application.routes.draw do
           get "sessions", to: "sessions#index"
           delete "sessions", to: "sessions#destroy_others"
           delete "sessions/:uid", to: "sessions#destroy", as: :session
+          get "passkeys", to: "passkeys#index"
+          post "passkeys/options", to: "passkeys#options"
+          post "passkeys", to: "passkeys#create"
+          patch "passkeys/:uid", to: "passkeys#update", as: :passkey
+          delete "passkeys/:uid", to: "passkeys#destroy"
         end
 
         get "auth-configuration", to: "auth_configurations#show"

@@ -84,7 +84,8 @@ reloading the tab can only use the browser's own prompt.
 | Audit log | Account-level events. | Account admins |
 
 **My security** lets each console user change their name, email and password, set up or turn off
-MFA, regenerate recovery codes, and see **where they're signed in**: each device with its approximate
+MFA, regenerate recovery codes, add, rename and remove [passkeys](passkeys.md) (when the account
+turns them on), and see **where they're signed in**: each device with its approximate
 location, IP address, sign-in method and last activity, with sign-out per device or for every other
 device. End users get the same list on the app portal.
 

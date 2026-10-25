@@ -119,7 +119,7 @@ module SamlIdp
     end
 
     def authn_context(amr)
-      return MFA_CONTEXT if amr.include?("otp")
+      return MFA_CONTEXT if Auth::Factors.mfa?(amr)
       return PASSWORD_CONTEXT if amr.include?("pwd")
 
       UNSPECIFIED_CONTEXT

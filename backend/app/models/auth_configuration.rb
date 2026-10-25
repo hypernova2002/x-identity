@@ -26,8 +26,11 @@ class AuthConfiguration < ApplicationRecord
   belongs_to :owner, polymorphic: true
 
   enum :mfa_requirement, { off: "off", optional: "optional", required: "required" }, prefix: :mfa, validate: true
+  # Whether users can add and sign in with passkeys. A project's also need its verified custom domain.
+  enum :passkeys, { off: "off", optional: "optional" }, prefix: true, validate: true
 
   attribute :mfa_requirement, default: "optional"
+  attribute :passkeys, default: "off"
   attribute :require_email_verification, default: false
   attribute :notify_new_devices, default: true
   attribute :password_min_length, default: 12

@@ -1,7 +1,8 @@
 import { apiPage, apiRequest } from './http'
 import { LOOKUP, listQuery, type ListParams } from './list'
 import { auditEventSchema, deviceSessionSchema, invitationSchema, projectMemberSchema, projectSchema, userSchema } from './schemas'
-import type { Account, AccountRole, AuthConfiguration, DeletedProject, Invitation, Me, MfaEnrollment, Project, ProjectMember, ProjectRole, ProjectSettings, User, UserStats, UserStatus } from '@/types/api'
+import type { Account, AccountRole, AuthConfiguration, DeletedProject, Invitation, Me, MfaEnrollment, Project, ProjectMember, Passkey, PasskeyRegistrationOptions, ProjectRole, ProjectSettings, User, UserStats, UserStatus } from '@/types/api'
+import type { PasskeyRegistrationJSON } from '@/utils/webauthn'
 
 const base = (accountUid: string) => `/v1/accounts/${accountUid}`
 const authenticated = { authenticated: true } as const
@@ -45,6 +46,20 @@ export const meService = {
       method: 'DELETE',
       body: { current_password: currentPassword, code },
     }),
+
+  listPasskeys: (accountUid: string) => apiRequest<Passkey[]>(`${base(accountUid)}/me/passkeys`, authenticated),
+
+  passkeyOptions: (accountUid: string) =>
+    apiRequest<PasskeyRegistrationOptions>(`${base(accountUid)}/me/passkeys/options`, { ...authenticated, method: 'POST' }),
+
+  addPasskey: (accountUid: string, registrationId: string, credential: PasskeyRegistrationJSON) =>
+    apiRequest<Passkey>(`${base(accountUid)}/me/passkeys`, { ...authenticated, method: 'POST', body: { registration_id: registrationId, credential } }),
+
+  renamePasskey: (accountUid: string, passkeyUid: string, name: string) =>
+    apiRequest<Passkey>(`${base(accountUid)}/me/passkeys/${passkeyUid}`, { ...authenticated, method: 'PATCH', body: { name } }),
+
+  removePasskey: (accountUid: string, passkeyUid: string) =>
+    apiRequest<null>(`${base(accountUid)}/me/passkeys/${passkeyUid}`, { ...authenticated, method: 'DELETE' }),
 
   regenerateRecoveryCodes: (accountUid: string, code: string) =>
     apiRequest<{ recovery_codes: string[] }>(`${base(accountUid)}/me/recovery-codes`, { ...authenticated, method: 'POST', body: { code } }),

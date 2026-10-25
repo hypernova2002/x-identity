@@ -60,7 +60,7 @@ module Auth
       return :app_access_denied if user.is_a?(EndUser) && @app_client && !Apps::Access.allowed?(@app_client, user)
       return :session_expired if record.expired?
 
-      if idle?(record) || (@configuration.mfa_required? && !record.amr.include?("otp"))
+      if idle?(record) || (@configuration.mfa_required? && !Factors.mfa?(record.amr))
         RefreshToken.revoke_family!(record.family_id)
         return idle?(record) ? :session_expired : :mfa_required
       end

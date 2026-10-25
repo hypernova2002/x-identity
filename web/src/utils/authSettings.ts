@@ -7,6 +7,7 @@ export type AuthSettingsField = Exclude<keyof AuthConfiguration, 'updated_at'>
 export const AUTH_SETTINGS_FIELDS: Record<AuthSettingsSection, readonly AuthSettingsField[]> = {
   'sign-in': [
     'require_email_verification',
+    'passkeys',
     'email_code_max_attempts',
     'email_code_max_failures_per_email',
     'email_code_max_failures_per_code',

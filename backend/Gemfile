@@ -63,3 +63,5 @@ end
 
 gem "device_detector", "~> 1.1"
 gem "maxmind-db", "~> 1.5"
+
+gem "webauthn", "~> 3.5"

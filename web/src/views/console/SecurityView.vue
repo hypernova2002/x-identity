@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import RecoveryCodesList from '@/components/auth/RecoveryCodesList.vue'
@@ -9,13 +10,16 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import PageHeader from '@/components/console/PageHeader.vue'
+import PasskeysCard from '@/components/security/PasskeysCard.vue'
 import DeviceSessionTable from '@/components/sessions/DeviceSessionTable.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { meService } from '@/services/account'
 import type { ListParams } from '@/services/list'
 import { useSessionStore } from '@/stores/session'
 import type { DeviceSession, MfaEnrollment } from '@/types/api'
+import type { PasskeyRegistrationJSON } from '@/utils/webauthn'
 
+const router = useRouter()
 const session = useSessionStore()
 const { account, me } = storeToRefs(session)
 
@@ -36,6 +40,21 @@ const enrollmentCode = ref('')
 const recoveryCodes = ref<string[]>([])
 const disablePassword = ref('')
 const mfaCode = ref('')
+
+const passkeyApi = {
+  list: () => meService.listPasskeys(account.value!.uid),
+  options: () => meService.passkeyOptions(account.value!.uid),
+  add: (registrationId: string, credential: PasskeyRegistrationJSON) => meService.addPasskey(account.value!.uid, registrationId, credential),
+  rename: (passkeyUid: string, name: string) => meService.renamePasskey(account.value!.uid, passkeyUid, name),
+  remove: (passkeyUid: string) => meService.removePasskey(account.value!.uid, passkeyUid),
+}
+
+/** Adding a passkey needs a recent sign-in: sign in again, then come back here. */
+async function signInAgain() {
+  const slug = account.value?.slug
+  await session.signOut()
+  await router.push({ name: 'sign-in', params: { slug }, query: { redirect: '/console/security' } })
+}
 
 const fetchSessions = (params: ListParams) => meService.listSessions(account.value!.uid, params)
 const signOutSession = (deviceSession: DeviceSession) => meService.signOutSession(account.value!.uid, deviceSession.uid)
@@ -227,6 +246,8 @@ const regenerateCodes = useAsyncAction(async () => {
       </div>
     </form>
   </BaseCard>
+
+  <PasskeysCard v-if="account" :available="me?.passkeys_available ?? false" v-bind="passkeyApi" @reauthenticate="signInAgain" />
 
   <BaseCard v-if="account" title="Where you're signed in" description="Devices signed in to the console with your account. Sign out any you don't recognise, then change your password.">
     <DeviceSessionTable :fetch-page="fetchSessions" :sign-out="signOutSession" :sign-out-others="signOutOtherSessions" />

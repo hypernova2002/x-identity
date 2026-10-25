@@ -8,10 +8,10 @@ import BaseCheckbox from '@/components/base/BaseCheckbox.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
-import type { AuthConfiguration, MfaRequirement, OtpType, SigningAlgorithm } from '@/types/api'
+import type { AuthConfiguration, MfaRequirement, OtpType, PasskeysSetting, SigningAlgorithm } from '@/types/api'
 import { AUTH_SETTINGS_FIELDS, EMAIL_CODE_FIELDS, pickFields, type AuthSettingsField, type AuthSettingsSection } from '@/utils/authSettings'
 import { formatDuration } from '@/utils/format'
-import { mfaRequirementOptions, otpMethodOptions, signingAlgorithmOptions } from '@/utils/options'
+import { mfaRequirementOptions, otpMethodOptions, passkeysOptions, signingAlgorithmOptions } from '@/utils/options'
 
 type NumberField =
   | 'password_min_length'
@@ -59,6 +59,7 @@ const props = withDefaults(
 const dirty = defineModel<boolean>('dirty', { default: false })
 
 const mfaRequirement = ref<MfaRequirement>('optional')
+const passkeys = ref<PasskeysSetting>('off')
 const signingAlgorithm = ref<SigningAlgorithm>('ES256')
 const flags = ref({
   require_email_verification: false,
@@ -106,6 +107,7 @@ const visibleFields = computed<AuthSettingsField[]>(() =>
 
 function apply(configuration: AuthConfiguration) {
   mfaRequirement.value = configuration.mfa_requirement
+  passkeys.value = configuration.passkeys
   otpMethod.value = configuration.otp_method
   signingAlgorithm.value = configuration.signing_algorithm
   flags.value = {
@@ -138,6 +140,7 @@ function numberValue(field: NumberField): number | null {
 function currentValues(): Partial<AuthConfiguration> {
   const values: Partial<AuthConfiguration> = {
     mfa_requirement: mfaRequirement.value,
+    passkeys: passkeys.value,
     otp_method: otpMethod.value,
     signing_algorithm: signingAlgorithm.value,
     ...flags.value,
@@ -149,7 +152,7 @@ function currentValues(): Partial<AuthConfiguration> {
 }
 
 watch(
-  [mfaRequirement, otpMethod, signingAlgorithm, flags, numbers],
+  [mfaRequirement, passkeys, otpMethod, signingAlgorithm, flags, numbers],
   () => {
     const current = pickFields(currentValues(), visibleFields.value)
     dirty.value = JSON.stringify(current) !== JSON.stringify(lastSaved.value)
@@ -238,6 +241,20 @@ onMounted(() => load.run())
             />
           </div>
         </details>
+      </BaseCard>
+
+      <BaseCard title="Passkeys">
+        <BaseSelect
+          v-model="passkeys"
+          label="Passkeys"
+          :options="passkeysOptions"
+          :hint="
+            forProject
+              ? 'Users add passkeys from the app portal, and sign in with them on hosted login. Needs the project\'s custom domain, which passkeys belong to.'
+              : 'Console users add passkeys on My security, and sign in with them. A passkey counts as multi-factor authentication.'
+          "
+          :error="save.error.value?.fieldError('passkeys')"
+        />
       </BaseCard>
     </template>
 

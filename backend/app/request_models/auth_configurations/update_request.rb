@@ -13,6 +13,8 @@ module AuthConfigurations
     attribute? :mfa_requirement, T::String.enum(*AuthConfiguration.mfa_requirements.keys)
     attribute? :require_email_verification, T::Bool
     attribute? :notify_new_devices, T::Bool
+    attribute? :passkeys, T::String.enum(*AuthConfiguration.passkeys.keys)
+      .meta(description: "off or optional: whether users can add passkeys and sign in with them. Projects also need a verified custom domain.")
       .meta(description: "Email users when they sign in from a device and country they haven't used in 90 days.")
     attribute? :password_min_length, T::Integer.constrained(gteq: 8, lteq: AuthConfiguration::PASSWORD_MAX_LENGTH)
     attribute? :password_require_uppercase, T::Bool

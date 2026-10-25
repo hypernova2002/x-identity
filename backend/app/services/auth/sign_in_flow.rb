@@ -64,7 +64,7 @@ module Auth
     end
 
     def next_challenge(user, amr)
-      return "otp" if !@configuration.mfa_off? && user.mfa_enabled? && !amr.include?("otp")
+      return "otp" if !@configuration.mfa_off? && user.mfa_enabled? && !Factors.mfa?(amr)
       return "new_password" if amr.include?("pwd") && user.password_expired?(@configuration)
       return "mfa_setup" if @configuration.mfa_required? && !user.mfa_enabled?
 

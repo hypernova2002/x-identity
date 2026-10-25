@@ -6,6 +6,7 @@ import type {
   IdentityProviderKind,
   MfaRequirement,
   OtpType,
+  PasskeysSetting,
   ProjectRole,
   SigningAlgorithm,
   UserStatus,
@@ -34,6 +35,11 @@ export const mfaRequirementOptions: SelectOption<MfaRequirement>[] = [
   { label: 'Off — never ask for a code', value: 'off' },
   { label: 'Optional — users choose', value: 'optional' },
   { label: 'Required — everyone must use MFA', value: 'required' },
+]
+
+export const passkeysOptions: SelectOption<PasskeysSetting>[] = [
+  { label: 'Off', value: 'off' },
+  { label: 'Optional: users can add passkeys', value: 'optional' },
 ]
 
 export const signingAlgorithmOptions: SelectOption<SigningAlgorithm>[] = [

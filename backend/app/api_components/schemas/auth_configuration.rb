@@ -12,6 +12,7 @@ class Schemas::AuthConfiguration
     properties: {
       mfa_requirement: { type: :string, enum: AuthConfiguration.mfa_requirements.keys },
       require_email_verification: { type: :boolean },
+      passkeys: { type: :string, enum: AuthConfiguration.passkeys.keys, description: "Whether users can add passkeys and sign in with them. Projects also need a verified custom domain." },
       notify_new_devices: { type: :boolean, description: "Email users when they sign in from a device and country they haven't used in 90 days." },
       password_min_length: { type: :integer, minimum: 8, maximum: AuthConfiguration::PASSWORD_MAX_LENGTH },
       password_require_uppercase: { type: :boolean },

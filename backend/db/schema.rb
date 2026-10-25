@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -171,6 +171,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_000003) do
     t.boolean "notify_new_devices", default: true, null: false
     t.integer "client_secret_rotation_overlap_seconds", default: 604800, null: false
     t.integer "token_requests_per_minute", default: 120, null: false
+    t.string "passkeys", default: "off", null: false
     t.index ["owner_type", "owner_id"], name: "index_auth_configurations_on_owner_type_and_owner_id", unique: true
   end
 
@@ -289,12 +290,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_000003) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "failed_mfa_attempts", default: 0, null: false
+    t.string "webauthn_id"
     t.index ["email"], name: "index_end_users_on_email_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["name"], name: "index_end_users_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["project_id", "created_at", "id"], name: "index_end_users_on_project_id_and_created_at_and_id"
     t.index ["project_id", "email"], name: "index_end_users_on_project_id_and_email", unique: true
     t.index ["uid"], name: "index_end_users_on_uid", unique: true
     t.index ["uid"], name: "index_end_users_on_uid_trigram", opclass: :gin_trgm_ops, using: :gin
+    t.index ["webauthn_id"], name: "index_end_users_on_webauthn_id", unique: true
   end
 
   create_table "group_memberships", force: :cascade do |t|
@@ -706,8 +709,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_000003) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "failed_mfa_attempts", default: 0, null: false
+    t.string "webauthn_id"
     t.index ["account_id", "email"], name: "index_users_on_account_id_and_email", unique: true
     t.index ["uid"], name: "index_users_on_uid", unique: true
+    t.index ["webauthn_id"], name: "index_users_on_webauthn_id", unique: true
+  end
+
+  create_table "webauthn_credentials", force: :cascade do |t|
+    t.string "uid", null: false
+    t.string "subject_type", null: false
+    t.bigint "subject_id", null: false
+    t.string "external_id", null: false
+    t.text "public_key", null: false
+    t.bigint "sign_count", default: 0, null: false
+    t.jsonb "transports", default: [], null: false
+    t.string "aaguid"
+    t.boolean "backup_eligible", default: false, null: false
+    t.boolean "backed_up", default: false, null: false
+    t.string "rp_id", null: false
+    t.string "name", null: false
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["external_id"], name: "index_webauthn_credentials_on_external_id", unique: true
+    t.index ["subject_type", "subject_id"], name: "index_webauthn_credentials_on_subject"
+    t.index ["uid"], name: "index_webauthn_credentials_on_uid", unique: true
   end
 
   add_foreign_key "api_grants", "api_resources", on_delete: :cascade

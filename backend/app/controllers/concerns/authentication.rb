@@ -32,6 +32,11 @@ module Authentication
     @current_user
   end
 
+  # @return [Time] when the user last signed in, from the access token
+  def authenticated_at
+    Time.zone.at(@access_token_claims["auth_time"])
+  end
+
   # @return [String] the refresh token family behind the current access token
   def current_session_id
     @access_token_claims["sid"]

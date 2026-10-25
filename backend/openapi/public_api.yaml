@@ -263,6 +263,10 @@ paths:
                   type: integer
                   minimum: 30
                   maximum: 900
+                passkeys:
+                  enum:
+                  - 'off'
+                  - optional
                 password_max_age_seconds:
                   anyOf:
                   - type: 'null'
@@ -1230,6 +1234,161 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/passkeys":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List my passkeys
+      tags:
+      - My security
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: passkeys, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Passkey"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Save the passkey the browser created
+      tags:
+      - My security
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                credential:
+                  type: object
+                name:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    maxLength: 60
+                registration_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - credential
+              - registration_id
+              additionalProperties: false
+      responses:
+        '201':
+          description: saved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Passkey"
+        '400':
+          description: the passkey couldn't be verified, e.g. the user didn't unlock
+            it, or the registration was used or expired
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/me/passkeys/options":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Start adding a passkey
+      tags:
+      - My security
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: options for navigator.credentials.create, and the registration
+            to send back
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PasskeyRegistrationOptions"
+        '403':
+          description: the last sign-in was more than 15 minutes ago
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: passkeys aren't turned on for console users
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/passkeys/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Rename a passkey
+      tags:
+      - My security
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+              type: object
+              unevaluatedProperties: false
+              required:
+              - name
+              additionalProperties: false
+      responses:
+        '200':
+          description: renamed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Passkey"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Remove a passkey
+      tags:
+      - My security
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/me/password":
@@ -6214,6 +6373,7 @@ components:
       - mfa_requirement
       - require_email_verification
       - notify_new_devices
+      - passkeys
       - password_min_length
       - password_require_uppercase
       - password_require_lowercase
@@ -6248,6 +6408,13 @@ components:
           - required
         require_email_verification:
           type: boolean
+        passkeys:
+          type: string
+          enum:
+          - 'off'
+          - optional
+          description: Whether users can add passkeys and sign in with them. Projects
+            also need a verified custom domain.
         notify_new_devices:
           type: boolean
           description: Email users when they sign in from a device and country they
@@ -6659,6 +6826,7 @@ components:
         - `mfa_required` (401): Multi-factor authentication is required. Sign in again to continue.
         - `invalid_challenge` (401): The sign-in session is invalid or has expired. Start signing in again.
         - `invalid_otp` (401): The verification code is incorrect.
+        - `invalid_passkey` (400): The passkey couldn't be verified. Try again.
         - `invalid_client` (401): The app client is unknown, disabled, or its secret is wrong.
         - `invalid_code` (400): The code is incorrect or has expired. Request a new one.
         - `invalid_redirect_uri` (400): The redirect URI isn't registered for this app client.
@@ -6669,6 +6837,7 @@ components:
         - `forbidden` (403): You do not have permission to perform this action.
         - `email_not_verified` (403): Verify your email address before signing in.
         - `mfa_required_by_policy` (403): Multi-factor authentication is required by your account's policy and can't be turned off.
+        - `reauthentication_required` (403): Sign in again to continue: this needs a sign-in in the last 15 minutes.
         - `user_disabled` (403): Too many failed verification attempts. This account has been disabled; ask an administrator to re-enable it.
         - `sign_up_disabled` (403): Self sign-up is turned off for this project.
         - `app_access_denied` (403): You don't have access to this app. Ask an administrator to give you access.
@@ -6679,6 +6848,7 @@ components:
         - `conflict` (409): The request conflicts with the current state of the resource.
         - `email_taken` (409): A user with this email address already exists in this account.
         - `mfa_already_enabled` (409): Multi-factor authentication is already turned on.
+        - `passkeys_unavailable` (409): Passkeys aren't turned on here.
         - `last_owner` (409): An account must keep at least one active owner.
         - `identity_conflict` (409): This user is already linked to a different account at this identity provider.
         - `last_sign_in_method` (409): This is the user's only way to sign in, so it can't be removed.
@@ -6708,6 +6878,7 @@ components:
               - mfa_required
               - invalid_challenge
               - invalid_otp
+              - invalid_passkey
               - invalid_client
               - invalid_code
               - invalid_redirect_uri
@@ -6718,6 +6889,7 @@ components:
               - forbidden
               - email_not_verified
               - mfa_required_by_policy
+              - reauthentication_required
               - user_disabled
               - sign_up_disabled
               - app_access_denied
@@ -6728,6 +6900,7 @@ components:
               - conflict
               - email_taken
               - mfa_already_enabled
+              - passkeys_unavailable
               - last_owner
               - identity_conflict
               - last_sign_in_method
@@ -7031,6 +7204,7 @@ components:
       - updated_at
       - password_changed_at
       - otp_method
+      - passkeys_available
       - account
       properties:
         uid:
@@ -7076,6 +7250,9 @@ components:
           - totp
           - hotp
           description: The method used when setting up MFA.
+        passkeys_available:
+          type: boolean
+          description: Whether the account lets console users add passkeys.
         account:
           "$ref": "#/components/schemas/Account"
       title: Me
@@ -7112,6 +7289,49 @@ components:
           type: string
           description: The provisioning URI as an SVG QR code.
       title: MfaEnrollment
+    Passkey:
+      type: object
+      required:
+      - uid
+      - name
+      - created_at
+      - last_used_at
+      - domain
+      - synced
+      properties:
+        uid:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        domain:
+          type: string
+          description: The domain the passkey belongs to; it only works there.
+        synced:
+          type: boolean
+          description: Saved in a password manager that syncs it across devices, rather
+            than kept on one device or security key.
+      title: Passkey
+    PasskeyRegistrationOptions:
+      type: object
+      required:
+      - registration_id
+      - public_key
+      properties:
+        registration_id:
+          type: string
+          description: Send back with the new passkey. Valid for 5 minutes, once.
+        public_key:
+          type: object
+          description: PublicKeyCredentialCreationOptions, as JSON, for navigator.credentials.create.
+      title: PasskeyRegistrationOptions
     Project:
       type: object
       required:

@@ -9,6 +9,7 @@ module Authenticatable
     has_many :one_time_tokens, as: :subject, dependent: :delete_all
     has_many :recovery_codes, as: :subject, dependent: :delete_all
     has_one :otp_credential, as: :subject, dependent: :delete
+    has_many :webauthn_credentials, as: :subject, dependent: :delete_all
 
     enum :status, { active: "active", disabled: "disabled" }, validate: true, default: "active"
 
@@ -68,13 +69,20 @@ module Authenticatable
     end
   end
 
-  # Turns off MFA and deletes the user's recovery codes.
+  # Turns off MFA, and deletes the user's recovery codes and passkeys.
   def remove_mfa!
     transaction do
       OtpCredential.where(subject: self).delete_all
       RecoveryCode.where(subject: self).delete_all
+      WebauthnCredential.where(subject: self).delete_all
     end
     association(:otp_credential).reset
+  end
+
+  # @return [String] the opaque, random user handle stored in the user's passkeys, created on first use
+  def webauthn_id!
+    update!(webauthn_id: WebAuthn.generate_user_id) if webauthn_id.nil?
+    webauthn_id
   end
 
   # Counts a wrong TOTP or recovery code. Safe against concurrent requests.

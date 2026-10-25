@@ -1,3 +1,5 @@
+import type { PasskeyCreationOptionsJSON } from '@/utils/webauthn'
+
 export type AccountRole = 'owner' | 'admin' | 'member'
 export type UserStatus = 'active' | 'disabled'
 export type ProjectRole = 'admin' | 'developer' | 'viewer'
@@ -24,6 +26,8 @@ export interface HostedDomain {
   issuer: string
 }
 
+export type PasskeysSetting = 'off' | 'optional'
+
 export interface AccountSummary {
   uid: string
   name: string
@@ -46,7 +50,25 @@ export interface User {
 export interface Me extends User {
   password_changed_at: string
   otp_method: OtpType
+  /** Whether the account lets console users add passkeys. */
+  passkeys_available: boolean
   account: Account
+}
+
+export interface Passkey {
+  uid: string
+  name: string
+  created_at: string
+  last_used_at: string | null
+  /** The domain it belongs to; it only works there. */
+  domain: string
+  /** Saved in a password manager that syncs it, rather than on one device or security key. */
+  synced: boolean
+}
+
+export interface PasskeyRegistrationOptions {
+  registration_id: string
+  public_key: PasskeyCreationOptionsJSON
 }
 
 export interface TokenSet {
@@ -463,6 +485,8 @@ export interface AuthConfiguration {
   otp_step_seconds: number
   otp_drift_steps: number
   otp_hotp_look_ahead: number
+  /** Whether users can add passkeys. A project's also need its verified custom domain. */
+  passkeys: PasskeysSetting
   /** Projects only: how long previous client secrets keep working after a rotation. */
   client_secret_rotation_overlap_seconds: number
   /** Projects only: token requests per app client per minute, unless the app sets its own. */
