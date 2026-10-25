@@ -37,7 +37,7 @@ module Auth
       raise ApiError.new(:passkey_required) if passkey_instead?(user)
 
       SignInFlow.new(realm: @realm, app_client: @app_client, ip: @ip, user_agent: @user_agent, interaction: @interaction)
-        .continue(user: user, amr: [ "pwd" ], authenticated_at: Time.current)
+        .continue(user: user, amr: [ Amr::PASSWORD ], authenticated_at: Time.current)
     end
 
     private

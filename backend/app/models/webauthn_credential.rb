@@ -13,6 +13,11 @@ class WebauthnCredential < ApplicationRecord
   validates :external_id, :public_key, :rp_id, presence: true
   validate :within_user_limit, on: :create
 
+  # @return [Array<String>] what signing in with it proves: the key's kind, and that the user unlocked it
+  def amr
+    [ backup_eligible ? Auth::Amr::SOFTWARE_KEY : Auth::Amr::HARDWARE_KEY, Auth::Amr::USER_VERIFIED ]
+  end
+
   private
 
   def within_user_limit

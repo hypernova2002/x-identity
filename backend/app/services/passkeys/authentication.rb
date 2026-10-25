@@ -55,7 +55,7 @@ module Passkeys
 
       lockout.reset(owner.email)
       passkey.update!(sign_count: verified.sign_count.to_i, last_used_at: Time.current)
-      [ owner, [ passkey.backup_eligible ? "swk" : "hwk", "user" ] ]
+      [ owner, passkey.amr ]
     end
   end
 end

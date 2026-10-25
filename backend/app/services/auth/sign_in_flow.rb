@@ -4,8 +4,6 @@ module Auth
   # hosted login carry their interaction, end with a {SignInCompletion} instead of tokens, and their
   # challenges can only be answered through that interaction.
   class SignInFlow
-    CHALLENGES = %w[otp passkey new_password mfa_setup passkey_setup].freeze
-
     # @param realm [Realms::AccountRealm, Realms::ProjectRealm]
     # @param app_client [AppClient, nil]
     # @param ip [String, nil] the caller's IP address, for the audit log
@@ -72,24 +70,24 @@ module Auth
 
       # Recovering after a password reset: add a new passkey before going on.
       if user.recovering_passkey? && @configuration.passwordless_after_passkey && relying_party && !Factors.passkey?(amr)
-        return [ "passkey_setup", nil ]
+        return [ Challenges::PASSKEY_SETUP, nil ]
       end
 
       # Required passkeys must be used wherever they work: set one up here if there's none yet.
       if @configuration.passkeys_required? && relying_party && !Factors.passkey?(amr)
-        return passkey ? [ "passkey", %w[passkey] ] : [ "passkey_setup", nil ]
+        return passkey ? [ Challenges::PASSKEY, [ Challenges::PASSKEY ] ] : [ Challenges::PASSKEY_SETUP, nil ]
       end
 
       # Where passkeys are required but can't be used, MFA is required instead.
       mfa_required = @configuration.mfa_required? || (@configuration.passkeys_required? && relying_party.nil?)
       mfa = Factors.mfa?(amr)
       unless @configuration.mfa_off? || mfa
-        return [ "otp", passkey ? %w[otp passkey] : %w[otp] ] if user.mfa_enabled?
+        return [ Challenges::OTP, passkey ? Challenges::MFA_METHODS : [ Challenges::OTP ] ] if user.mfa_enabled?
         # Users with only a passkey need it as a second factor where MFA is required, and where it works.
-        return [ "passkey", %w[passkey] ] if passkey && mfa_required
+        return [ Challenges::PASSKEY, [ Challenges::PASSKEY ] ] if passkey && mfa_required
       end
-      return [ "new_password", nil ] if amr.include?("pwd") && user.password_expired?(@configuration)
-      return [ "mfa_setup", nil ] if mfa_required && !user.mfa_enabled? && !mfa
+      return [ Challenges::NEW_PASSWORD, nil ] if amr.include?(Amr::PASSWORD) && user.password_expired?(@configuration)
+      return [ Challenges::MFA_SETUP, nil ] if mfa_required && !user.mfa_enabled? && !mfa
 
       nil
     end

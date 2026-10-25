@@ -1,8 +1,4 @@
 module Auth
-  # Who signed in, and how, when the sign-in ends without tokens: hosted login turns this into a
-  # browser session and an authorization code instead.
-  SignInCompletion = Data.define(:user, :amr, :authenticated_at)
-
   # Tokens (signed in), a challenge the client must answer with its session token, or, for hosted
   # login, a completion. A second-factor challenge lists the methods that can answer it.
   SignInResult = Data.define(:tokens, :challenge, :session, :recovery_codes, :completion, :mfa_methods) do

@@ -28,7 +28,7 @@ module IdentityProviders
         .resolve(claims, name: name).end_user
 
       Auth::SignInFlow.new(realm: @provider.project.realm(issuer: @issuer), app_client: @app_client, ip: @ip, user_agent: @user_agent)
-        .continue(user: end_user, amr: [ "fed" ], authenticated_at: Time.current)
+        .continue(user: end_user, amr: [ Auth::Amr::FEDERATED ], authenticated_at: Time.current)
     end
   end
 end

@@ -114,7 +114,7 @@ module IdentityProviders
       raise ApiError.new(:user_disabled, message: DISABLED_MESSAGE) unless end_user.active?
 
       Auth::SignInFlow.new(realm: @project.realm(issuer: data["issuer"]), app_client: app_client, ip: @ip, user_agent: @user_agent)
-        .continue(user: end_user, amr: [ "fed" ], authenticated_at: Time.zone.parse(data["authenticated_at"]))
+        .continue(user: end_user, amr: [ Auth::Amr::FEDERATED ], authenticated_at: Time.zone.parse(data["authenticated_at"]))
     end
 
     private
@@ -187,7 +187,7 @@ module IdentityProviders
       begin
         end_user = resolve.call(app_client, interaction)
         result = Auth::SignInFlow.new(realm: @project.realm, app_client: app_client, ip: @ip, user_agent: @user_agent, interaction: interaction)
-          .continue(user: end_user, amr: [ "fed" ], authenticated_at: Time.current)
+          .continue(user: end_user, amr: [ Auth::Amr::FEDERATED ], authenticated_at: Time.current)
         return Oidc::Authorization.new(project: @project, ip: @ip, user_agent: @user_agent).complete(interaction, result.completion) if result.completed?
 
         endpoints.hosted_page("login", interaction: data["interaction_token"], challenge: result.challenge, session: result.session)

@@ -17,7 +17,7 @@ module Auth
     end
 
     # @param session [String]
-    # @param challenge [String] one of {SignInFlow::CHALLENGES}
+    # @param challenge [String] one of {Challenges::ALL}
     # @param code [String, nil] for `otp` and `mfa_setup`
     # @param new_password [String, nil] for `new_password`
     # @param authentication_id [String, nil] for `passkey`: from {#passkey_options}
@@ -31,20 +31,20 @@ module Auth
       recovery_codes = nil
 
       case challenge
-      when "otp"
+      when Challenges::OTP
         verify_otp!(user, code)
-        amr |= [ "otp" ]
-      when "passkey"
+        amr |= [ Amr::OTP ]
+      when Challenges::PASSKEY
         _user, passkey_amr = passkey_authentication(user).verify(authentication_id: authentication_id, credential: credential.to_h, user: user)
         amr |= passkey_amr
-      when "passkey_setup"
+      when Challenges::PASSKEY_SETUP
         passkey = passkey_registration(user, record).finish(registration_id: registration_id.to_s, credential: credential.to_h)
-        amr |= [ passkey.backup_eligible ? "swk" : "hwk", "user" ]
-      when "new_password"
+        amr |= passkey.amr
+      when Challenges::NEW_PASSWORD
         Users::PasswordChange.new(user: user, ip: @ip, user_agent: @user_agent).set_password!(new_password)
-      when "mfa_setup"
+      when Challenges::MFA_SETUP
         recovery_codes = Mfa::OtpEnrollment.new(user: user, ip: @ip, user_agent: @user_agent).confirm(code: code)
-        amr |= [ "otp" ]
+        amr |= [ Amr::OTP ]
       end
 
       raise ApiError.new(:invalid_challenge) unless record.consume!
@@ -62,7 +62,7 @@ module Auth
     # @return [Hash] see {Passkeys::Authentication#options}
     # @raise [ApiError] `invalid_challenge` or `passkeys_unavailable`
     def passkey_options(session:)
-      user = find_session!(session, "passkey").subject
+      user = find_session!(session, Challenges::PASSKEY).subject
       passkey_authentication(user).options(user: user)
     end
 
@@ -71,7 +71,7 @@ module Auth
     # @return [Hash] see {Passkeys::Registration#options}
     # @raise [ApiError] `invalid_challenge` or `passkeys_unavailable`
     def start_passkey_setup(session:)
-      record = find_session!(session, "passkey_setup")
+      record = find_session!(session, Challenges::PASSKEY_SETUP)
       passkey_registration(record.subject, record).options
     end
 
@@ -79,7 +79,7 @@ module Auth
     # @param session [String]
     # @return [Mfa::Enrollment]
     def start_mfa_setup(session:)
-      record = find_session!(session, "mfa_setup")
+      record = find_session!(session, Challenges::MFA_SETUP)
       Mfa::OtpEnrollment.new(user: record.subject, ip: @ip, user_agent: @user_agent).start
     end
 
@@ -102,7 +102,7 @@ module Auth
 
     # A passkey can answer any second-factor challenge that offers it.
     def answers?(record, challenge)
-      record.data["challenge"] == challenge || (challenge == "passkey" && Array(record.data["mfa_methods"]).include?("passkey"))
+      record.data["challenge"] == challenge || (challenge == Challenges::PASSKEY && Array(record.data["mfa_methods"]).include?(Challenges::PASSKEY))
     end
 
     # The sign-in in progress counts as the recent sign-in adding a passkey needs.
