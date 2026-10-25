@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       module Me
-        class OtpsController < EndUserController
+        class OtpsController < SignedInEndUserController
           def create
             parse_request(::Me::StartOtpRequest)
             render json: MfaEnrollmentSerializer.new(enrollment.start).serializable_hash, status: :created

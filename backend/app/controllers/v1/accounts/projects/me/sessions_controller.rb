@@ -3,7 +3,7 @@ module V1
     module Projects
       module Me
         # The end user's signed-in devices.
-        class SessionsController < EndUserController
+        class SessionsController < SignedInEndUserController
           include DeviceSessionListing
 
           def index

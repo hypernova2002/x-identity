@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       module Me
-        class IdentitiesController < EndUserController
+        class IdentitiesController < SignedInEndUserController
           def index
             render json: EndUserIdentitySerializer.new(current_user.identities.includes(:identity_provider).order(:created_at, :id)).serializable_hash
           end

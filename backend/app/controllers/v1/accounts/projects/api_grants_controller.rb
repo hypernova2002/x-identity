@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       # The APIs a machine-to-machine app may get tokens for, and with which scopes.
-      class ApiGrantsController < ManagementController
+      class ApiGrantsController < ConsoleController
         before_action :set_app_client
         before_action :set_grant, only: %i[update destroy]
 

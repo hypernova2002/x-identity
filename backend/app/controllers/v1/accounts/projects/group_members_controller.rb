@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class GroupMembersController < ManagementController
+      class GroupMembersController < ConsoleController
         before_action :set_group
 
         def index

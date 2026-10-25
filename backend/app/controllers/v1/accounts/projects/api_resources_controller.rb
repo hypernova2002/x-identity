@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       # The project's APIs, for machine-to-machine apps to get tokens for.
-      class ApiResourcesController < ManagementController
+      class ApiResourcesController < ConsoleController
         LIST = ListQuery.new(
           search: "name_or_identifier_i_cont",
           sorts: { "name" => :name, "identifier" => :identifier, "created_at" => :created_at },

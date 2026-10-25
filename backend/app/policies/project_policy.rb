@@ -1,6 +1,10 @@
 # Account owners and admins can do anything with every project. Other users see only projects
 # they're a member of: project admins manage everything in the project, developers manage its
 # app clients and end users, viewers can only look.
+#
+# Console controllers check `view?` for every request, and the read-only predicates (e.g.
+# `view_audit_log?`); services check the others before making a change. See
+# V1::Accounts::Projects::ConsoleController.
 class ProjectPolicy
   class Scope
     # @param user [User]

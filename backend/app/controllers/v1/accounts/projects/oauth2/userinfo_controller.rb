@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       module Oauth2
-        class UserinfoController < EndUserController
+        class UserinfoController < SignedInEndUserController
           def show
             attributes = current_project.end_user_attribute_definitions.where(include_in_token: true).pluck(:key)
             render json: {

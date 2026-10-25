@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       # A confidential client's secrets: which work, when each was last used, and revoking old ones.
-      class AppClientSecretsController < ManagementController
+      class AppClientSecretsController < ConsoleController
         before_action :set_app_client
 
         def index

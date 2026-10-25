@@ -4,7 +4,7 @@ module V1
       module Me
         # The end user's own passkeys, which belong to the project's custom domain. They can be added
         # on the domain, or from the allowed origins of the app the access token was issued to.
-        class PasskeysController < EndUserController
+        class PasskeysController < SignedInEndUserController
           include OwnPasskeys
 
           private

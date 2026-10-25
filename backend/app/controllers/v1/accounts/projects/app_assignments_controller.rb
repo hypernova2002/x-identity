@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       # Who can use an app client or SAML app. The route says which kind of app.
-      class AppAssignmentsController < ManagementController
+      class AppAssignmentsController < ConsoleController
         before_action :set_app
 
         def index

@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class AuditEventsController < ManagementController
+      class AuditEventsController < ConsoleController
         include AuditLogListing
 
         before_action { authorize_project!(:view_audit_log?) }

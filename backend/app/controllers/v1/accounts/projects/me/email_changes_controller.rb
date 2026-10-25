@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       module Me
-        class EmailChangesController < EndUserController
+        class EmailChangesController < SignedInEndUserController
           def create
             email_change.request(**parse_request(::Me::EmailChangeRequest).to_h)
             head :accepted

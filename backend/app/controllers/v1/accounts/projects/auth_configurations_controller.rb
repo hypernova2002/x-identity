@@ -1,9 +1,8 @@
 module V1
   module Accounts
     module Projects
-      class AuthConfigurationsController < ManagementController
+      class AuthConfigurationsController < ConsoleController
         def show
-          authorize_project!(:view?)
           render json: AuthConfigurationSerializer.new(current_project.auth_configuration!).serializable_hash
         end
 

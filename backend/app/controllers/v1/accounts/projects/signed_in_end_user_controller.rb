@@ -1,8 +1,9 @@
 module V1
   module Accounts
     module Projects
-      # Endpoints for a signed-in end user, authenticated with an access token from the project.
-      class EndUserController < BaseController
+      # A signed-in end user's own endpoints (/me, the portal's apps, userinfo), authenticated with an
+      # access token from the project. Not to be confused with the console's {EndUsersController}.
+      class SignedInEndUserController < PublicController
         include Authentication
 
         private

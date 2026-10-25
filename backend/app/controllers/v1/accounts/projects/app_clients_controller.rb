@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class AppClientsController < ManagementController
+      class AppClientsController < ConsoleController
         before_action :set_app_client, only: %i[show update destroy rotate_secret]
 
         def index

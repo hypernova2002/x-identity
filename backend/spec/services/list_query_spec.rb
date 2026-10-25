@@ -49,4 +49,12 @@ RSpec.describe ListQuery do
   it "refuses an unknown sort" do
     expect { names(sort: "description") }.to raise_error(ApiError) { |error| expect(error.details.sole[:field]).to eq("sort") }
   end
+
+  it "refuses a default sort it doesn't offer, when the listing is defined" do
+    expect { described_class.new(sorts: { "name" => :name }, default_sort: "-created_at") }.to raise_error(ArgumentError, /created_at/)
+  end
+
+  it "can't be changed once defined" do
+    expect(query).to be_frozen
+  end
 end

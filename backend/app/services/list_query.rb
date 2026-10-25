@@ -9,11 +9,16 @@ class ListQuery
   # @param default_sort [String] e.g. `"name"` or `"-created_at"`
   # @param search [String, nil] the ransack predicate `q[search]` maps to, e.g. `"name_or_email_cont"`
   # @param filters [Array<Symbol>] ransack predicates and scopes allowed in `q`
+  # @raise [ArgumentError] when the default sort isn't one of the sorts, so a mistake shows up when
+  #   the listing is defined (at boot, with eager loading) rather than as a client error
   def initialize(sorts:, default_sort:, search: nil, filters: [])
-    @sorts = sorts
-    @default_sort = default_sort
-    @search = search
-    @filters = filters
+    raise ArgumentError, "default_sort #{default_sort.inspect} isn't one of #{sorts.keys.inspect}" unless sorts.key?(default_sort.delete_prefix("-"))
+
+    @sorts = sorts.dup.freeze
+    @default_sort = default_sort.dup.freeze
+    @search = search&.dup&.freeze
+    @filters = filters.dup.freeze
+    freeze
   end
 
   # @param scope [ActiveRecord::Relation]

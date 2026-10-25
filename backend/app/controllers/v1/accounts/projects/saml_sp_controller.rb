@@ -3,7 +3,7 @@ module V1
     module Projects
       # The project as a SAML service provider for one upstream provider: its metadata, the assertion
       # consumer service, and single logout with the provider.
-      class SamlSpController < BaseController
+      class SamlSpController < PublicController
         include SsoSessionCookie
 
         before_action :set_provider

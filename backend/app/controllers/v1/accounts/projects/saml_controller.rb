@@ -3,7 +3,7 @@ module V1
     module Projects
       # A project's SAML 2.0 identity provider: metadata, single sign-on (SP- and IdP-initiated) and
       # single logout. Browsers land on all but the metadata, so problems go to the hosted error page.
-      class SamlController < BaseController
+      class SamlController < PublicController
         include SsoSessionCookie
 
         def metadata

@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class GroupsController < ManagementController
+      class GroupsController < ConsoleController
         LIST = ListQuery.new(
           search: "name_i_cont",
           filters: %i[default_for_new_users_eq],

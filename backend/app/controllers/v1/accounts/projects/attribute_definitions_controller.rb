@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class AttributeDefinitionsController < ManagementController
+      class AttributeDefinitionsController < ConsoleController
         LIST = ListQuery.new(
           search: "key_or_label_i_cont",
           filters: %i[data_type_eq required_eq user_editable_eq include_in_token_eq],

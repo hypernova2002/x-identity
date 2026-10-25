@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class EndUsersController < ManagementController
+      class EndUsersController < ConsoleController
         LIST = ListQuery.new(
           search: "email_or_name_or_uid_i_cont",
           filters: %i[status_eq uid_eq with_verified_email with_mfa invitation_pending in_group],
@@ -75,9 +75,7 @@ module V1
         end
 
         def unlink_identity
-          authorize_project!(:manage_end_users?)
-          identity = @end_user.identities.find_by_uid!(params[:identity_uid])
-          ::EndUsers::Identities.new(end_user: @end_user, actor: current_user, **client_info).unlink(identity)
+          management.unlink_identity(@end_user, @end_user.identities.find_by_uid!(params[:identity_uid]))
           head :no_content
         end
 

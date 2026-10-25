@@ -4,7 +4,7 @@ module V1
       module Auth
         # Public end-user auth endpoints. Every request names an enabled app client of the project,
         # with its secret when the client is confidential.
-        class BaseController < Projects::BaseController
+        class BaseController < Projects::PublicController
           private
 
           # @param request_model_class [Class<EndUserAuth::ClientRequest>]

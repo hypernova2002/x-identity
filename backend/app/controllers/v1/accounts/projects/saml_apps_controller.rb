@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class SamlAppsController < ManagementController
+      class SamlAppsController < ConsoleController
         before_action :set_saml_app, only: %i[show update destroy]
 
         def index

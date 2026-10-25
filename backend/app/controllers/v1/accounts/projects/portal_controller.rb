@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       # The app portal: its own OpenID Connect client settings, and the apps a signed-in user can open.
-      class PortalController < EndUserController
+      class PortalController < SignedInEndUserController
         skip_before_action :authenticate_user!, only: :show
 
         def show

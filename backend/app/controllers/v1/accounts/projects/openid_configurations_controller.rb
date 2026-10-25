@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class OpenidConfigurationsController < BaseController
+      class OpenidConfigurationsController < PublicController
         def show
           cache_publicly(1.hour)
           issuer = current_endpoints.issuer

@@ -1,6 +1,7 @@
 module V1
   module Accounts
     class ProjectsController < AuthenticatedController
+      include ConsoleProjectScope
       include Listing
 
       LIST = ListQuery.new(
@@ -42,10 +43,8 @@ module V1
         ::Projects::Management.new(actor: current_user, **client_info)
       end
 
-      # Projects the user can't view are reported as missing, so their existence isn't revealed.
       def set_project
-        @project = current_account.projects.find_by_uid!(params[:uid])
-        raise ActiveRecord::RecordNotFound unless ProjectPolicy.new(current_user, @project).view?
+        @project = find_viewable_project!(params[:uid])
       end
     end
   end

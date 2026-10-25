@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       module Me
-        class PasswordsController < EndUserController
+        class PasswordsController < SignedInEndUserController
           def update
             ::Users::PasswordChange.new(user: current_user, **client_info).change!(
               **parse_request(::Me::ChangePasswordRequest).to_h,

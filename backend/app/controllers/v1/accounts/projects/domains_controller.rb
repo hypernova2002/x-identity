@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       # The project's custom domain, and its replacement while one is being set up (at most two).
-      class DomainsController < ManagementController
+      class DomainsController < ConsoleController
         before_action :set_domain, only: %i[check destroy]
 
         def index

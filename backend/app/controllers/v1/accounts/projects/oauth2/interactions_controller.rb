@@ -3,7 +3,7 @@ module V1
     module Projects
       module Oauth2
         # The API behind the hosted login page. Errors use the API's usual format, for the page to show.
-        class InteractionsController < Projects::BaseController
+        class InteractionsController < Projects::PublicController
           rate_limit to: 30, within: 1.minute, only: %i[passkey_options passkey_challenge_options]
 
           def show

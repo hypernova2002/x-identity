@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class MeController < EndUserController
+      class MeController < SignedInEndUserController
         def show
           render json: EndUserSerializer.new(current_user).serializable_hash
         end

@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       # Tells hosted pages served on a custom domain which project they belong to.
-      class HostedDomainsController < BaseController
+      class HostedDomainsController < PublicController
         def show
           render json: {
             account_uid: current_account.uid, account_slug: current_account.slug, account_name: current_account.name,

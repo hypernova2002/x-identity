@@ -78,6 +78,13 @@ RSpec.describe "An end user's devices (admin)", type: :openapi do
       expect(AuditEvent.last).to have_attributes(action: "end_user.device_signed_out", actor_uid: developer.uid, target_uid: end_user.uid)
     end
 
+    it "is not for viewers" do
+      delete "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/end-users/#{end_user.uid}/sessions/#{device.uid}", headers: auth_headers_for(viewer)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(device.reload).not_to be_revoked
+    end
+
     it "only finds the end user's own devices" do
       other, = signed_in_device(create(:end_user, project: project), app_client: create(:app_client, project: project))
 

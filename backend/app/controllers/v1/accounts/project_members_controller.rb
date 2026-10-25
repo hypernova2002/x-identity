@@ -1,6 +1,7 @@
 module V1
   module Accounts
     class ProjectMembersController < AuthenticatedController
+      include ConsoleProjectScope
       include Listing
 
       LIST = ListQuery.new(
@@ -36,8 +37,7 @@ module V1
       private
 
       def set_project
-        @project = current_account.projects.find_by_uid!(params[:project_uid])
-        raise ActiveRecord::RecordNotFound unless ProjectPolicy.new(current_user, @project).view?
+        @project = find_viewable_project!(params[:project_uid])
       end
 
       def set_membership

@@ -1,7 +1,7 @@
 module V1
   module Accounts
     module Projects
-      class IdentityProvidersController < ManagementController
+      class IdentityProvidersController < ConsoleController
         LIST = ListQuery.new(
           search: "name_i_cont",
           filters: %i[kind_eq kind_in enabled_eq],

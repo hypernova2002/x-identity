@@ -2,7 +2,7 @@ module V1
   module Accounts
     module Projects
       # The project's SAML identity provider details, and rotating its signing certificate.
-      class SamlCertificatesController < ManagementController
+      class SamlCertificatesController < ConsoleController
         before_action :set_certificate, only: %i[activate destroy]
 
         def index

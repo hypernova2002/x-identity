@@ -1,9 +1,11 @@
 module V1
   module Accounts
     module Projects
-      # Loads the project from the URL, or from the custom domain the request arrived on. Unknown
-      # projects, and projects of other accounts, are 404s.
-      class BaseController < Accounts::BaseController
+      # A project's public endpoints (OpenID Connect, SAML, the end-user sign-in API, the portal),
+      # served under /v1/accounts/:account_uid/projects/:project_uid and at the root of its custom
+      # domain. Loads the project from the URL or the domain; unknown projects, and projects of other
+      # accounts, are 404s. The console's endpoints are under {ConsoleController} instead.
+      class PublicController < Accounts::BaseController
         before_action :set_project
 
         private

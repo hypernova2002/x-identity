@@ -89,6 +89,21 @@ module EndUsers
     end
 
     # @param end_user [EndUser]
+    # @param identity [EndUserIdentity] one of the end user's
+    # @raise [ApiError] `forbidden` or `last_sign_in_method`
+    def unlink_identity(end_user, identity)
+      authorize!
+      Identities.new(end_user: end_user, actor: @actor, ip: @ip, user_agent: @user_agent).unlink(identity)
+    end
+
+    # @param device_session [DeviceSession] one of an end user's
+    # @raise [ApiError] `forbidden`
+    def sign_out_device(device_session)
+      authorize!
+      DeviceSessions::Management.new(actor: @actor, realm: @project.realm, ip: @ip, user_agent: @user_agent).sign_out(device_session)
+    end
+
+    # @param end_user [EndUser]
     def sign_out_everywhere(end_user)
       authorize!
       end_user.revoke_all_sessions!
