@@ -37,6 +37,7 @@ const filters: DataTableFilter[] = [
 
 const list = useListView((params) => props.fetchPage(params), {
   defaultSort: '-occurred_at',
+  storageKey: 'audit-log',
   filterKeys: [...filters.map((filter) => filter.key), 'action_start', 'action_eq'],
   syncRoute: true,
 })
@@ -45,8 +46,10 @@ const listState = list.state
 
 <template>
   <BaseDataTable
+    storage-key="audit-log"
     v-model:state="listState"
     caption="Audit events"
+    search-placeholder="Search events…"
     search-label="Action starts with"
     :columns="columns"
     :filters="filters"
@@ -58,7 +61,7 @@ const listState = list.state
     :loading="list.loading.value"
     :error="list.error.value"
     empty-message="No events recorded yet."
-    @retry="list.reload"
+    @reload="list.reload"
     @count-exactly="list.countExactly"
   >
     <template #cell-occurred_at="{ row }">{{ formatDateTime(row.occurred_at) }}</template>

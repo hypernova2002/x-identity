@@ -77,6 +77,35 @@ export interface Project {
   updated_at: string
 }
 
+/** Headline counts shown above list pages. */
+export interface EndUserStats {
+  total: number
+  active: number
+  disabled: number
+  invitation_pending: number
+  /** Signed in during the last 30 days. */
+  signed_in_recently: number
+}
+
+export interface ApplicationStats {
+  total: number
+  oidc: number
+  machine: number
+  saml: number
+}
+
+export interface GroupStats {
+  total: number
+  empty: number
+}
+
+export interface UserStats {
+  total: number
+  admins: number
+  /** Only for account admins. */
+  pending_invitations: number | null
+}
+
 /** A deleted project, which an account admin can restore until `purge_at`. */
 export interface DeletedProject {
   uid: string

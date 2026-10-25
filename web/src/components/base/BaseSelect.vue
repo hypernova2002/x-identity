@@ -12,8 +12,11 @@ const props = withDefaults(
     hint?: string
     error?: string
     disabled?: boolean
+    /** 'self' keeps the options inside the component, e.g. within a popover that closes on outside clicks. */
+    appendTo?: 'body' | 'self'
   }>(),
   {
+    appendTo: 'body',
     hideLabel: false,
     disabled: false,
   },
@@ -71,6 +74,7 @@ const passThrough = computed(() => ({
       option-label="label"
       option-value="value"
       :disabled="disabled"
+      :append-to="appendTo"
       :invalid="Boolean(error)"
       :aria-labelledby="labelId"
       :aria-describedby="describedBy"

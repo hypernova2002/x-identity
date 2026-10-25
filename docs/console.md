@@ -21,6 +21,23 @@ back to the project. On narrow screens the sidebar opens as a drawer from the me
 | `/:alias/confirm-email-change` | Confirms a new email address. |
 | `/:alias/accept-invitation` | Joins the account from an invitation. |
 
+## Lists
+
+Every list (projects, console users, end users, applications, groups and the rest) searches,
+filters, sorts and pages on the server. Pages with a primary action, such as **Create end user**,
+put it in the page header. Above each list, one row finds records: the search, up to three
+filters, and **More filters** for the rest when a list has more than three; active filters show
+as removable chips with **Clear all**. A second row navigates them: choose columns, refresh, rows
+per page (10, 25, 50 or 100), and the range ("1–25 of 32") with previous and next, repeated below
+the list. Lists that can grow very large, such as end users and the audit log, show a capped total
+like "1–25 of 10,000+" with a **Count exactly** link. Hidden columns and rows per page are
+remembered per list in your browser; rows per page also goes in the URL, so shared links match.
+
+End users, applications, groups and console users show counts above the list: totals, end users by
+status, pending invitations and sign-ins in the last 30 days (end-user counts can be up to a
+minute old), applications by kind, groups without members, and owners and admins. Pending
+invitations are counted only for account admins.
+
 ## Project pages
 
 The project sidebar is grouped. Each page has its own URL, so pages can be bookmarked and shared;

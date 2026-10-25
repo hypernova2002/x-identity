@@ -11,9 +11,12 @@ import BaseDataTable from '@/components/base/BaseDataTable.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
+import StatCards from '@/components/console/StatCards.vue'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import CustomAttributeFields from '@/components/project/CustomAttributeFields.vue'
 import EndUserActionDialog from '@/components/project/EndUserActionDialog.vue'
+import RoutePageHeader from '@/components/console/RoutePageHeader.vue'
+import { useAsync } from '@/composables/useAsync'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useEndUserActions } from '@/composables/useEndUserActions'
 import { useListView } from '@/composables/useListView'
@@ -34,6 +37,7 @@ const notice = ref<string | null>(null)
 
 const filters = computed<DataTableFilter[]>(() => [
   { type: 'select', key: 'status_eq', label: 'Status', options: userStatusOptions },
+  { type: 'lookup', key: 'in_group', label: 'Group', search: lookups.searchGroups, resolveLabel: lookups.groupName, seeAll: lookups.allGroups.value },
   {
     type: 'select',
     key: 'with_verified_email',
@@ -53,7 +57,6 @@ const filters = computed<DataTableFilter[]>(() => [
     ],
   },
   { type: 'select', key: 'invitation_pending', label: 'Invitation', options: [{ label: 'Pending', value: 'true' }] },
-  { type: 'lookup', key: 'in_group', label: 'Group', search: lookups.searchGroups, resolveLabel: lookups.groupName, seeAll: lookups.allGroups.value },
 ])
 
 const columns: DataTableColumn[] = [
@@ -67,10 +70,25 @@ const columns: DataTableColumn[] = [
 
 const list = useListView((params) => projectAdminService.listEndUsers(accountUid.value, project.value!.uid, params), {
   defaultSort: 'created_at',
+  storageKey: 'end-users',
   filterKeys: ['status_eq', 'with_verified_email', 'with_mfa', 'invitation_pending', 'in_group'],
   syncRoute: true,
 })
 const listState = list.state
+
+const stats = useAsync(() => projectAdminService.endUserStats(accountUid.value, project.value!.uid))
+const statCards = computed(() => [
+  { label: 'End users', value: stats.data.value?.total },
+  { label: 'Active', value: stats.data.value?.active },
+  { label: 'Disabled', value: stats.data.value?.disabled },
+  { label: 'Invitation pending', value: stats.data.value?.invitation_pending },
+  { label: 'Signed in, last 30 days', value: stats.data.value?.signed_in_recently },
+])
+
+function reloadAll() {
+  list.reload()
+  stats.reload()
+}
 
 const loadLookups = useAsyncAction(async () => {
   if (!project.value) return
@@ -83,7 +101,7 @@ const actions = useEndUserActions(
   () => (project.value ? { accountUid: accountUid.value, projectUid: project.value.uid } : null),
   ({ notice: message }) => {
     notice.value = message
-    list.reload()
+    reloadAll()
   },
 )
 
@@ -121,17 +139,30 @@ const create = useAsyncAction(async () => {
   await router.push(userLink(created))
 })
 
-onMounted(() => loadLookups.run())
+onMounted(() => {
+  loadLookups.run()
+  stats.reload()
+})
 </script>
 
 <template>
+  <RoutePageHeader>
+    <template v-if="access.developer" #actions>
+      <BaseButton label="Create end user" @click="createOpen = true" />
+    </template>
+  </RoutePageHeader>
+
+  <StatCards label="End user counts" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
+
   <BaseCard>
     <BaseAlert v-if="notice" variant="success">{{ notice }}</BaseAlert>
     <BaseAlert v-if="actions.perform.error.value && !actions.pending.value" variant="danger">{{ actions.perform.error.value.message }}</BaseAlert>
 
     <BaseDataTable
+      storage-key="end-users"
       v-model:state="listState"
       caption="End users"
+      search-placeholder="Search end users…"
       search-label="Search by email, name or ID"
       :columns="columns"
       :filters="filters"
@@ -143,12 +174,9 @@ onMounted(() => loadLookups.run())
       :loading="list.loading.value"
       :error="list.error.value"
       empty-message="No end users yet. They appear here once they sign up, sign in with an identity provider, or you create them."
-      @retry="list.reload"
+      @reload="reloadAll"
       @count-exactly="list.countExactly"
     >
-      <template v-if="access.developer" #actions>
-        <BaseButton label="Create end user" @click="createOpen = true" />
-      </template>
       <template #cell-email="{ row }">
         <RouterLink :to="userLink(row)" class="font-medium text-primary underline-offset-2 hover:underline">{{ row.email }}</RouterLink>
         <span v-if="row.name" class="block text-text-muted">{{ row.name }}</span>

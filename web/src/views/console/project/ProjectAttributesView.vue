@@ -10,6 +10,7 @@ import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
+import RoutePageHeader from '@/components/console/RoutePageHeader.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
@@ -51,6 +52,7 @@ const filters: DataTableFilter[] = [
 
 const list = useListView((params) => projectAdminService.listAttributes(accountUid.value, project.value!.uid, params), {
   defaultSort: 'created_at',
+  storageKey: 'attributes',
   filterKeys: filters.map((filter) => filter.key),
   syncRoute: true,
 })
@@ -90,15 +92,20 @@ const destroy = useAsyncAction(async (definition: AttributeDefinition) => {
 </script>
 
 <template>
-  <BaseCard
-    title="Attributes"
-    description="Extra profile fields for this project's end users. Values are checked on sign-up, profile updates and admin changes."
-  >
+  <RoutePageHeader>
+    <template v-if="access.admin" #actions>
+      <BaseButton label="Add attribute" @click="createOpen = true" />
+    </template>
+  </RoutePageHeader>
+
+  <BaseCard>
     <BaseAlert v-if="update.error.value" variant="danger">{{ update.error.value.message }}</BaseAlert>
 
     <BaseDataTable
+      storage-key="attributes"
       v-model:state="listState"
       caption="Attributes"
+      search-placeholder="Search attributes…"
       search-label="Search by key or label"
       :columns="columns"
       :filters="filters"
@@ -109,11 +116,8 @@ const destroy = useAsyncAction(async (definition: AttributeDefinition) => {
       :loading="list.loading.value"
       :error="list.error.value"
       empty-message="No custom attributes yet. End users have an email and name."
-      @retry="list.reload"
+      @reload="list.reload"
     >
-      <template v-if="access.admin" #actions>
-        <BaseButton label="Add attribute" @click="createOpen = true" />
-      </template>
       <template #cell-label="{ row }">
         <span class="font-medium">{{ row.label }}</span>
         <code class="block font-mono text-xs text-text-muted">{{ row.key }}</code>

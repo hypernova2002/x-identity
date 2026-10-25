@@ -6,6 +6,10 @@ module V1
         def index
           render json: ApplicationSerializer.new(paginated(::Apps::Directory.new(current_project, params))).serializable_hash
         end
+
+        def stats
+          render json: ::Apps::Stats.new(current_project).call
+        end
       end
     end
   end

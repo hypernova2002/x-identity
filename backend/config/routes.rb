@@ -46,7 +46,9 @@ Rails.application.routes.draw do
       get "auth-configuration", to: "auth_configurations#show"
       put "auth-configuration", to: "auth_configurations#update"
 
-      resources :users, only: %i[index show update destroy], param: :uid
+      resources :users, only: %i[index show update destroy], param: :uid do
+        get "stats", on: :collection
+      end
       resources :invitations, only: %i[index create destroy], param: :uid
       resources :deleted_projects, path: "deleted-projects", only: :index, param: :uid do
         post "restore", on: :member
@@ -143,7 +145,9 @@ Rails.application.routes.draw do
         resources :identity_providers, path: "identity-providers", param: :uid, only: %i[index show create update destroy] do
           post "parse-saml-metadata", on: :collection, action: :parse_saml_metadata
         end
-        resources :applications, only: :index
+        resources :applications, only: :index do
+          get "stats", on: :collection
+        end
         resources :api_resources, path: "apis", param: :uid, only: %i[index show create update destroy]
         resources :app_clients, path: "app-clients", param: :uid, only: %i[index show create update destroy] do
           post "rotate-secret", on: :member, action: :rotate_secret
@@ -159,9 +163,11 @@ Rails.application.routes.draw do
           post "activate", on: :member
         end
         resources :groups, param: :uid, only: %i[index show create update destroy] do
+          get "stats", on: :collection
           resources :members, controller: "group_members", param: :uid, only: %i[index create destroy]
         end
         resources :end_users, path: "end-users", param: :uid, only: %i[index show create update destroy] do
+          get "stats", on: :collection
           member do
             delete "mfa", action: :reset_mfa
             post "sign-out", action: :sign_out

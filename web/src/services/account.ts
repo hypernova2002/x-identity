@@ -1,7 +1,7 @@
 import { apiPage, apiRequest } from './http'
 import { LOOKUP, listQuery, type ListParams } from './list'
 import { auditEventSchema, deviceSessionSchema, invitationSchema, projectMemberSchema, projectSchema, userSchema } from './schemas'
-import type { Account, AccountRole, AuthConfiguration, DeletedProject, Invitation, Me, MfaEnrollment, Project, ProjectMember, ProjectRole, ProjectSettings, User, UserStatus } from '@/types/api'
+import type { Account, AccountRole, AuthConfiguration, DeletedProject, Invitation, Me, MfaEnrollment, Project, ProjectMember, ProjectRole, ProjectSettings, User, UserStats, UserStatus } from '@/types/api'
 
 const base = (accountUid: string) => `/v1/accounts/${accountUid}`
 const authenticated = { authenticated: true } as const
@@ -69,6 +69,8 @@ export const accountService = {
 export const userService = {
   list: (accountUid: string, params: ListParams = LOOKUP) =>
     apiPage(`${base(accountUid)}/users`, userSchema, { ...authenticated, query: listQuery(params) }),
+
+  stats: (accountUid: string) => apiRequest<UserStats>(`${base(accountUid)}/users/stats`, authenticated),
 
   update: (accountUid: string, userUid: string, changes: { role?: AccountRole; status?: UserStatus }) =>
     apiRequest<User>(`${base(accountUid)}/users/${userUid}`, { ...authenticated, method: 'PATCH', body: changes }),

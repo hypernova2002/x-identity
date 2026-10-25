@@ -11,6 +11,7 @@ import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import IdentityProviderForm from '@/components/project/IdentityProviderForm.vue'
+import RoutePageHeader from '@/components/console/RoutePageHeader.vue'
 import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { useProviderEditor } from '@/composables/useProviderEditor'
@@ -48,6 +49,7 @@ const filters: DataTableFilter[] = [
 
 const list = useListView((params) => projectAdminService.listIdentityProviders(accountUid.value, project.value!.uid, params), {
   defaultSort: 'created_at',
+  storageKey: 'identity-providers',
   filterKeys: filters.map((filter) => filter.key),
   syncRoute: true,
 })
@@ -66,6 +68,12 @@ async function create() {
 </script>
 
 <template>
+  <RoutePageHeader>
+    <template v-if="access.admin" #actions>
+      <BaseButton label="Add identity provider" @click="chooseOpen = true" />
+    </template>
+  </RoutePageHeader>
+
   <BaseCard>
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="flex max-w-2xl flex-col gap-1 text-sm">
@@ -73,14 +81,15 @@ async function create() {
         <code class="font-mono text-xs break-all">{{ callbackUrl }}</code>
         <span class="text-xs text-text-muted">Register it as the redirect URI in the provider's app settings. SAML providers each have their own details.</span>
       </div>
-      <BaseButton v-if="access.admin" label="Add identity provider" @click="chooseOpen = true" />
     </div>
     <BaseAlert v-if="!access.admin" variant="info">Only project and account admins can change identity providers.</BaseAlert>
   </BaseCard>
 
   <BaseDataTable
+    storage-key="identity-providers"
     v-model:state="listState"
     caption="Identity providers"
+    search-placeholder="Search identity providers…"
     search-label="Search by name"
     :columns="columns"
     :filters="filters"
@@ -91,7 +100,7 @@ async function create() {
     :loading="list.loading.value"
     :error="list.error.value"
     empty-message="No identity providers yet. End users sign in with a password or email code."
-    @retry="list.reload"
+    @reload="list.reload"
   >
     <template #cell-name="{ row }">
       <RouterLink

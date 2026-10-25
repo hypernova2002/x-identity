@@ -9,6 +9,7 @@ import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import type { DataTableColumn } from '@/components/base/types'
 import ConfirmDialog from '@/components/console/ConfirmDialog.vue'
+import RoutePageHeader from '@/components/console/RoutePageHeader.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
@@ -28,6 +29,7 @@ const columns: DataTableColumn[] = [
 
 const list = useListView((params) => projectAdminService.listApis(accountUid.value, project.value!.uid, params), {
   defaultSort: 'name',
+  storageKey: 'apis',
   syncRoute: true,
 })
 const listState = list.state
@@ -72,10 +74,18 @@ const destroy = useAsyncAction(async (api: ApiResource) => {
 </script>
 
 <template>
+  <RoutePageHeader>
+    <template v-if="access.developer" #actions>
+      <BaseButton label="Add API" @click="openForm(null)" />
+    </template>
+  </RoutePageHeader>
+
   <BaseCard>
     <BaseDataTable
+      storage-key="apis"
       v-model:state="listState"
       caption="APIs"
+      search-placeholder="Search APIs…"
       search-label="Search by name or identifier"
       :columns="columns"
       :rows="list.rows.value"
@@ -85,11 +95,8 @@ const destroy = useAsyncAction(async (api: ApiResource) => {
       :loading="list.loading.value"
       :error="list.error.value"
       empty-message="No APIs yet. Add one for each of your services that machine-to-machine apps call."
-      @retry="list.reload"
+      @reload="list.reload"
     >
-      <template v-if="access.developer" #actions>
-        <BaseButton label="Add API" @click="openForm(null)" />
-      </template>
       <template #cell-name="{ row }">
         <span class="font-medium">{{ row.name }}</span>
         <code class="block font-mono text-xs break-all text-text-muted">{{ row.identifier }}</code>

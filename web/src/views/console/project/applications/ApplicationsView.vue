@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -9,8 +9,11 @@ import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { DataTableColumn, DataTableFilter, SelectOption } from '@/components/base/types'
+import StatCards from '@/components/console/StatCards.vue'
 import StatusBadge from '@/components/console/StatusBadge.vue'
 import SamlAppForm from '@/components/project/SamlAppForm.vue'
+import RoutePageHeader from '@/components/console/RoutePageHeader.vue'
+import { useAsync } from '@/composables/useAsync'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
@@ -47,6 +50,7 @@ const filters: DataTableFilter[] = [
 
 const list = useListView((params) => projectAdminService.listApplications(accountUid.value, project.value!.uid, params), {
   defaultSort: 'name',
+  storageKey: 'applications',
   filterKeys: filters.map((filter) => filter.key),
   syncRoute: true,
 })
@@ -93,6 +97,21 @@ const createClient = useAsyncAction(async () => {
   else await router.push(detailRoute({ app_type: 'app_client', uid: client.uid }))
 })
 
+const stats = useAsync(() => projectAdminService.applicationStats(accountUid.value, project.value!.uid))
+const statCards = computed(() => [
+  { label: 'Applications', value: stats.data.value?.total },
+  { label: 'OpenID Connect', value: stats.data.value?.oidc },
+  { label: 'SAML', value: stats.data.value?.saml },
+  { label: 'Machine-to-machine', value: stats.data.value?.machine },
+])
+
+function reloadAll() {
+  list.reload()
+  stats.reload()
+}
+
+onMounted(() => stats.reload())
+
 const importMetadata = useAsyncAction(async (source: { metadata_xml: string } | { metadata_url: string }) => {
   if (!project.value) return
   samlDraft.value = withMetadata(samlDraft.value, await projectAdminService.parseSamlMetadata(accountUid.value, project.value.uid, source))
@@ -108,9 +127,19 @@ const createSamlApp = useAsyncAction(async () => {
 </script>
 
 <template>
+  <RoutePageHeader>
+    <template v-if="access.developer" #actions>
+      <BaseButton label="Add application" @click="startAdding" />
+    </template>
+  </RoutePageHeader>
+
+  <StatCards label="Application counts" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
+
   <BaseDataTable
+    storage-key="applications"
     v-model:state="listState"
     caption="Applications"
+    search-placeholder="Search applications…"
     search-label="Search by name or ID"
     :columns="columns"
     :filters="filters"
@@ -121,11 +150,8 @@ const createSamlApp = useAsyncAction(async () => {
     :loading="list.loading.value"
     :error="list.error.value"
     empty-message="No applications yet. Add one for each app that signs this project's end users in."
-    @retry="list.reload"
+    @reload="reloadAll"
   >
-    <template v-if="access.developer" #actions>
-      <BaseButton label="Add application" @click="startAdding" />
-    </template>
     <template #cell-name="{ row }">
       <RouterLink :to="detailRoute(row)" class="font-medium text-primary underline-offset-2 hover:underline">{{ row.name }}</RouterLink>
       <code class="block font-mono text-xs break-all text-text-muted">{{ row.uid }}</code>

@@ -4,6 +4,14 @@ export function formatDateTime(value: string | null): string {
   return value ? dateTimeFormat.format(new Date(value)) : '—'
 }
 
+const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
+
+/** A calendar date such as 2026-10-25, in the viewer's format, without shifting it across time zones. */
+export function formatDate(value: string): string {
+  const [year, month, day] = value.split('-').map(Number)
+  return year && month && day ? dateFormat.format(new Date(year, month - 1, day)) : value
+}
+
 /** Splits a comma- or newline-separated list, dropping blanks. */
 export function parseList(value: string): string[] {
   return value

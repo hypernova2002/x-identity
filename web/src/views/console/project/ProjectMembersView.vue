@@ -41,6 +41,7 @@ const filters: DataTableFilter[] = [{ type: 'select', key: 'role_eq', label: 'Pr
 
 const list = useListView((params) => projectService.listMembers(accountUid.value, project.value!.uid, params), {
   defaultSort: 'created_at',
+  storageKey: 'project-members',
   filterKeys: filters.map((filter) => filter.key),
   syncRoute: true,
 })
@@ -75,8 +76,10 @@ const memberAction = useAsyncAction(async (member: ProjectMember, role: ProjectR
   >
     <BaseAlert v-if="memberAction.error.value" variant="danger">{{ memberAction.error.value.message }}</BaseAlert>
     <BaseDataTable
+      storage-key="project-members"
       v-model:state="listState"
       caption="Project members"
+      search-placeholder="Search members…"
       search-label="Search by name or email"
       :columns="columns"
       :filters="filters"
@@ -87,7 +90,7 @@ const memberAction = useAsyncAction(async (member: ProjectMember, role: ProjectR
       :loading="list.loading.value"
       :error="list.error.value"
       empty-message="No one has been added to this project yet."
-      @retry="list.reload"
+      @reload="list.reload"
     >
       <template #cell-role="{ row }">
         <BaseSelect

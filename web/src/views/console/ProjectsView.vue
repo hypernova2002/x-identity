@@ -36,6 +36,7 @@ const filters: DataTableFilter[] = [
 
 const { state, rows, total, perPage, loading, error, reload } = useListView((params) => projectService.list(account.value!.uid, params), {
   defaultSort: 'created_at',
+  storageKey: 'projects',
   filterKeys: filters.map((filter) => filter.key),
   syncRoute: true,
 })
@@ -65,11 +66,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageHeader title="Projects" description="Each project is a separate directory of end users, with its own applications, settings and members." />
+  <PageHeader title="Projects" description="Each project is a separate directory of end users, with its own applications, settings and members.">
+    <template v-if="isAccountAdmin" #actions>
+      <BaseButton label="Create project" @click="createOpen = true" />
+    </template>
+  </PageHeader>
 
   <BaseDataTable
+    storage-key="projects"
     v-model:state="state"
     caption="Projects"
+    search-placeholder="Search projects…"
     search-label="Search by name"
     :columns="columns"
     :filters="filters"
@@ -80,11 +87,8 @@ onMounted(() => {
     :loading="loading"
     :error="error"
     empty-message="No projects yet."
-    @retry="reload"
+    @reload="reload"
   >
-    <template v-if="isAccountAdmin" #actions>
-      <BaseButton label="Create project" @click="createOpen = true" />
-    </template>
     <template #cell-name="{ row }">
       <RouterLink :to="{ name: 'project', params: { projectUid: row.uid } }" class="font-medium text-primary underline hover:text-primary-hover">
         {{ row.name }}

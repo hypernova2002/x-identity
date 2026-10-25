@@ -24,8 +24,10 @@ const props = withDefaults(
     error?: string
     placeholder?: string
     disabled?: boolean
+    /** 'self' keeps the options inside the component, e.g. within a popover that closes on outside clicks. */
+    appendTo?: 'body' | 'self'
   }>(),
-  { resolveLabel: undefined, seeAll: undefined, hideLabel: false, hint: undefined, error: undefined, placeholder: 'Type to search', disabled: false },
+  { appendTo: 'body', resolveLabel: undefined, seeAll: undefined, hideLabel: false, hint: undefined, error: undefined, placeholder: 'Type to search', disabled: false },
 )
 
 /** The selected item's value, or '' for none. */
@@ -140,6 +142,7 @@ const passThrough = computed(() => ({
       :loading="loading"
       :placeholder="placeholder"
       :disabled="disabled"
+      :append-to="appendTo"
       :invalid="Boolean(error)"
       :aria-labelledby="labelId"
       :aria-describedby="describedBy"

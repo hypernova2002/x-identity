@@ -18,6 +18,10 @@ module V1
           render json: EndUserSerializer.new(end_users).serializable_hash
         end
 
+        def stats
+          render json: ::EndUsers::Stats.new(current_project).call
+        end
+
         def show
           render json: EndUserSerializer.new(@end_user).serializable_hash
         end

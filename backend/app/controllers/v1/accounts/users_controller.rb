@@ -10,12 +10,16 @@ module V1
         default_sort: "created_at"
       )
 
-      before_action :require_account_admin!, except: :index
+      before_action :require_account_admin!, except: %i[index stats]
       before_action :set_user, only: %i[show update destroy]
 
       def index
         users = listed(current_account.users.includes(:otp_credential), LIST)
         render json: UserSerializer.new(users).serializable_hash
+      end
+
+      def stats
+        render json: ::Users::Stats.new(current_account, include_invitations: AccountPolicy.new(current_user).manage?).call
       end
 
       def show

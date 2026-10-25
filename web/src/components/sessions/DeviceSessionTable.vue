@@ -35,7 +35,7 @@ const columns: DataTableColumn[] = [
   { key: 'actions', label: 'Actions', srOnly: true },
 ]
 
-const list = useListView(props.fetchPage, { defaultSort: '-last_seen_at' })
+const list = useListView(props.fetchPage, { defaultSort: '-last_seen_at', storageKey: 'device-sessions' })
 const listState = list.state
 
 const pending = ref<DeviceSession | null>(null)
@@ -63,8 +63,10 @@ defineExpose({ reload: list.reload })
   <BaseAlert v-if="notice" variant="success">{{ notice }}</BaseAlert>
 
   <BaseDataTable
+    storage-key="device-sessions"
     v-model:state="listState"
     caption="Signed-in devices"
+    search-placeholder="Search devices…"
     search-label="Search by device, IP address or place"
     :columns="columns"
     :rows="list.rows.value"
@@ -75,7 +77,7 @@ defineExpose({ reload: list.reload })
     :error="list.error.value"
     :empty-message="owner === 'you' ? 'You aren\'t signed in on any other device.' : `${owner} isn't signed in on any device.`"
     stacked
-    @retry="list.reload"
+    @reload="list.reload"
   >
     <template v-if="signOutOthers" #actions>
       <BaseButton label="Sign out all other devices" variant="secondary" @click="othersPending = true" />

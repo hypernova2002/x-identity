@@ -31,6 +31,7 @@ export const projectRoutes: RouteRecordRaw[] = [
     meta: {
       title: 'Applications',
       navItem: 'applications',
+      ownHeader: true,
       description: 'The apps that sign this project\'s end users in: OpenID Connect and API clients, and SAML applications.',
     },
   },
@@ -65,6 +66,7 @@ export const projectRoutes: RouteRecordRaw[] = [
     meta: {
       title: 'APIs',
       navItem: 'apis',
+      ownHeader: true,
       description: 'Your own APIs that machine-to-machine apps get access tokens for, and the scopes they define.',
     },
   },
@@ -75,7 +77,7 @@ export const projectRoutes: RouteRecordRaw[] = [
     path: 'end-users',
     name: 'project-end-users',
     component: () => import('../views/console/project/ProjectEndUsersView.vue'),
-    meta: { title: 'End users', navItem: 'end-users', description: 'The people who sign in to this project\'s apps. Console users are managed separately, under Account.' },
+    meta: { title: 'End users', navItem: 'end-users', ownHeader: true, description: 'The people who sign in to this project\'s apps. Console users are managed separately, under Account.' },
   },
   {
     path: 'end-users/:endUserUid',
@@ -87,13 +89,23 @@ export const projectRoutes: RouteRecordRaw[] = [
     path: 'groups',
     name: 'project-groups',
     component: () => import('../views/console/project/ProjectGroupsView.vue'),
-    meta: { title: 'Groups', navItem: 'groups', description: 'Sets of end users, for giving access to applications and sending group names to them.' },
+    meta: {
+      title: 'Groups',
+      navItem: 'groups',
+      ownHeader: true,
+      description: 'Sets of end users. Assign apps to groups, and send group names to apps as the groups claim or a SAML attribute.',
+    },
   },
   {
     path: 'attributes',
     name: 'project-attributes',
     component: () => import('../views/console/project/ProjectAttributesView.vue'),
-    meta: { title: 'Attributes', navItem: 'attributes', description: 'Custom fields on end users, optionally required, user-editable or included in ID tokens.' },
+    meta: {
+      title: 'Attributes',
+      navItem: 'attributes',
+      ownHeader: true,
+      description: 'Extra profile fields for this project\'s end users, optionally required, user-editable or included in ID tokens. Values are checked on sign-up, profile updates and admin changes.',
+    },
   },
 
   {
@@ -123,6 +135,7 @@ export const projectRoutes: RouteRecordRaw[] = [
     component: () => import('../views/console/project/ProjectIdentityProvidersView.vue'),
     meta: {
       title: 'Identity providers',
+      ownHeader: true,
       navItem: 'identity-providers',
       description: 'External systems end users can sign in with: social providers, OpenID Connect providers and companies\' SAML identity providers.',
     },

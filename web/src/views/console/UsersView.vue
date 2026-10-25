@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -11,6 +11,8 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import PageHeader from '@/components/console/PageHeader.vue'
+import StatCards from '@/components/console/StatCards.vue'
+import { useAsync } from '@/composables/useAsync'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useListView } from '@/composables/useListView'
 import { userService } from '@/services/account'
@@ -52,6 +54,7 @@ const invitationFilters: DataTableFilter[] = [{ type: 'select', key: 'role_eq', 
 
 const users = useListView((params) => userService.list(account.value!.uid, params), {
   defaultSort: 'created_at',
+  storageKey: 'console-users',
   filterKeys: userFilters.map((filter) => filter.key),
   syncRoute: true,
 })
@@ -59,9 +62,28 @@ const usersState = users.state
 
 const invitations = useListView((params) => userService.listInvitations(account.value!.uid, params), {
   defaultSort: 'created_at',
+  storageKey: 'invitations',
   filterKeys: invitationFilters.map((filter) => filter.key),
 })
 const invitationsState = invitations.state
+
+const stats = useAsync(() => userService.stats(account.value!.uid))
+const statCards = computed(() => [
+  { label: 'Console users', value: stats.data.value?.total },
+  { label: 'Owners and admins', value: stats.data.value?.admins },
+  // Only account admins can see invitations; the API sends null to everyone else.
+  ...(stats.data.value?.pending_invitations === null ? [] : [{ label: 'Pending invitations', value: stats.data.value?.pending_invitations }]),
+])
+
+function reloadUsers() {
+  return Promise.all([users.reload(), stats.reload()])
+}
+
+function reloadInvitations() {
+  return Promise.all([invitations.reload(), stats.reload()])
+}
+
+onMounted(() => stats.reload())
 
 function canManage(user: User) {
   if (!me.value || user.uid === me.value.uid) return false
@@ -72,7 +94,7 @@ const userAction = useAsyncAction(async (user: User, changes: Partial<Pick<User,
   if (!account.value) return
   if (changes === null) await userService.remove(account.value.uid, user.uid)
   else await userService.update(account.value.uid, user.uid, changes)
-  await users.reload()
+  await reloadUsers()
 })
 
 const invite = useAsyncAction(async () => {
@@ -81,13 +103,13 @@ const invite = useAsyncAction(async () => {
   const invitation = await userService.invite(account.value.uid, inviteEmail.value, inviteRole.value)
   invited.value = invitation.email
   inviteEmail.value = ''
-  await invitations.reload()
+  await reloadInvitations()
 })
 
 const revoke = useAsyncAction(async (invitation: Invitation) => {
   if (!account.value) return
   await userService.revokeInvitation(account.value.uid, invitation.uid)
-  await invitations.reload()
+  await reloadInvitations()
 })
 
 async function confirmDelete() {
@@ -100,11 +122,15 @@ async function confirmDelete() {
 <template>
   <PageHeader title="Console users" description="People who manage this account in the console, and their account roles. Project end users are managed in each project's Directory." />
 
+  <StatCards label="Console user counts" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
+
   <BaseAlert v-if="userAction.error.value" variant="danger">{{ userAction.error.value.message }}</BaseAlert>
 
   <BaseDataTable
+    storage-key="console-users"
     v-model:state="usersState"
     caption="Console users"
+    search-placeholder="Search console users…"
     search-label="Search by name or email"
     :columns="userColumns"
     :filters="userFilters"
@@ -115,7 +141,7 @@ async function confirmDelete() {
     :loading="users.loading.value"
     :error="users.error.value"
     empty-message="No users yet."
-    @retry="users.reload"
+    @reload="reloadUsers"
   >
     <template #cell-name="{ row }">
       <span class="font-medium">{{ row.name }}</span>
@@ -186,8 +212,10 @@ async function confirmDelete() {
 
     <BaseAlert v-if="revoke.error.value" variant="danger">{{ revoke.error.value.message }}</BaseAlert>
     <BaseDataTable
+      storage-key="invitations"
       v-model:state="invitationsState"
       caption="Pending invitations"
+      search-placeholder="Search invitations…"
       search-label="Search by email"
       :columns="invitationColumns"
       :filters="invitationFilters"
@@ -198,7 +226,7 @@ async function confirmDelete() {
       :loading="invitations.loading.value"
       :error="invitations.error.value"
       empty-message="No pending invitations."
-      @retry="invitations.reload"
+      @reload="reloadInvitations"
     >
       <template #cell-role="{ row }"><span class="capitalize">{{ row.role }}</span></template>
       <template #cell-expires_at="{ row }">{{ formatDateTime(row.expires_at) }}</template>

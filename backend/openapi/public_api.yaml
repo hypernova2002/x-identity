@@ -2227,6 +2227,33 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/applications/stats":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Count the project's applications by kind
+      tags:
+      - Applications
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: counts
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApplicationStats"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/attributes":
     parameters:
     - name: account_uid
@@ -3427,6 +3454,33 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/stats":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Count the project's end users by status
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: counts
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EndUserStats"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{end_user_uid}/sessions":
     parameters:
     - name: account_uid
@@ -3831,6 +3885,33 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/groups/stats":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Count the project's groups
+      tags:
+      - Groups
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: counts
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/GroupStats"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/groups/{group_uid}/members":
@@ -5323,6 +5404,28 @@ paths:
                 type: string
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/users/stats":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Count the account's console users
+      tags:
+      - Users
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: counts; pending invitations only for account admins
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/UserStats"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/users/{uid}":
     parameters:
     - name: account_uid
@@ -5825,6 +5928,25 @@ components:
           description: APIs a machine-to-machine app can get tokens for (0 for other
             apps).
       title: Application
+    ApplicationStats:
+      type: object
+      required:
+      - total
+      - oidc
+      - machine
+      - saml
+      properties:
+        total:
+          type: integer
+        oidc:
+          type: integer
+          description: OpenID Connect apps that users sign in to.
+        machine:
+          type: integer
+          description: Machine-to-machine apps (client credentials).
+        saml:
+          type: integer
+      title: ApplicationStats
     AttributeDefinition:
       type: object
       required:
@@ -6359,6 +6481,29 @@ components:
           type: string
           format: date-time
       title: EndUserIdentity
+    EndUserStats:
+      type: object
+      required:
+      - total
+      - active
+      - disabled
+      - invitation_pending
+      - signed_in_recently
+      properties:
+        total:
+          type: integer
+        active:
+          type: integer
+        disabled:
+          type: integer
+        invitation_pending:
+          type: integer
+          description: Created or invited, without a password or linked identity yet.
+        signed_in_recently:
+          type: integer
+          description: Signed in during the last 30 days.
+      description: Counts are cached for up to a minute.
+      title: EndUserStats
     Error:
       type: object
       description: |-
@@ -6496,6 +6641,18 @@ components:
           type: string
           format: date-time
       title: Group
+    GroupStats:
+      type: object
+      required:
+      - total
+      - empty
+      properties:
+        total:
+          type: integer
+        empty:
+          type: integer
+          description: Groups with no members.
+      title: GroupStats
     IdentityProvider:
       type: object
       required:
@@ -7124,6 +7281,24 @@ components:
           type: string
           format: date-time
       title: User
+    UserStats:
+      type: object
+      required:
+      - total
+      - admins
+      - pending_invitations
+      properties:
+        total:
+          type: integer
+        admins:
+          type: integer
+          description: Owners and admins.
+        pending_invitations:
+          type:
+          - integer
+          - 'null'
+          description: Only for account admins; null for others.
+      title: UserStats
   securitySchemes:
     BearerAuth:
       type: http

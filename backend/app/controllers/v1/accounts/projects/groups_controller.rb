@@ -21,6 +21,10 @@ module V1
           render json: GroupSerializer.new(groups, params: { member_counts: member_counts }).serializable_hash
         end
 
+        def stats
+          render json: ::Groups::Stats.new(current_project).call
+        end
+
         def show
           render json: GroupSerializer.new(@group).serializable_hash
         end

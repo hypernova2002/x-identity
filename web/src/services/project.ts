@@ -24,14 +24,17 @@ import type {
   AttributeDataType,
   AppAssignment,
   AppKind,
+  ApplicationStats,
   AttributeDefinition,
   AuthConfiguration,
   CustomAttributes,
   EndUser,
+  EndUserStats,
   EndUserAppAccess,
   EndUserIdentity,
   EndUserStatus,
   Group,
+  GroupStats,
   IdentityProvider,
   IdentityProviderKind,
   PrincipalType,
@@ -148,6 +151,9 @@ export const projectAdminService = {
   listApplications: (accountUid: string, projectUid: string, params: ListParams) =>
     apiPage(`${base(accountUid, projectUid)}/applications`, applicationSchema, { ...authenticated, query: listQuery(params) }),
 
+  applicationStats: (accountUid: string, projectUid: string) =>
+    apiRequest<ApplicationStats>(`${base(accountUid, projectUid)}/applications/stats`, authenticated),
+
   listAppClients: (accountUid: string, projectUid: string) =>
     apiPage(`${base(accountUid, projectUid)}/app-clients`, appClientSchema, { ...authenticated, query: listQuery(LOOKUP) }),
 
@@ -251,6 +257,8 @@ export const projectAdminService = {
   listGroups: (accountUid: string, projectUid: string, params: ListParams = LOOKUP) =>
     apiPage(`${base(accountUid, projectUid)}/groups`, groupSchema, { ...authenticated, query: listQuery(params) }),
 
+  groupStats: (accountUid: string, projectUid: string) => apiRequest<GroupStats>(`${base(accountUid, projectUid)}/groups/stats`, authenticated),
+
   getGroup: (accountUid: string, projectUid: string, groupUid: string) =>
     apiRequest<Group>(`${base(accountUid, projectUid)}/groups/${groupUid}`, authenticated),
 
@@ -321,6 +329,9 @@ export const projectAdminService = {
 
   listEndUsers: (accountUid: string, projectUid: string, params: ListParams) =>
     apiPage(`${base(accountUid, projectUid)}/end-users`, endUserSchema, { ...authenticated, query: listQuery(params) }),
+
+  endUserStats: (accountUid: string, projectUid: string) =>
+    apiRequest<EndUserStats>(`${base(accountUid, projectUid)}/end-users/stats`, authenticated),
 
   listEndUserSessions: (accountUid: string, projectUid: string, endUserUid: string, params: ListParams) =>
     apiPage(`${base(accountUid, projectUid)}/end-users/${endUserUid}/sessions`, deviceSessionSchema, { ...authenticated, query: listQuery(params) }),

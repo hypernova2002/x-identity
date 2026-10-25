@@ -27,6 +27,13 @@ const emit = defineEmits<{
   click: [event: MouseEvent]
 }>()
 
+const slots = defineSlots<{
+  /** Shows only this icon, with `label` as the button's accessible name and tooltip. */
+  icon?: () => unknown
+}>()
+
+const iconOnly = computed(() => Boolean(slots.icon))
+
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
     'border-transparent bg-primary text-on-primary enabled:hover:bg-primary-hover enabled:active:bg-primary-active',
@@ -44,6 +51,12 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: 'h-12 px-6 text-base',
 }
 
+const iconSizeClasses: Record<ButtonSize, string> = {
+  sm: 'size-8',
+  md: 'size-10',
+  lg: 'size-12',
+}
+
 const passThrough = computed(() => ({
   root: {
     class: [
@@ -52,7 +65,7 @@ const passThrough = computed(() => ({
       'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
       'disabled:cursor-not-allowed disabled:border-border disabled:bg-bg-subtle disabled:text-text-disabled',
       variantClasses[props.variant],
-      sizeClasses[props.size],
+      iconOnly.value ? iconSizeClasses[props.size] : sizeClasses[props.size],
     ],
   },
   loadingIcon: {
@@ -69,7 +82,13 @@ const passThrough = computed(() => ({
     :loading="loading"
     :disabled="disabled || loading"
     :aria-busy="loading || undefined"
+    :aria-label="iconOnly ? label : undefined"
+    :title="iconOnly ? label : undefined"
     :pt="passThrough"
     @click="emit('click', $event)"
-  />
+  >
+    <template v-if="iconOnly" #default>
+      <slot name="icon" />
+    </template>
+  </Button>
 </template>

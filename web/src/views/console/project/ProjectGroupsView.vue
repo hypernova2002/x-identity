@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -11,6 +11,9 @@ import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BasePagination from '@/components/base/BasePagination.vue'
 import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
+import StatCards from '@/components/console/StatCards.vue'
+import RoutePageHeader from '@/components/console/RoutePageHeader.vue'
+import { useAsync } from '@/composables/useAsync'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useListView } from '@/composables/useListView'
 import { useProjectContext } from '@/composables/useProjectContext'
@@ -47,10 +50,21 @@ const filters: DataTableFilter[] = [
 
 const list = useListView((params) => projectAdminService.listGroups(accountUid.value, project.value!.uid, params), {
   defaultSort: 'name',
+  storageKey: 'groups',
   filterKeys: filters.map((filter) => filter.key),
   syncRoute: true,
 })
 const listState = list.state
+
+const stats = useAsync(() => projectAdminService.groupStats(accountUid.value, project.value!.uid))
+const statCards = computed(() => [
+  { label: 'Groups', value: stats.data.value?.total },
+  { label: 'Without members', value: stats.data.value?.empty },
+])
+
+function reloadAll() {
+  return Promise.all([list.reload(), stats.reload()])
+}
 
 /** Links from users, applications and providers open a group's members. */
 const openLinked = useAsyncAction(async () => {
@@ -73,14 +87,14 @@ const save = useAsyncAction(async () => {
   if (editing.value) await projectAdminService.updateGroup(accountUid.value, project.value.uid, editing.value.uid, input)
   else await projectAdminService.createGroup(accountUid.value, project.value.uid, input)
   formOpen.value = false
-  await list.reload()
+  await reloadAll()
 })
 
 const destroy = useAsyncAction(async (group: Group) => {
   if (!project.value) return
   await projectAdminService.deleteGroup(accountUid.value, project.value.uid, group.uid)
   pendingDelete.value = null
-  await list.reload()
+  await reloadAll()
 })
 
 const loadMembers = useAsyncAction(async () => {
@@ -104,29 +118,42 @@ const searchMembers = useAsyncAction(async () => {
 const addMember = useAsyncAction(async (endUser: EndUser) => {
   if (!project.value || !membersOf.value) return
   await projectAdminService.addGroupMember(accountUid.value, project.value.uid, membersOf.value.uid, endUser.uid)
-  await Promise.all([loadMembers.run(), list.reload()])
+  await Promise.all([loadMembers.run(), reloadAll()])
 })
 
 const removeMember = useAsyncAction(async (endUser: EndUser) => {
   if (!project.value || !membersOf.value) return
   await projectAdminService.removeGroupMember(accountUid.value, project.value.uid, membersOf.value.uid, endUser.uid)
-  await Promise.all([loadMembers.run(), list.reload()])
+  await Promise.all([loadMembers.run(), reloadAll()])
 })
 
 const isMember = (endUser: EndUser) => members.value.items.some((member) => member.uid === endUser.uid) || endUser.groups.some((group) => group.uid === membersOf.value?.uid)
 
 watch(membersPage, () => loadMembers.run())
-onMounted(() => openLinked.run())
+onMounted(() => {
+  openLinked.run()
+  stats.reload()
+})
 </script>
 
 <template>
-  <BaseCard title="Groups" description="Sets of end users. Assign apps to groups, and send group names to apps as the groups claim or a SAML attribute.">
+  <RoutePageHeader>
+    <template v-if="access.developer" #actions>
+      <BaseButton label="Create group" @click="openForm(null)" />
+    </template>
+  </RoutePageHeader>
+
+  <StatCards label="Group counts" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
+
+  <BaseCard>
     <BaseAlert v-if="openLinked.error.value" variant="danger">We couldn't open that group. {{ openLinked.error.value.message }}</BaseAlert>
     <BaseAlert v-if="destroy.error.value" variant="danger">{{ destroy.error.value.message }}</BaseAlert>
 
     <BaseDataTable
+      storage-key="groups"
       v-model:state="listState"
       caption="Groups"
+      search-placeholder="Search groups…"
       search-label="Search by name"
       :columns="columns"
       :filters="filters"
@@ -137,11 +164,8 @@ onMounted(() => openLinked.run())
       :loading="list.loading.value"
       :error="list.error.value"
       empty-message="No groups yet. Create one to give its members access to apps."
-      @retry="list.reload"
+      @reload="reloadAll"
     >
-      <template v-if="access.developer" #actions>
-        <BaseButton label="Create group" @click="openForm(null)" />
-      </template>
       <template #cell-name="{ row }">
         <span class="font-medium">{{ row.name }}</span>
         <span v-if="row.description" class="block text-xs text-text-muted">{{ row.description }}</span>
@@ -193,7 +217,7 @@ onMounted(() => openLinked.run())
         <BaseButton v-if="access.developer" label="Remove" variant="ghost" size="sm" :loading="removeMember.loading.value" @click="removeMember.run(member)" />
       </li>
     </ul>
-    <BasePagination v-model:page="membersPage" :total="members.total" :per-page="members.perPage" :disabled="loadMembers.loading.value" />
+    <BasePagination v-model:page="membersPage" class="self-end" label="Members pagination" :total="members.total" :per-page="members.perPage" :row-count="members.items.length" :disabled="loadMembers.loading.value" />
 
     <template v-if="access.developer">
       <form class="flex flex-wrap items-end gap-2 border-t border-border pt-4" novalidate @submit.prevent="searchMembers.run()">
