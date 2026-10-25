@@ -35,6 +35,7 @@ import type {
   EndUserStatus,
   Group,
   GroupStats,
+  Passkey,
   ProjectDomain,
   IdentityProvider,
   IdentityProviderKind,
@@ -250,6 +251,12 @@ export const projectAdminService = {
 
   listEndUserIdentities: (accountUid: string, projectUid: string, endUserUid: string) =>
     apiRequest<EndUserIdentity[]>(`${base(accountUid, projectUid)}/end-users/${endUserUid}/identities`, authenticated),
+
+  listEndUserPasskeys: (accountUid: string, projectUid: string, endUserUid: string) =>
+    apiRequest<Passkey[]>(`${base(accountUid, projectUid)}/end-users/${endUserUid}/passkeys`, authenticated),
+
+  removeEndUserPasskey: (accountUid: string, projectUid: string, endUserUid: string, passkeyUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/end-users/${endUserUid}/passkeys/${passkeyUid}`, { ...authenticated, method: 'DELETE' }),
 
   unlinkEndUserIdentity: (accountUid: string, projectUid: string, endUserUid: string, identityUid: string) =>
     apiRequest<null>(`${base(accountUid, projectUid)}/end-users/${endUserUid}/identities/${identityUid}`, {

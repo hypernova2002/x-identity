@@ -21,6 +21,7 @@ const config: PortalConfig = {
   client_id: 'cl_portal',
   redirect_uri: 'http://console.test/auth/acme/proj_1/apps',
   post_logout_redirect_uri: 'http://console.test/auth/acme/proj_1/signed-out',
+  passkeys_available: false,
 }
 
 describe('usePortal', () => {

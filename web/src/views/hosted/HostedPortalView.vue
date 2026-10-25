@@ -6,6 +6,7 @@ import AccountLookupState from '@/components/auth/AccountLookupState.vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
+import PasskeysCard from '@/components/security/PasskeysCard.vue'
 import DeviceSessionTable from '@/components/sessions/DeviceSessionTable.vue'
 import { useHostedProject } from '@/composables/useHostedProject'
 import { usePortal } from '@/composables/usePortal'
@@ -55,6 +56,13 @@ watch(
       <BaseButton label="Log out" variant="ghost" @click="portal.logOut()" />
     </template>
   </BaseCard>
+
+  <PasskeysCard
+    v-if="accessToken && !portal.open.loading.value"
+    :available="portal.config.value?.passkeys_available ?? false"
+    v-bind="portal.passkeys"
+    @reauthenticate="portal.signInAgain()"
+  />
 
   <BaseCard v-if="accessToken && !portal.open.loading.value" title="Your devices" description="Where you're signed in. Sign out any device you don't recognise.">
     <DeviceSessionTable :fetch-page="portal.fetchSessions" :sign-out="portal.signOutSession" :sign-out-others="portal.signOutOtherSessions" />

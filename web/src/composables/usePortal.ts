@@ -8,6 +8,7 @@ import { oidcService } from '@/services/oidc'
 import { portalService } from '@/services/portal'
 import type { DeviceSession, PortalApp, PortalConfig } from '@/types/api'
 import { decodeJwt } from '@/utils/jwt'
+import type { PasskeyRegistrationJSON } from '@/utils/webauthn'
 
 interface StoredSession {
   accessToken: string
@@ -47,9 +48,10 @@ export function usePortal(projectUid: string, navigate: (url: string) => void = 
     }
   }
 
-  async function signIn() {
+  /** @param prompt login signs the user in again even with a valid session, e.g. before adding a passkey */
+  async function signIn(prompt?: 'login') {
     if (!config.value) return
-    await codeFlow.start.run(config.value.issuer, config.value.client_id, config.value.redirect_uri)
+    await codeFlow.start.run(config.value.issuer, config.value.client_id, config.value.redirect_uri, prompt)
   }
 
   async function loadApps(session: StoredSession) {
@@ -103,5 +105,18 @@ export function usePortal(projectUid: string, navigate: (url: string) => void = 
     navigate(oidcService.logoutUrl(config.value.issuer, { clientId: config.value.client_id, postLogoutRedirectUri: config.value.post_logout_redirect_uri }))
   }
 
-  return { config, apps, email, accessToken, open, launch, logOut, fetchSessions, signOutSession, signOutOtherSessions }
+  const passkeys = {
+    list: () => portalService.listPasskeys(accountUid, projectUid, accessToken.value ?? ''),
+    options: () => portalService.passkeyOptions(accountUid, projectUid, accessToken.value ?? ''),
+    add: (registrationId: string, credential: PasskeyRegistrationJSON) => portalService.addPasskey(accountUid, projectUid, accessToken.value ?? '', registrationId, credential),
+    rename: (passkeyUid: string, name: string) => portalService.renamePasskey(accountUid, projectUid, accessToken.value ?? '', passkeyUid, name),
+    remove: (passkeyUid: string) => portalService.removePasskey(accountUid, projectUid, accessToken.value ?? '', passkeyUid),
+  }
+
+  /** Adding a passkey needs a recent sign-in: sign in again, then come back here. */
+  function signInAgain() {
+    return signIn('login')
+  }
+
+  return { config, apps, email, accessToken, open, launch, logOut, fetchSessions, signOutSession, signOutOtherSessions, passkeys, signInAgain }
 }

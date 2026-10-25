@@ -8,6 +8,8 @@ export interface AuthorizeRequest {
   state: string
   nonce: string
   codeChallenge: string
+  /** login asks the user to sign in again even with a valid session. */
+  prompt?: 'login'
 }
 
 export interface CodeExchange {
@@ -34,6 +36,7 @@ export const oidcService = {
       code_challenge: request.codeChallenge,
       code_challenge_method: 'S256',
     })
+    if (request.prompt) query.set('prompt', request.prompt)
     return `${issuer}/oauth2/authorize?${query.toString()}`
   },
 

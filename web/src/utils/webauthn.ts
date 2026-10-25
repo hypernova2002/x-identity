@@ -14,6 +14,24 @@ export interface PasskeyCreationOptionsJSON {
   excludeCredentials?: { type: 'public-key'; id: string; transports?: AuthenticatorTransport[] }[]
 }
 
+export interface PasskeyRequestOptionsJSON {
+  challenge: string
+  timeout?: number
+  rpId?: string
+  userVerification?: UserVerificationRequirement
+  allowCredentials?: { type: 'public-key'; id: string; transports?: AuthenticatorTransport[] }[]
+}
+
+/** A passkey's signed answer to a sign-in, as JSON. */
+export interface PasskeyAssertionJSON {
+  id: string
+  rawId: string
+  type: string
+  authenticatorAttachment: string | null
+  clientExtensionResults: AuthenticationExtensionsClientOutputs
+  response: { clientDataJSON: string; authenticatorData: string; signature: string; userHandle: string | null }
+}
+
 /** What the API expects back: the PublicKeyCredential as JSON, like its toJSON(). */
 export interface PasskeyRegistrationJSON {
   id: string
@@ -69,14 +87,60 @@ export function registrationJSON(credential: PublicKeyCredential): PasskeyRegist
   }
 }
 
+export function requestOptions(json: PasskeyRequestOptionsJSON): PublicKeyCredentialRequestOptions {
+  return {
+    challenge: toBytes(json.challenge),
+    timeout: json.timeout,
+    rpId: json.rpId,
+    userVerification: json.userVerification,
+    allowCredentials: (json.allowCredentials ?? []).map((credential) => ({ ...credential, id: toBytes(credential.id) })),
+  }
+}
+
+export function assertionJSON(credential: PublicKeyCredential): PasskeyAssertionJSON {
+  const response = credential.response as AuthenticatorAssertionResponse
+  return {
+    id: credential.id,
+    rawId: toBase64Url(credential.rawId),
+    type: credential.type,
+    authenticatorAttachment: credential.authenticatorAttachment,
+    clientExtensionResults: credential.getClientExtensionResults(),
+    response: {
+      clientDataJSON: toBase64Url(response.clientDataJSON),
+      authenticatorData: toBase64Url(response.authenticatorData),
+      signature: toBase64Url(response.signature),
+      userHandle: response.userHandle ? toBase64Url(response.userHandle) : null,
+    },
+  }
+}
+
 /** Why a passkey ceremony ended without one, in words for the user; null when they cancelled. */
-export function passkeyErrorMessage(caught: unknown): string | null {
+export function passkeyErrorMessage(caught: unknown, action: 'create' | 'sign-in' = 'create'): string | null {
   if (caught instanceof DOMException) {
     if (caught.name === 'NotAllowedError' || caught.name === 'AbortError') return null
-    if (caught.name === 'InvalidStateError') return 'This device already has a passkey for your account.'
+    if (caught.name === 'InvalidStateError' && action === 'create') return 'This device already has a passkey for your account.'
     if (caught.name === 'SecurityError') return "Passkeys can't be used on this site's address."
   }
-  return "We couldn't create the passkey. Try again."
+  return action === 'create' ? "We couldn't create the passkey. Try again." : "We couldn't sign you in with a passkey. Try again, or use your password."
+}
+
+/** Whether the browser can offer passkeys in the email field's autofill. */
+export async function passkeyAutofillAvailable(): Promise<boolean> {
+  try {
+    return passkeysSupported() && (await PublicKeyCredential.isConditionalMediationAvailable?.()) === true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Asks the browser for a passkey's answer to the API's options: from a prompt, or, with
+ * `autofill`, by waiting until the user picks a passkey in the email field's autofill.
+ */
+export async function getPasskey(options: PasskeyRequestOptionsJSON, { autofill = false, signal }: { autofill?: boolean; signal?: AbortSignal } = {}): Promise<PasskeyAssertionJSON> {
+  const credential = await navigator.credentials.get({ publicKey: requestOptions(options), mediation: autofill ? 'conditional' : 'optional', signal })
+  if (!(credential instanceof PublicKeyCredential)) throw new DOMException('No passkey was chosen.', 'NotAllowedError')
+  return assertionJSON(credential)
 }
 
 /** Asks the browser to create a passkey from the API's options. */

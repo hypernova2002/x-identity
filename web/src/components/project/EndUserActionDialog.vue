@@ -26,7 +26,7 @@ const copy: Partial<Record<EndUserAction, { title: string; confirm: string; body
   reset_mfa: {
     title: 'Reset MFA?',
     confirm: 'Reset MFA',
-    body: 'Turns off their MFA: their authenticator and recovery codes are deleted. Their sessions and password aren\'t changed. If the project requires MFA, they set it up again at their next sign-in.',
+    body: 'Turns off their MFA: their authenticator, recovery codes and passkeys are deleted. Their sessions and password aren\'t changed. If the project requires MFA, they set it up again at their next sign-in.',
   },
   sign_out: {
     title: 'Sign out everywhere?',

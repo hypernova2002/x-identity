@@ -4,7 +4,7 @@ module Auth
   # hosted login carry their interaction, end with a {SignInCompletion} instead of tokens, and their
   # challenges can only be answered through that interaction.
   class SignInFlow
-    CHALLENGES = %w[otp new_password mfa_setup].freeze
+    CHALLENGES = %w[otp passkey new_password mfa_setup].freeze
 
     # @param realm [Realms::AccountRealm, Realms::ProjectRealm]
     # @param app_client [AppClient, nil]
@@ -29,7 +29,7 @@ module Auth
       app = @interaction&.subject || @app_client
       Apps::Access.authorize!(app, user, recorder: recorder) if user.is_a?(EndUser) && app
 
-      challenge = next_challenge(user, amr)
+      challenge, mfa_methods = next_challenge(user, amr)
 
       if challenge
         _record, session = OneTimeToken.issue!(
@@ -40,10 +40,11 @@ module Auth
             "amr" => amr,
             "authenticated_at" => authenticated_at.utc.iso8601(6),
             "app_client_id" => @app_client&.id,
-            "interaction_id" => @interaction&.id
-          }
+            "interaction_id" => @interaction&.id,
+            "mfa_methods" => mfa_methods
+          }.compact
         )
-        return SignInResult.challenged(challenge, session, recovery_codes: recovery_codes)
+        return SignInResult.challenged(challenge, session, recovery_codes: recovery_codes, mfa_methods: mfa_methods)
       end
 
       user.record_sign_in!
@@ -63,12 +64,25 @@ module Auth
       @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
     end
 
+    # @return [Array(String, Array<String>), Array(String, nil), nil] the challenge, and for a second
+    #   factor the methods that can answer it
     def next_challenge(user, amr)
-      return "otp" if !@configuration.mfa_off? && user.mfa_enabled? && !Factors.mfa?(amr)
-      return "new_password" if amr.include?("pwd") && user.password_expired?(@configuration)
-      return "mfa_setup" if @configuration.mfa_required? && !user.mfa_enabled?
+      mfa = Factors.mfa?(amr)
+      unless @configuration.mfa_off? || mfa
+        passkey = usable_passkey?(user)
+        return [ "otp", passkey ? %w[otp passkey] : %w[otp] ] if user.mfa_enabled?
+        # Users with only a passkey need it as a second factor where MFA is required, and where it works.
+        return [ "passkey", %w[passkey] ] if passkey && @configuration.mfa_required?
+      end
+      return [ "new_password", nil ] if amr.include?("pwd") && user.password_expired?(@configuration)
+      return [ "mfa_setup", nil ] if @configuration.mfa_required? && !user.mfa_enabled? && !mfa
 
       nil
+    end
+
+    def usable_passkey?(user)
+      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction)
+      relying_party.present? && user.webauthn_credentials.exists?(rp_id: relying_party.id)
     end
   end
 end

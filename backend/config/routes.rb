@@ -44,6 +44,9 @@ Rails.application.routes.draw do
         post "sign-in", to: "interactions#sign_in"
         post "discover", to: "interactions#discover"
         post "respond-to-challenge", to: "interactions#respond_to_challenge"
+        post "respond-to-challenge/passkey-options", to: "interactions#passkey_challenge_options"
+        post "passkey/options", to: "interactions#passkey_options"
+        post "passkey", to: "interactions#passkey"
         post "mfa-setup", to: "interactions#mfa_setup"
         post "sign-up", to: "interactions#sign_up"
         post "confirm-sign-up", to: "interactions#confirm_sign_up"
@@ -119,6 +122,9 @@ Rails.application.routes.draw do
         scope "auth", module: :auth, as: :auth do
           post "sign-in", to: "sign_ins#create"
           post "respond-to-challenge", to: "challenges#create"
+          post "respond-to-challenge/passkey-options", to: "passkeys#challenge_options"
+          post "passkey/options", to: "passkeys#options"
+          post "passkey", to: "passkeys#create"
           post "mfa-setup", to: "mfa_setups#create"
           post "refresh", to: "refreshes#create"
           post "sign-out", to: "sign_outs#create"
@@ -207,6 +213,8 @@ Rails.application.routes.draw do
               get "identities", action: :identities
               get "access", action: :access
               delete "identities/:identity_uid", action: :unlink_identity
+            get "passkeys", action: :passkeys
+            delete "passkeys/:passkey_uid", action: :remove_passkey
             end
             resources :sessions, controller: "end_user_sessions", param: :uid, only: %i[index destroy]
           end

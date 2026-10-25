@@ -12,6 +12,7 @@ import HostedChallengeForm from '@/components/hosted/HostedChallengeForm.vue'
 import { useHostedProject } from '@/composables/useHostedProject'
 import { useHostedLogin } from '@/composables/useHostedLogin'
 import type { SignInChallengeName } from '@/types/api'
+import { passkeysSupported } from '@/utils/webauthn'
 
 const CHALLENGES: SignInChallengeName[] = ['otp', 'new_password', 'mfa_setup']
 
@@ -95,7 +96,7 @@ watch(
             v-model="email"
             label="Email"
             type="email"
-            autocomplete="username"
+            :autocomplete="details.passkeys ? 'username webauthn' : 'username'"
             required
             :error="login.signIn.error.value?.fieldError('email') ?? login.discover.error.value?.fieldError('email')"
           />
@@ -103,6 +104,12 @@ watch(
           <BaseButton v-if="passwordStep" type="submit" label="Sign in" :loading="login.signIn.loading.value" />
           <BaseButton v-else type="submit" label="Continue" :loading="login.discover.loading.value" />
         </form>
+
+        <template v-if="details.passkeys && passkeysSupported()">
+          <BaseAlert v-if="login.signInWithPasskey.error.value" variant="danger">{{ login.signInWithPasskey.error.value.message }}</BaseAlert>
+          <BaseAlert v-else-if="login.passkeyError.value" variant="danger">{{ login.passkeyError.value }}</BaseAlert>
+          <BaseButton label="Sign in with a passkey" variant="secondary" :loading="login.signInWithPasskey.loading.value" @click="login.signInWithPasskey.run()" />
+        </template>
 
         <div v-if="details.identity_providers.length > 0" class="flex flex-col gap-2">
           <p class="text-center text-xs text-text-muted">or</p>
@@ -125,9 +132,12 @@ watch(
         v-else-if="step === 'challenge' && challenge"
         :challenge="challenge"
         :enrollment="enrollment"
-        :error="login.answer.error.value"
+        :error="login.answer.error.value ?? login.answerWithPasskey.error.value"
         :loading="login.answer.loading.value"
+        :passkey-loading="login.answerWithPasskey.loading.value"
+        :passkey-error="login.passkeyError.value"
         @submit="(response) => login.answer.run(response)"
+        @passkey="login.answerWithPasskey.run()"
         @start-over="show('sign-in')"
       />
 

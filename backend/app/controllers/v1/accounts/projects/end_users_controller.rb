@@ -11,7 +11,7 @@ module V1
           default_sort: "created_at"
         )
 
-        before_action :set_end_user, only: %i[show update destroy reset_mfa sign_out resend_invitation identities unlink_identity access]
+        before_action :set_end_user, only: %i[show update destroy reset_mfa sign_out resend_invitation identities unlink_identity access passkeys remove_passkey]
 
         def index
           end_users = listed(current_project.end_users.includes(:otp_credential, :identities, :groups), LIST, capped: true)
@@ -63,6 +63,15 @@ module V1
 
         def identities
           render json: EndUserIdentitySerializer.new(@end_user.identities.includes(:identity_provider).order(:created_at, :id)).serializable_hash
+        end
+
+        def passkeys
+          render json: PasskeySerializer.new(@end_user.webauthn_credentials.order(:created_at, :id)).serializable_hash
+        end
+
+        def remove_passkey
+          management.remove_passkey(@end_user, @end_user.webauthn_credentials.find_by_uid!(params[:passkey_uid]))
+          head :no_content
         end
 
         def unlink_identity

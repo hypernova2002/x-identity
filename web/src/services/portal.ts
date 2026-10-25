@@ -1,8 +1,9 @@
 import { ApiError, apiPage, apiRequest } from './http'
 import { listQuery, type ListParams } from './list'
 import { deviceSessionSchema } from './schemas'
-import type { PortalApp, PortalConfig } from '@/types/api'
+import type { Passkey, PasskeyRegistrationOptions, PortalApp, PortalConfig } from '@/types/api'
 import { apiBaseUrl, projectPath } from '@/utils/customDomain'
+import type { PasskeyRegistrationJSON } from '@/utils/webauthn'
 
 const portalPath = (accountUid: string, projectUid: string) => `${projectPath(accountUid, projectUid)}/portal`
 const mePath = (accountUid: string, projectUid: string) => `${projectPath(accountUid, projectUid)}/me`
@@ -32,6 +33,20 @@ export const portalService = {
 
   signOutSession: (accountUid: string, projectUid: string, accessToken: string, sessionUid: string) =>
     apiRequest<null>(`${mePath(accountUid, projectUid)}/sessions/${sessionUid}`, { accessToken, method: 'DELETE' }),
+
+  listPasskeys: (accountUid: string, projectUid: string, accessToken: string) => apiRequest<Passkey[]>(`${mePath(accountUid, projectUid)}/passkeys`, { accessToken }),
+
+  passkeyOptions: (accountUid: string, projectUid: string, accessToken: string) =>
+    apiRequest<PasskeyRegistrationOptions>(`${mePath(accountUid, projectUid)}/passkeys/options`, { accessToken, method: 'POST' }),
+
+  addPasskey: (accountUid: string, projectUid: string, accessToken: string, registrationId: string, credential: PasskeyRegistrationJSON) =>
+    apiRequest<Passkey>(`${mePath(accountUid, projectUid)}/passkeys`, { accessToken, method: 'POST', body: { registration_id: registrationId, credential } }),
+
+  renamePasskey: (accountUid: string, projectUid: string, accessToken: string, passkeyUid: string, name: string) =>
+    apiRequest<Passkey>(`${mePath(accountUid, projectUid)}/passkeys/${passkeyUid}`, { accessToken, method: 'PATCH', body: { name } }),
+
+  removePasskey: (accountUid: string, projectUid: string, accessToken: string, passkeyUid: string) =>
+    apiRequest<null>(`${mePath(accountUid, projectUid)}/passkeys/${passkeyUid}`, { accessToken, method: 'DELETE' }),
 
   signOutOtherSessions: (accountUid: string, projectUid: string, accessToken: string) =>
     apiRequest<null>(`${mePath(accountUid, projectUid)}/sessions`, { accessToken, method: 'DELETE' }),

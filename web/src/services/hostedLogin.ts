@@ -1,6 +1,7 @@
 import { apiRequest } from './http'
-import type { HostedLoginDetails, HostedSignInResult, MfaEnrollment, SignInChallengeName } from '@/types/api'
+import type { HostedLoginDetails, HostedSignInResult, MfaEnrollment, PasskeyAuthenticationOptions, SignInChallengeName } from '@/types/api'
 import { apiBaseUrl, projectPath } from '@/utils/customDomain'
+import type { PasskeyAssertionJSON } from '@/utils/webauthn'
 
 /** One sign-in on a project's hosted login page, identified by its interaction. */
 export interface InteractionRef {
@@ -14,6 +15,9 @@ export interface HostedChallengeAnswer {
   session: string
   code?: string
   new_password?: string
+  /** For a passkey answer: from the challenge's passkey options. */
+  authentication_id?: string
+  credential?: PasskeyAssertionJSON
 }
 
 export interface HostedSignUpInput {
@@ -34,6 +38,15 @@ export const hostedLoginService = {
   /** Which company identity provider, if any, an email's domain belongs to. */
   discover: (ref: InteractionRef, email: string) =>
     apiRequest<{ identity_provider_uid: string | null }>(interactionPath(ref, 'discover'), { method: 'POST', body: { email } }),
+
+  passkeyOptions: (ref: InteractionRef) => apiRequest<PasskeyAuthenticationOptions>(interactionPath(ref, 'passkey/options'), { method: 'POST' }),
+
+  passkeySignIn: (ref: InteractionRef, authenticationId: string, credential: PasskeyAssertionJSON) =>
+    apiRequest<HostedSignInResult>(interactionPath(ref, 'passkey'), { method: 'POST', body: { authentication_id: authenticationId, credential } }),
+
+  /** Options for answering a second-factor challenge with a passkey. */
+  passkeyChallengeOptions: (ref: InteractionRef, session: string) =>
+    apiRequest<PasskeyAuthenticationOptions>(interactionPath(ref, 'respond-to-challenge/passkey-options'), { method: 'POST', body: { session } }),
 
   respondToChallenge: (ref: InteractionRef, answer: HostedChallengeAnswer) =>
     apiRequest<HostedSignInResult>(interactionPath(ref, 'respond-to-challenge'), { method: 'POST', body: answer }),

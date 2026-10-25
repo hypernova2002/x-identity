@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { creationOptions, passkeyErrorMessage, registrationJSON } from '../webauthn'
+import { assertionJSON, creationOptions, passkeyErrorMessage, registrationJSON, requestOptions } from '../webauthn'
 
 const bytes = (...values: number[]) => new Uint8Array(values)
 
@@ -45,5 +45,22 @@ describe('webauthn', () => {
     expect(passkeyErrorMessage(new DOMException('cancelled', 'NotAllowedError'))).toBeNull()
     expect(passkeyErrorMessage(new DOMException('exists', 'InvalidStateError'))).toBe('This device already has a passkey for your account.')
     expect(passkeyErrorMessage(new Error('boom'))).toBe("We couldn't create the passkey. Try again.")
+  })
+
+  it("decodes sign-in options, and encodes the passkey's signed answer", () => {
+    const options = requestOptions({ challenge: 'AQID', rpId: 'login.acme.com', userVerification: 'required', allowCredentials: [{ type: 'public-key', id: 'BAU' }] })
+    expect(new Uint8Array(options.challenge as ArrayBuffer)).toEqual(bytes(1, 2, 3))
+    expect(new Uint8Array(options.allowCredentials![0]!.id as ArrayBuffer)).toEqual(bytes(4, 5))
+
+    const credential = {
+      id: 'cred-1',
+      rawId: bytes(1).buffer,
+      type: 'public-key',
+      authenticatorAttachment: null,
+      getClientExtensionResults: () => ({}),
+      response: { clientDataJSON: bytes(1).buffer, authenticatorData: bytes(2).buffer, signature: bytes(3).buffer, userHandle: null },
+    } as unknown as PublicKeyCredential
+    expect(assertionJSON(credential).response).toEqual({ clientDataJSON: 'AQ', authenticatorData: 'Ag', signature: 'Aw', userHandle: null })
+    expect(passkeyErrorMessage(new Error('boom'), 'sign-in')).toBe("We couldn't sign you in with a passkey. Try again, or use your password.")
   })
 })

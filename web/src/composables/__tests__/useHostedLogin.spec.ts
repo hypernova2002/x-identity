@@ -3,8 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useHostedLogin } from '../useHostedLogin'
 import { hostedLoginService } from '@/services/hostedLogin'
 import type { HostedLoginDetails, MfaEnrollment } from '@/types/api'
+import { getPasskey } from '@/utils/webauthn'
 
 type Service = typeof hostedLoginService
+
+vi.mock('@/utils/webauthn', async (original) => ({
+  ...(await original<typeof import('@/utils/webauthn')>()),
+  passkeyAutofillAvailable: async () => false,
+  getPasskey: vi.fn<typeof import('@/utils/webauthn').getPasskey>(),
+}))
 
 vi.mock('@/services/hostedLogin', () => ({
   hostedLoginService: {
@@ -18,6 +25,9 @@ vi.mock('@/services/hostedLogin', () => ({
     resendConfirmation: vi.fn<Service['resendConfirmation']>(),
     forgotPassword: vi.fn<Service['forgotPassword']>(),
     confirmForgotPassword: vi.fn<Service['confirmForgotPassword']>(),
+    passkeyOptions: vi.fn<Service['passkeyOptions']>(),
+    passkeySignIn: vi.fn<Service['passkeySignIn']>(),
+    passkeyChallengeOptions: vi.fn<Service['passkeyChallengeOptions']>(),
     providerUrl: vi.fn<Service['providerUrl']>(),
   },
 }))
@@ -28,6 +38,7 @@ const details: HostedLoginDetails = {
   project_name: 'Shop',
   app_name: 'Web shop',
   allow_self_sign_up: true,
+  passkeys: false,
   login_hint: 'casey@shop.test',
   home_realm_discovery: false,
   identity_providers: [],
@@ -138,5 +149,55 @@ describe('useHostedLogin', () => {
     expect(hostedLoginService.confirmForgotPassword).toHaveBeenCalledWith(interaction, 'casey@shop.test', '123456', 'a-new-password')
     expect(login.step.value).toBe('sign-in')
     expect(login.notice.value).toContain('password was changed')
+  })
+
+  describe('passkeys', () => {
+    const assertion = { id: 'cred' } as Awaited<ReturnType<typeof getPasskey>>
+
+    beforeEach(() => {
+      vi.mocked(hostedLoginService.passkeyOptions).mockResolvedValue({ authentication_id: 'auth_1', public_key: { challenge: 'AQID' } })
+      vi.mocked(hostedLoginService.passkeyChallengeOptions).mockResolvedValue({ authentication_id: 'auth_2', public_key: { challenge: 'BAU' } })
+      vi.mocked(getPasskey).mockResolvedValue(assertion)
+    })
+
+    it('signs in with a passkey and sends the browser on', async () => {
+      vi.mocked(hostedLoginService.passkeySignIn).mockResolvedValue({ redirect_to: 'http://api.test/resume?ticket=p' })
+      const login = await loaded()
+
+      await login.signInWithPasskey.run()
+
+      expect(getPasskey).toHaveBeenCalledWith({ challenge: 'AQID' }, expect.objectContaining({ autofill: false }))
+      expect(hostedLoginService.passkeySignIn).toHaveBeenCalledWith(interaction, 'auth_1', assertion)
+      expect(navigate).toHaveBeenCalledWith('http://api.test/resume?ticket=p')
+    })
+
+    it('stays put without an error when the user cancels the prompt', async () => {
+      vi.mocked(getPasskey).mockRejectedValue(new DOMException('cancelled', 'NotAllowedError'))
+      const login = await loaded()
+
+      await login.signInWithPasskey.run()
+
+      expect(hostedLoginService.passkeySignIn).not.toHaveBeenCalled()
+      expect(login.passkeyError.value).toBeNull()
+      expect(login.signInWithPasskey.error.value).toBeNull()
+    })
+
+    it('answers a second-factor challenge with a passkey', async () => {
+      vi.mocked(hostedLoginService.signIn).mockResolvedValue({ challenge: 'otp', session: 'sess_1', mfa_methods: ['otp', 'passkey'] })
+      vi.mocked(hostedLoginService.respondToChallenge).mockResolvedValue({ redirect_to: 'http://api.test/resume' })
+      const login = await loaded()
+      await login.signIn.run('secret-password')
+
+      await login.answerWithPasskey.run()
+
+      expect(hostedLoginService.passkeyChallengeOptions).toHaveBeenCalledWith(interaction, 'sess_1')
+      expect(hostedLoginService.respondToChallenge).toHaveBeenCalledWith(interaction, {
+        challenge: 'passkey',
+        session: 'sess_1',
+        authentication_id: 'auth_2',
+        credential: assertion,
+      })
+      expect(navigate).toHaveBeenCalledWith('http://api.test/resume')
+    })
   })
 })

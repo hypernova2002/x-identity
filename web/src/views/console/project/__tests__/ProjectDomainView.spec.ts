@@ -37,6 +37,7 @@ const domain = (changes: Partial<ProjectDomain> = {}): ProjectDomain => ({
   created_at: '2026-10-25T12:00:00Z',
   saml_apps: [],
   saml_identity_providers: [],
+  passkey_count: 0,
   dns_records: [
     { type: 'CNAME', name: 'login.acme.com', value: 'domains.x-identity.localhost' },
     { type: 'TXT', name: '_x-identity.login.acme.com', value: 'token-123' },

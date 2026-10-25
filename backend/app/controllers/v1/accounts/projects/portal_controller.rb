@@ -11,7 +11,8 @@ module V1
             issuer: current_endpoints.issuer,
             client_id: client.uid,
             redirect_uri: current_endpoints.hosted_page("apps"),
-            post_logout_redirect_uri: current_endpoints.hosted_page("signed-out")
+            post_logout_redirect_uri: current_endpoints.hosted_page("signed-out"),
+            passkeys_available: passkeys_available?
           }
         end
 
@@ -24,6 +25,14 @@ module V1
           apps = clients.map { |client| { uid: client.uid, kind: "oidc", name: client.name, launch_url: client.launch_url } } +
             saml_apps.map { |app| { uid: app.uid, kind: "saml", name: app.name, launch_url: current_endpoints.url("/saml/apps/#{app.uid}/launch") } }
           render json: apps.sort_by { |app| [ app[:name].downcase, app[:uid] ] }
+        end
+
+        private
+
+        def passkeys_available?
+          ::Passkeys::RelyingParties.for_realm(current_project.realm, endpoints: current_endpoints).present?
+        rescue ApiError
+          false
         end
       end
     end

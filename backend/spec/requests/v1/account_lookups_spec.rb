@@ -11,7 +11,10 @@ RSpec.describe "Account lookup", type: :openapi do
       tags "Sign in"
 
       response 200, "account found" do
-        schema type: :object, required: %w[uid name slug], properties: { uid: { type: :string }, name: { type: :string }, slug: { type: :string } }
+        schema type: :object, required: %w[uid name slug passkeys], properties: {
+          uid: { type: :string }, name: { type: :string }, slug: { type: :string },
+          passkeys: { type: :boolean, description: "Whether console users can sign in with passkeys." }
+        }
       end
 
       response 404, "no account with this alias" do

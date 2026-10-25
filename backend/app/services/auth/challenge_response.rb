@@ -20,8 +20,10 @@ module Auth
     # @param challenge [String] one of {SignInFlow::CHALLENGES}
     # @param code [String, nil] for `otp` and `mfa_setup`
     # @param new_password [String, nil] for `new_password`
+    # @param authentication_id [String, nil] for `passkey`: from {#passkey_options}
+    # @param credential [Hash, nil] for `passkey`: the browser's answer, as JSON
     # @return [SignInResult]
-    def call(session:, challenge:, code: nil, new_password: nil)
+    def call(session:, challenge:, code: nil, new_password: nil, authentication_id: nil, credential: nil)
       record = find_session!(session, challenge)
       user = record.subject
       amr = record.data["amr"]
@@ -31,6 +33,9 @@ module Auth
       when "otp"
         verify_otp!(user, code)
         amr |= [ "otp" ]
+      when "passkey"
+        _user, passkey_amr = passkey_authentication(user).verify(authentication_id: authentication_id, credential: credential.to_h, user: user)
+        amr |= passkey_amr
       when "new_password"
         Users::PasswordChange.new(user: user, ip: @ip, user_agent: @user_agent).set_password!(new_password)
       when "mfa_setup"
@@ -46,6 +51,15 @@ module Auth
         authenticated_at: Time.iso8601(record.data["authenticated_at"]),
         recovery_codes: recovery_codes
       )
+    end
+
+    # Options for answering a second-factor challenge with one of the user's passkeys.
+    # @param session [String]
+    # @return [Hash] see {Passkeys::Authentication#options}
+    # @raise [ApiError] `invalid_challenge` or `passkeys_unavailable`
+    def passkey_options(session:)
+      user = find_session!(session, "passkey").subject
+      passkey_authentication(user).options(user: user)
     end
 
     # Starts OTP enrolment for a user answering the `mfa_setup` challenge.
@@ -64,13 +78,25 @@ module Auth
       valid = record.present? &&
         @realm.owns?(user) &&
         user.active? &&
-        record.data["challenge"] == challenge &&
+        answers?(record, challenge) &&
         record.data["app_client_id"] == @app_client&.id &&
         record.data["interaction_id"] == @interaction&.id
 
       raise ApiError.new(:invalid_challenge) unless valid
 
       record
+    end
+
+    # A passkey can answer any second-factor challenge that offers it.
+    def answers?(record, challenge)
+      record.data["challenge"] == challenge || (challenge == "passkey" && Array(record.data["mfa_methods"]).include?("passkey"))
+    end
+
+    def passkey_authentication(user)
+      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction)
+      raise ApiError.new(:passkeys_unavailable) unless relying_party
+
+      Passkeys::Authentication.new(realm: @realm, relying_party: relying_party)
     end
 
     def verify_otp!(user, code)

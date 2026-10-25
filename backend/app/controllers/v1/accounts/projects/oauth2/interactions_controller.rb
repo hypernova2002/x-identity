@@ -4,6 +4,8 @@ module V1
       module Oauth2
         # The API behind the hosted login page. Errors use the API's usual format, for the page to show.
         class InteractionsController < Projects::BaseController
+          rate_limit to: 30, within: 1.minute, only: %i[passkey_options passkey_challenge_options]
+
           def show
             render json: hosted_login.details
           end
@@ -18,6 +20,18 @@ module V1
 
           def respond_to_challenge
             render json: hosted_login.respond_to_challenge(**parse_request(::HostedLogin::ChallengeResponseRequest).to_h)
+          end
+
+          def passkey_options
+            render json: hosted_login.passkey_options
+          end
+
+          def passkey
+            render json: hosted_login.passkey_sign_in(**parse_request(::Passkeys::SignInRequest).to_h)
+          end
+
+          def passkey_challenge_options
+            render json: hosted_login.passkey_challenge_options(**parse_request(::Passkeys::ChallengeOptionsRequest).to_h)
           end
 
           def mfa_setup

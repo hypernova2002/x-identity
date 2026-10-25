@@ -1,5 +1,7 @@
 # Multi-factor authentication
 
+[Passkeys](../passkeys.md) count as multi-factor authentication too: a passkey sign-in needs no code, and a passkey can answer the code challenge.
+
 MFA works the same way for console users (account settings) and end users (project settings).
 
 ## Methods

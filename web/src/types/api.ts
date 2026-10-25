@@ -1,11 +1,13 @@
-import type { PasskeyCreationOptionsJSON } from '@/utils/webauthn'
+import type { PasskeyCreationOptionsJSON, PasskeyRequestOptionsJSON } from '@/utils/webauthn'
 
 export type AccountRole = 'owner' | 'admin' | 'member'
 export type UserStatus = 'active' | 'disabled'
 export type ProjectRole = 'admin' | 'developer' | 'viewer'
 export type MfaRequirement = 'off' | 'optional' | 'required'
 export type SigningAlgorithm = 'ES256' | 'RS256' | 'PS256'
-export type SignInChallengeName = 'otp' | 'new_password' | 'mfa_setup'
+export type SignInChallengeName = 'otp' | 'passkey' | 'new_password' | 'mfa_setup'
+/** What can answer a second-factor challenge. */
+export type MfaMethod = 'otp' | 'passkey'
 export type OtpType = 'totp' | 'hotp'
 
 export interface Account {
@@ -32,6 +34,8 @@ export interface AccountSummary {
   uid: string
   name: string
   slug: string
+  /** Whether console users can sign in with passkeys. */
+  passkeys?: boolean
 }
 
 export interface User {
@@ -66,6 +70,11 @@ export interface Passkey {
   synced: boolean
 }
 
+export interface PasskeyAuthenticationOptions {
+  authentication_id: string
+  public_key: PasskeyRequestOptionsJSON
+}
+
 export interface PasskeyRegistrationOptions {
   registration_id: string
   public_key: PasskeyCreationOptionsJSON
@@ -83,6 +92,8 @@ export interface TokenSet {
 export interface SignInChallenge {
   challenge: SignInChallengeName
   session: string
+  /** For a second-factor challenge: the methods that can answer it. */
+  mfa_methods?: MfaMethod[]
   recovery_codes?: string[]
 }
 
@@ -130,6 +141,8 @@ export interface ProjectDomain {
   /** The project's SAML apps, and whether each uses the custom domain. */
   saml_apps: SamlConnection[]
   saml_identity_providers: SamlConnection[]
+  /** End users' passkeys that belong to the domain; they stop working if it's removed or replaced. */
+  passkey_count: number
   dns_records: { type: 'CNAME' | 'TXT'; name: string; value: string }[]
 }
 
@@ -306,6 +319,8 @@ export interface PortalConfig {
   client_id: string
   redirect_uri: string
   post_logout_redirect_uri: string
+  /** Whether end users can add passkeys here: they're on, and this is the project's custom domain. */
+  passkeys_available: boolean
 }
 
 export interface PortalApp {
@@ -375,6 +390,8 @@ export interface HostedLoginDetails {
   app_name: string
   allow_self_sign_up: boolean
   login_hint: string | null
+  /** Whether passkeys can be used here: they're on, and this is the project's custom domain. */
+  passkeys: boolean
   /** Some company providers are found from the email's domain instead of a button. */
   home_realm_discovery: boolean
   identity_providers: IdentityProviderSummary[]
@@ -382,7 +399,7 @@ export interface HostedLoginDetails {
 
 /** The hosted page never receives tokens: a finished sign-in only says where to send the browser. */
 export type HostedSignInResult =
-  | { challenge: SignInChallengeName; session: string; recovery_codes?: string[] }
+  | SignInChallenge
   | { redirect_to: string; recovery_codes?: string[] }
 
 /** An app an end user can sign in to, and the assignments that give them access. */

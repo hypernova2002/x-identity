@@ -9,6 +9,7 @@ import BaseCard from '@/components/base/BaseCard.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSearchSelect from '@/components/base/BaseSearchSelect.vue'
+import ConfirmDialog from '@/components/console/ConfirmDialog.vue'
 import PageBreadcrumbs from '@/components/console/PageBreadcrumbs.vue'
 import PageHeader from '@/components/console/PageHeader.vue'
 import StatusBadge from '@/components/console/StatusBadge.vue'
@@ -21,7 +22,7 @@ import { useProjectContext } from '@/composables/useProjectContext'
 import { useProjectLookups } from '@/composables/useProjectLookups'
 import type { ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
-import type { AttributeDefinition, DeviceSession, EndUser, EndUserAppAccess, EndUserIdentity } from '@/types/api'
+import type { AttributeDefinition, DeviceSession, EndUser, EndUserAppAccess, EndUserIdentity, Passkey } from '@/types/api'
 import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttributes'
 import { formatDateTime } from '@/utils/format'
 
@@ -31,6 +32,8 @@ const { accountUid, project, access } = useProjectContext()
 
 const endUser = ref<EndUser | null>(null)
 const identities = ref<EndUserIdentity[]>([])
+const passkeys = ref<Passkey[]>([])
+const removingPasskey = ref<Passkey | null>(null)
 const appAccess = ref<EndUserAppAccess[]>([])
 const definitions = ref<AttributeDefinition[]>([])
 const notice = ref<string | null>(null)
@@ -55,14 +58,16 @@ const attributeValue = (key: string) => {
 const load = useAsyncAction(async () => {
   const target = ids()
   if (!target) return
-  const [loaded, loadedIdentities, loadedAccess, loadedDefinitions] = await Promise.all([
+  const [loaded, loadedIdentities, loadedAccess, loadedDefinitions, loadedPasskeys] = await Promise.all([
     projectAdminService.getEndUser(target.accountUid, target.projectUid, endUserUid.value),
     projectAdminService.listEndUserIdentities(target.accountUid, target.projectUid, endUserUid.value),
     projectAdminService.getEndUserAccess(target.accountUid, target.projectUid, endUserUid.value),
     projectAdminService.listAttributes(target.accountUid, target.projectUid),
+    projectAdminService.listEndUserPasskeys(target.accountUid, target.projectUid, endUserUid.value),
   ])
   endUser.value = loaded
   identities.value = loadedIdentities
+  passkeys.value = loadedPasskeys
   appAccess.value = loadedAccess
   definitions.value = loadedDefinitions.items
 })
@@ -112,6 +117,15 @@ const unlink = useAsyncAction(async (identity: EndUserIdentity) => {
   if (!target || !endUser.value) return
   await projectAdminService.unlinkEndUserIdentity(target.accountUid, target.projectUid, endUser.value.uid, identity.uid)
   identities.value = identities.value.filter((existing) => existing.uid !== identity.uid)
+})
+
+const removePasskey = useAsyncAction(async () => {
+  const target = ids()
+  if (!target || !endUser.value || !removingPasskey.value) return
+  const passkey = removingPasskey.value
+  await projectAdminService.removeEndUserPasskey(target.accountUid, target.projectUid, endUser.value.uid, passkey.uid)
+  passkeys.value = passkeys.value.filter((existing) => existing.uid !== passkey.uid)
+  removingPasskey.value = null
 })
 
 // Editing the profile: name and custom attributes.
@@ -268,15 +282,30 @@ watch(endUserUid, () => load.run(), { immediate: true })
         <dt class="font-medium">Password</dt>
         <dd>{{ endUser.invitation_pending ? 'Not set yet: invitation pending' : 'Set, or signs in with an identity provider' }}</dd>
         <dt class="font-medium">Multi-factor authentication</dt>
-        <dd>{{ endUser.mfa_enabled ? 'Set up' : 'Not set up' }}</dd>
+        <dd>{{ endUser.mfa_enabled ? 'Authenticator app set up' : 'No authenticator app' }}{{ passkeys.length > 0 ? `, ${passkeys.length} passkey${passkeys.length === 1 ? '' : 's'}` : '' }}</dd>
       </dl>
+      <section v-if="passkeys.length > 0" class="flex flex-col gap-2" aria-labelledby="passkeys-heading">
+        <h3 id="passkeys-heading" class="text-sm font-semibold">Passkeys</h3>
+        <ul class="flex flex-col divide-y divide-border">
+          <li v-for="passkey in passkeys" :key="passkey.uid" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+            <span class="flex flex-col">
+              <span class="font-medium break-all">{{ passkey.name }}</span>
+              <span class="text-xs text-text-muted">
+                {{ passkey.domain }} · {{ passkey.synced ? 'Synced' : 'One device or key' }} ·
+                {{ passkey.last_used_at ? `Last used ${formatDateTime(passkey.last_used_at)}` : 'Not used yet' }}
+              </span>
+            </span>
+            <BaseButton v-if="access.developer" label="Remove" variant="ghost" size="sm" :aria-label="`Remove passkey ${passkey.name}`" @click="removingPasskey = passkey" />
+          </li>
+        </ul>
+      </section>
       <p class="text-xs text-text-muted">
         Whether MFA is required is a project-wide policy, in
         <RouterLink :to="{ name: 'project-auth-mfa', params: { projectUid: project.uid } }" class="text-primary underline">Authentication › Multi-factor authentication</RouterLink>.
       </p>
       <div v-if="access.developer" class="flex flex-wrap gap-2">
         <BaseButton v-if="endUser.invitation_pending" label="Resend invitation" variant="secondary" :loading="actions.perform.loading.value" @click="actions.request('resend_invitation', endUser)" />
-        <BaseButton v-if="endUser.mfa_enabled" label="Reset MFA" variant="secondary" @click="actions.request('reset_mfa', endUser)" />
+        <BaseButton v-if="endUser.mfa_enabled || passkeys.length > 0" label="Reset MFA" variant="secondary" @click="actions.request('reset_mfa', endUser)" />
         <BaseButton v-if="endUser.status === 'active'" label="Disable" variant="secondary" @click="actions.request('disable', endUser)" />
         <BaseButton v-else label="Enable" variant="secondary" :loading="actions.perform.loading.value" @click="actions.request('enable', endUser)" />
       </div>
@@ -326,4 +355,16 @@ watch(endUserUid, () => load.run(), { immediate: true })
       </template>
     </BaseDialog>
   </template>
+  <ConfirmDialog
+    :visible="removingPasskey !== null"
+    :title="`Remove ${removingPasskey?.name ?? 'the passkey'}?`"
+    confirm-label="Remove passkey"
+    danger
+    :loading="removePasskey.loading.value"
+    :error="removePasskey.error.value"
+    @update:visible="(open: boolean) => !open && (removingPasskey = null)"
+    @confirm="removePasskey.run()"
+  >
+    <p>The user can no longer sign in with it. They can add a new one from the app portal.</p>
+  </ConfirmDialog>
 </template>

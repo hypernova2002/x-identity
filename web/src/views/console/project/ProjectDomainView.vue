@@ -184,7 +184,7 @@ onMounted(() => domains.reload())
     :title="current ? 'Replace the custom domain' : 'Add a custom domain'"
     :description="
       current
-        ? `The new domain is checked while ${current.hostname} keeps working, and replaces it once verified. SAML apps and identity providers using ${current.hostname} then move to it, and need their other side updated.`
+        ? `The new domain is checked while ${current.hostname} keeps working, and replaces it once verified. SAML apps and identity providers using ${current.hostname} then move to it, and need their other side updated.${current.passkey_count > 0 ? ` End users' ${current.passkey_count} passkey${current.passkey_count === 1 ? '' : 's'} belong to ${current.hostname} and stop working; they add new ones on the new domain.` : ''}`
         : 'Use a subdomain you control. Apps keep using their current URLs until you switch them.'
     "
   >
@@ -220,6 +220,10 @@ onMounted(() => domains.reload())
         Hosted login and endpoints stop being served on <strong>{{ pendingRemoval.hostname }}</strong>. Apps using it must switch back to the
         project's standard URLs.
       </p>
+      <BaseAlert v-if="pendingRemoval.passkey_count > 0" variant="warning" title="Passkeys stop working">
+        {{ pendingRemoval.passkey_count }} end user passkey{{ pendingRemoval.passkey_count === 1 ? '' : 's' }} belong to {{ pendingRemoval.hostname }} and can't be used
+        anywhere else. Their users sign in another way, and can add new passkeys if the project gets a custom domain again.
+      </BaseAlert>
       <BaseAlert v-if="onRemovedDomain.length > 0" variant="warning" title="These go back to the standard URLs">
         Sign-ins through them fail until their other side is updated with the standard URLs:
         <ul class="mt-1 list-disc pl-5">

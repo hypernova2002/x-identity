@@ -81,6 +81,14 @@ module EndUsers
     end
 
     # @param end_user [EndUser]
+    # @param passkey [WebauthnCredential] one of the end user's
+    def remove_passkey(end_user, passkey)
+      authorize!
+      passkey.destroy!
+      recorder.record(action: "end_user.passkey_removed", actor: @actor, target: end_user, metadata: { passkey: passkey.uid, name: passkey.name })
+    end
+
+    # @param end_user [EndUser]
     def sign_out_everywhere(end_user)
       authorize!
       end_user.revoke_all_sessions!

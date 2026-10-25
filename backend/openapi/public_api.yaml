@@ -26,6 +26,7 @@ paths:
                 - uid
                 - name
                 - slug
+                - passkeys
                 properties:
                   uid:
                     type: string
@@ -33,6 +34,9 @@ paths:
                     type: string
                   slug:
                     type: string
+                  passkeys:
+                    type: boolean
+                    description: Whether console users can sign in with passkeys.
         '404':
           description: no account with this alias
           content:
@@ -546,6 +550,78 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/passkey":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Sign in with the passkey the browser chose
+      tags:
+      - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                authentication_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                credential:
+                  type: object
+              type: object
+              unevaluatedProperties: false
+              required:
+              - authentication_id
+              - credential
+              additionalProperties: false
+      responses:
+        '200':
+          description: tokens, or a challenge such as new_password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignInResult"
+        '400':
+          description: the passkey couldn't be verified
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/auth/passkey/options":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Start a passkey sign-in
+      tags:
+      - Authentication
+      responses:
+        '200':
+          description: options for navigator.credentials.get; any of the user's passkeys
+            for the console can answer
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - authentication_id
+                - public_key
+        '409':
+          description: passkeys aren't turned on for console users
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/auth/refresh":
     parameters:
     - name: account_uid
@@ -683,15 +759,22 @@ paths:
           application/json:
             schema:
               properties:
+                authentication_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
                 challenge:
                   enum:
                   - otp
+                  - passkey
                   - new_password
                   - mfa_setup
                 code:
                   type: string
                   minLength: 1
                   maxLength: 32
+                credential:
+                  type: object
                 new_password:
                   type: string
                   minLength: 1
@@ -737,6 +820,45 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/auth/respond-to-challenge/passkey-options":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Options for answering a second-factor challenge with a passkey
+      tags:
+      - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                session:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - session
+              additionalProperties: false
+      responses:
+        '200':
+          description: 'options allowing only the user''s own passkeys; answer with
+            respond-to-challenge, challenge: passkey'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - authentication_id
+                - public_key
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/auth/sign-in":
@@ -7389,6 +7511,7 @@ components:
       - created_at
       - saml_apps
       - saml_identity_providers
+      - passkey_count
       - dns_records
       properties:
         uid:
@@ -7445,6 +7568,10 @@ components:
             the custom domain.
           items:
             "$ref": "#/components/schemas/SamlConnection"
+        passkey_count:
+          type: integer
+          description: End users' passkeys that belong to the domain; they stop working
+            if it's removed or replaced.
         dns_records:
           type: array
           description: The records to create at the domain's DNS provider.
@@ -7684,11 +7811,21 @@ components:
           type: string
           enum:
           - otp
+          - passkey
           - new_password
           - mfa_setup
         session:
           type: string
           description: Pass to respond-to-challenge. Expires after 5 minutes.
+        mfa_methods:
+          type: array
+          items:
+            type: string
+            enum:
+            - otp
+            - passkey
+          description: 'For a second-factor challenge (otp or passkey): the methods
+            that can answer it. passkey answers with challenge: passkey.'
         recovery_codes:
           type: array
           items:

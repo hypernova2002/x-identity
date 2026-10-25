@@ -51,7 +51,7 @@ export function useOidcCodeFlow(options: CodeFlowOptions) {
     }
   }
 
-  const start = useAsyncAction(async (issuer: string, clientId: string, redirectUri: string) => {
+  const start = useAsyncAction(async (issuer: string, clientId: string, redirectUri: string, prompt?: 'login') => {
     const codeVerifier = randomUrlSafe(48)
     const state = randomUrlSafe(16)
     remember({ issuer, clientId, redirectUri, state, codeVerifier })
@@ -63,6 +63,7 @@ export function useOidcCodeFlow(options: CodeFlowOptions) {
         state,
         nonce: randomUrlSafe(16),
         codeChallenge: await codeChallengeFor(codeVerifier),
+        prompt,
       }),
     )
   })

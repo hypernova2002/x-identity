@@ -8,6 +8,10 @@ class ProjectDomainSerializer
   attribute(:saml_identity_providers) do |domain|
     domain.project.identity_providers.kind_saml.order(:name, :id).map { |provider| { uid: provider.uid, name: provider.name, on_custom_domain: provider.on_custom_domain } }
   end
+  # End users' passkeys that belong to the domain, which stop working if it's removed or replaced.
+  attribute(:passkey_count) do |domain|
+    WebauthnCredential.where(rp_id: domain.hostname, subject_type: "EndUser", subject_id: domain.project.end_users.select(:id)).count
+  end
   attribute(:dns_records) do |domain|
     [
       { type: "CNAME", name: domain.hostname, value: domain.cname_target },

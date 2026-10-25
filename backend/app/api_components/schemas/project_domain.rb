@@ -3,7 +3,7 @@ class Schemas::ProjectDomain
 
   schema(
     type: :object,
-    required: %w[uid hostname status verified_at last_checked_at check_error dns_missing_since certificate_status verify_until created_at saml_apps saml_identity_providers dns_records],
+    required: %w[uid hostname status verified_at last_checked_at check_error dns_missing_since certificate_status verify_until created_at saml_apps saml_identity_providers passkey_count dns_records],
     properties: {
       uid: { type: :string },
       hostname: { type: :string },
@@ -19,6 +19,7 @@ class Schemas::ProjectDomain
       saml_identity_providers: {
         type: :array, description: "The project's SAML identity providers, and whether each uses the custom domain.", items: Schemas::SamlConnection
       },
+      passkey_count: { type: :integer, description: "End users' passkeys that belong to the domain; they stop working if it's removed or replaced." },
       dns_records: {
         type: :array,
         description: "The records to create at the domain's DNS provider.",

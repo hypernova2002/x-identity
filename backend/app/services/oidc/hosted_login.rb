@@ -29,11 +29,35 @@ module Oidc
         app_name: @app.name,
         allow_self_sign_up: @project.allow_self_sign_up,
         login_hint: @interaction.data["login_hint"],
+        passkeys: passkey_relying_party.present?,
         home_realm_discovery: @project.identity_providers.enabled.kind_saml.where("jsonb_array_length(domains) > 0").exists?,
         # SAML providers with domains are reached by entering an email instead of a button.
         identity_providers: @project.identity_providers.enabled.where.not(kind: "saml").or(@project.identity_providers.enabled.where(domains: []))
           .order(:created_at, :id).map { |provider| IdentityProviderSummarySerializer.new(provider).serializable_hash }
       }
+    end
+
+    # Options for signing in with a passkey instead of a password.
+    # @return [Hash] see {Passkeys::Authentication#options}
+    # @raise [ApiError] `passkeys_unavailable`
+    def passkey_options
+      passkey_authentication.options
+    end
+
+    # @param authentication_id [String]
+    # @param credential [Hash] the browser's answer, as JSON
+    # @return [Hash] a challenge, or where to go once signed in
+    # @raise [ApiError] `passkeys_unavailable`, `invalid_passkey` or `too_many_attempts`
+    def passkey_sign_in(authentication_id:, credential:)
+      user, amr = passkey_authentication.verify(authentication_id: authentication_id, credential: credential)
+      result_body(Auth::SignInFlow.new(realm: realm, app_client: @app_client, interaction: @interaction, **client_info).continue(user: user, amr: amr, authenticated_at: Time.current))
+    end
+
+    # Options for answering a second-factor challenge with a passkey.
+    # @param session [String]
+    # @return [Hash]
+    def passkey_challenge_options(session:)
+      challenge_response.passkey_options(session: session)
     end
 
     # Home realm discovery: the SAML provider for the email's domain, which the page sends the user to
@@ -97,7 +121,7 @@ module Oidc
 
     def result_body(result)
       body = if result.challenged?
-        { challenge: result.challenge, session: result.session }
+        { challenge: result.challenge, session: result.session, mfa_methods: result.mfa_methods }.compact
       else
         { redirect_to: Authorization.new(project: @project, **client_info).complete(@interaction, result.completion) }
       end
@@ -107,6 +131,19 @@ module Oidc
 
     def realm
       @project.realm
+    end
+
+    # Passkeys belong to the custom domain the interaction started on.
+    def passkey_relying_party
+      @passkey_relying_party ||= Passkeys::RelyingParties.for_realm(realm, endpoints: ProjectEndpoints.for_issuer(@project, @interaction.data["issuer"]))
+    rescue ApiError
+      nil
+    end
+
+    def passkey_authentication
+      raise ApiError.new(:passkeys_unavailable) unless passkey_relying_party
+
+      Passkeys::Authentication.new(realm: realm, relying_party: passkey_relying_party)
     end
 
     def challenge_response

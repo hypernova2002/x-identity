@@ -1,8 +1,11 @@
 import { ref, watch } from 'vue'
 
 import { useAsyncAction } from './useAsyncAction'
+import { usePasskeyPrompt } from './usePasskeyPrompt'
 import { hostedLoginService, type InteractionRef } from '@/services/hostedLogin'
+import { ApiError } from '@/services/http'
 import type { HostedLoginDetails, HostedSignInResult, MfaEnrollment, SignInChallenge } from '@/types/api'
+import { passkeyAutofillAvailable } from '@/utils/webauthn'
 
 export type HostedLoginStep = 'sign-in' | 'challenge' | 'recovery-codes' | 'sign-up' | 'confirm-sign-up' | 'forgot-password' | 'reset-password'
 
@@ -31,6 +34,7 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
   /** With home realm discovery, the email comes first; the password is only asked for if no company provider takes it. */
   const passwordStep = ref(true)
   let signUpPassword = ''
+  const passkeyPrompt = usePasskeyPrompt()
 
   watch(email, () => {
     if (details.value?.home_realm_discovery) passwordStep.value = false
@@ -67,6 +71,39 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
     email.value = details.value.login_hint ?? ''
     passwordStep.value = !details.value.home_realm_discovery
     if (resume) await showChallenge(resume)
+    else void startPasskeyAutofill()
+  })
+
+  async function passkeySignIn(autofill: boolean) {
+    if (!target.value) return
+    const interaction = target.value
+    const answer = await passkeyPrompt.prompt(() => hostedLoginService.passkeyOptions(interaction), { autofill })
+    if (answer) await handleResult(await hostedLoginService.passkeySignIn(interaction, answer.authenticationId, answer.credential))
+  }
+
+  /** Signs in with a passkey the user picks in the browser's prompt. */
+  const signInWithPasskey = useAsyncAction(() => passkeySignIn(false))
+
+  /** Offers the user's passkeys in the email field's autofill, until they pick one or use the password. */
+  async function startPasskeyAutofill() {
+    if (!details.value?.passkeys || !(await passkeyAutofillAvailable())) return
+    try {
+      await passkeySignIn(true)
+    } catch (caught) {
+      signInWithPasskey.error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 'Something unexpected happened. Try again.', 0)
+    }
+  }
+
+  /** Answers a second-factor challenge with one of the user's passkeys. */
+  const answerWithPasskey = useAsyncAction(async () => {
+    if (!target.value || !challenge.value) return
+    const interaction = target.value
+    const { session } = challenge.value
+    const answer = await passkeyPrompt.prompt(() => hostedLoginService.passkeyChallengeOptions(interaction, session))
+    if (!answer) return
+    await handleResult(
+      await hostedLoginService.respondToChallenge(interaction, { challenge: 'passkey', session, authentication_id: answer.authenticationId, credential: answer.credential }),
+    )
   })
 
   /** Sends the user to their company's provider, or on to the password. */
@@ -150,6 +187,10 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
     load,
     discover,
     signIn,
+    signInWithPasskey,
+    startPasskeyAutofill,
+    answerWithPasskey,
+    passkeyError: passkeyPrompt.error,
     answer,
     continueAfterRecoveryCodes,
     signUp,
