@@ -40,6 +40,7 @@ export const mfaRequirementOptions: SelectOption<MfaRequirement>[] = [
 export const passkeysOptions: SelectOption<PasskeysSetting>[] = [
   { label: 'Off', value: 'off' },
   { label: 'Optional: users can add passkeys', value: 'optional' },
+  { label: 'Required: sign-ins must use a passkey', value: 'required' },
 ]
 
 export const signingAlgorithmOptions: SelectOption<SigningAlgorithm>[] = [

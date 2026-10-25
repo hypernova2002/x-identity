@@ -7,7 +7,8 @@ be phished: browsers only offer it on the site it was made for.
 
 ## Turning passkeys on
 
-Passkeys are off by default. Turn them on with **Passkeys: Optional**:
+Passkeys are off by default. Turn them on with **Passkeys: Optional** (users can add passkeys and
+sign in with them) or **Required** (see below):
 
 - for console users, in the account's **Console sign-in** settings;
 - for a project's end users, in its **Authentication › Sign-in methods**. A project also needs a
@@ -109,6 +110,25 @@ the policy requires MFA; elsewhere a password alone still signs them in, as befo
 `challenge: passkey`, the `authentication_id` and the `credential`. Where a passkey can't be used (an
 app without allowed origins, or hosted login on the standard URLs) and MFA is required, users without
 an authenticator app are asked to set one up.
+
+## Requiring passkeys
+
+With **Passkeys: Required**, every sign-in where a passkey can be used must use one: the console,
+hosted login on the custom domain, and apps with allowed origins. A password sign-in there is
+followed by the `passkey` challenge, for users who have one (even with an authenticator app too), or
+by `passkey_setup`, for users who don't yet: they create a passkey there and then, and the sign-in
+they've just done counts as recent enough. A passkey sign-in goes straight through.
+
+Where a passkey can't be used (an app without allowed origins, or hosted login on the standard URLs),
+multi-factor authentication is required instead: the `otp` challenge, or `mfa_setup` for users
+without an authenticator app. So **Required** needs MFA not to be off, and a project needs a verified
+custom domain.
+
+To answer `passkey_setup`, get options with `passkey-setup` (the challenge's `session`; console:
+`/v1/accounts/:account_uid/auth/passkey-setup`; end-user API: `auth/passkey-setup` with `client_id`;
+hosted login: `…/interactions/:interaction/passkey-setup`), have the browser create the passkey, then
+send `respond-to-challenge` with `challenge: passkey_setup`, the `registration_id` and the
+`credential`. The new passkey is audited as `passkey_added`.
 
 ## Multi-factor authentication
 

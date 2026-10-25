@@ -30,4 +30,13 @@ describe('HostedChallengeForm', () => {
     expect(labels(mountForm({ challenge: 'otp', session: 's', mfa_methods: ['otp', 'passkey'] }))).toContain('Use your passkey instead')
     expect(labels(mountForm({ challenge: 'otp', session: 's', mfa_methods: ['otp'] }))).not.toContain('Use your passkey instead')
   })
+
+  it('asks the user to create a passkey for passkey_setup', async () => {
+    const wrapper = mountForm({ challenge: 'passkey_setup', session: 's' })
+
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(labels(wrapper)).toEqual(['Create a passkey', 'Start over'])
+    await wrapper.findAll('button')[0]!.trigger('click')
+    expect(wrapper.emitted('passkey')).toHaveLength(1)
+  })
 })

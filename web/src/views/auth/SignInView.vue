@@ -17,7 +17,7 @@ import { authService, isChallenge } from '@/services/auth'
 import { ApiError } from '@/services/http'
 import { useSessionStore } from '@/stores/session'
 import type { MfaEnrollment, SignInChallenge, SignInResult, TokenSet } from '@/types/api'
-import { passkeyAutofillAvailable, passkeysSupported } from '@/utils/webauthn'
+import { createPasskey, passkeyAutofillAvailable, passkeyErrorMessage, passkeysSupported } from '@/utils/webauthn'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,6 +43,8 @@ const heading = computed(() => {
       return 'Enter your verification code'
     case 'passkey':
       return "Confirm it's you"
+    case 'passkey_setup':
+      return 'Create a passkey'
     case 'new_password':
       return 'Choose a new password'
     case 'mfa_setup':
@@ -110,11 +112,29 @@ watch(
   { immediate: true },
 )
 
-/** Answers a second-factor challenge with one of the user's passkeys. */
+/**
+ * Answers a challenge with a passkey: one of the user's own as a second factor, or, for
+ * passkey_setup, a new one created now.
+ */
 const answerWithPasskey = useAsyncAction(async () => {
   if (!account.value || !challenge.value) return
   const accountUid = account.value.uid
   const { session } = challenge.value
+  if (challenge.value.challenge === 'passkey_setup') {
+    const options = await authService.passkeySetup(accountUid, session)
+    passkeyPrompt.error.value = null
+    let credential
+    try {
+      credential = await createPasskey(options.public_key)
+    } catch (caught) {
+      passkeyPrompt.error.value = passkeyErrorMessage(caught)
+      return
+    }
+    await handleResult(
+      await authService.respondToChallenge(accountUid, { challenge: 'passkey_setup', session, registration_id: options.registration_id, credential }),
+    )
+    return
+  }
   const answer = await passkeyPrompt.prompt(() => authService.passkeyChallengeOptions(accountUid, session))
   if (!answer) return
   await handleResult(
@@ -185,7 +205,15 @@ const challengeExpired = computed(() => answer.error.value?.code === 'invalid_ch
         <BaseAlert v-if="answerWithPasskey.error.value" variant="danger">{{ answerWithPasskey.error.value.message }}</BaseAlert>
         <BaseAlert v-else-if="passkeyPrompt.error.value" variant="danger">{{ passkeyPrompt.error.value }}</BaseAlert>
 
-        <template v-if="challenge.challenge === 'passkey'">
+        <template v-if="challenge.challenge === 'passkey_setup'">
+          <p class="text-sm text-text-muted">
+            Your account needs a passkey to sign in. Create one now: your device asks for your fingerprint, face or PIN, and you'll use it to sign
+            in from now on.
+          </p>
+          <p v-if="!passkeysSupported()" class="text-sm text-text-muted">This browser doesn't support passkeys. Try another browser or device.</p>
+        </template>
+
+        <template v-else-if="challenge.challenge === 'passkey'">
           <p class="text-sm text-text-muted">Confirm it's you with your passkey: your fingerprint, face or device PIN.</p>
           <p v-if="!offersPasskeyAnswer" class="text-sm text-text-muted">This browser doesn't support passkeys. Try another browser or device.</p>
         </template>
@@ -216,7 +244,14 @@ const challengeExpired = computed(() => answer.error.value?.code === 'invalid_ch
         <div class="flex flex-wrap gap-2">
           <template v-if="!challengeExpired">
             <BaseButton
-              v-if="challenge.challenge === 'passkey'"
+              v-if="challenge.challenge === 'passkey_setup'"
+              label="Create a passkey"
+              :disabled="!passkeysSupported()"
+              :loading="answerWithPasskey.loading.value"
+              @click="answerWithPasskey.run()"
+            />
+            <BaseButton
+              v-else-if="challenge.challenge === 'passkey'"
               label="Use your passkey"
               :disabled="!offersPasskeyAnswer"
               :loading="answerWithPasskey.loading.value"

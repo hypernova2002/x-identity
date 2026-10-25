@@ -5,7 +5,7 @@ export type UserStatus = 'active' | 'disabled'
 export type ProjectRole = 'admin' | 'developer' | 'viewer'
 export type MfaRequirement = 'off' | 'optional' | 'required'
 export type SigningAlgorithm = 'ES256' | 'RS256' | 'PS256'
-export type SignInChallengeName = 'otp' | 'passkey' | 'new_password' | 'mfa_setup'
+export type SignInChallengeName = 'otp' | 'passkey' | 'new_password' | 'mfa_setup' | 'passkey_setup'
 /** What can answer a second-factor challenge. */
 export type MfaMethod = 'otp' | 'passkey'
 export type OtpType = 'totp' | 'hotp'
@@ -28,7 +28,7 @@ export interface HostedDomain {
   issuer: string
 }
 
-export type PasskeysSetting = 'off' | 'optional'
+export type PasskeysSetting = 'off' | 'optional' | 'required'
 
 export interface AccountSummary {
   uid: string

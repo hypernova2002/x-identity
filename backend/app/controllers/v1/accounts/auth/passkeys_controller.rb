@@ -1,7 +1,8 @@
 module V1
   module Accounts
     module Auth
-      # Console sign-in with a passkey, as a first factor or to answer a second-factor challenge.
+      # Console sign-in with a passkey, as a first factor or to answer a second-factor challenge, and
+      # setting one up when passkeys are required.
       class PasskeysController < BaseController
         rate_limit to: 30, within: 1.minute, only: %i[options challenge_options]
 
@@ -17,6 +18,10 @@ module V1
 
         def challenge_options
           render json: ::Auth::ChallengeResponse.new(realm: realm, **client_info).passkey_options(**parse_request(::Passkeys::ChallengeOptionsRequest).to_h)
+        end
+
+        def setup
+          render json: ::Auth::ChallengeResponse.new(realm: realm, **client_info).start_passkey_setup(**parse_request(::Passkeys::SetupRequest).to_h)
         end
 
         private

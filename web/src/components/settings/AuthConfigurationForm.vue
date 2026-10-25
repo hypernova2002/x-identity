@@ -250,8 +250,8 @@ onMounted(() => load.run())
           :options="passkeysOptions"
           :hint="
             forProject
-              ? 'Users add passkeys from the app portal, and sign in with them on hosted login. Needs the project\'s custom domain, which passkeys belong to.'
-              : 'Console users add passkeys on My security, and sign in with them. A passkey counts as multi-factor authentication.'
+              ? 'Users add passkeys from the app portal, and sign in with them on hosted login and in your apps\' own screens. Needs the project\'s custom domain, which passkeys belong to. Required: every sign-in where passkeys work must use one, and users without one create it as they sign in; elsewhere MFA is required instead, so MFA can\'t be off.'
+              : 'Console users add passkeys on My security, and sign in with them. A passkey counts as multi-factor authentication. Required: every sign-in must use one, and users without one create it as they sign in; MFA can\'t be off.'
           "
           :error="save.error.value?.fieldError('passkeys')"
         />

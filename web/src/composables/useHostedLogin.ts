@@ -5,7 +5,7 @@ import { usePasskeyPrompt } from './usePasskeyPrompt'
 import { hostedLoginService, type InteractionRef } from '@/services/hostedLogin'
 import { ApiError } from '@/services/http'
 import type { HostedLoginDetails, HostedSignInResult, MfaEnrollment, SignInChallenge } from '@/types/api'
-import { passkeyAutofillAvailable } from '@/utils/webauthn'
+import { createPasskey, passkeyAutofillAvailable, passkeyErrorMessage, type PasskeyCreationOptionsJSON } from '@/utils/webauthn'
 
 export type HostedLoginStep = 'sign-in' | 'challenge' | 'recovery-codes' | 'sign-up' | 'confirm-sign-up' | 'forgot-password' | 'reset-password'
 
@@ -81,6 +81,17 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
     if (answer) await handleResult(await hostedLoginService.passkeySignIn(interaction, answer.authenticationId, answer.credential))
   }
 
+  /** Asks the browser to create a passkey; null, with the reason in passkeyError, when it didn't. */
+  async function createPasskeyOrExplain(options: PasskeyCreationOptionsJSON) {
+    passkeyPrompt.error.value = null
+    try {
+      return await createPasskey(options)
+    } catch (caught) {
+      passkeyPrompt.error.value = passkeyErrorMessage(caught)
+      return null
+    }
+  }
+
   /** Signs in with a passkey the user picks in the browser's prompt. */
   const signInWithPasskey = useAsyncAction(() => passkeySignIn(false))
 
@@ -94,11 +105,23 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
     }
   }
 
-  /** Answers a second-factor challenge with one of the user's passkeys. */
+  /**
+   * Answers a challenge with a passkey: one of the user's own as a second factor, or, for
+   * passkey_setup, a new one created now.
+   */
   const answerWithPasskey = useAsyncAction(async () => {
     if (!target.value || !challenge.value) return
     const interaction = target.value
     const { session } = challenge.value
+    if (challenge.value.challenge === 'passkey_setup') {
+      const options = await hostedLoginService.passkeySetup(interaction, session)
+      const credential = await createPasskeyOrExplain(options.public_key)
+      if (!credential) return
+      await handleResult(
+        await hostedLoginService.respondToChallenge(interaction, { challenge: 'passkey_setup', session, registration_id: options.registration_id, credential }),
+      )
+      return
+    }
     const answer = await passkeyPrompt.prompt(() => hostedLoginService.passkeyChallengeOptions(interaction, session))
     if (!answer) return
     await handleResult(

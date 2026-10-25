@@ -48,6 +48,7 @@ Rails.application.routes.draw do
         post "passkey/options", to: "interactions#passkey_options"
         post "passkey", to: "interactions#passkey"
         post "mfa-setup", to: "interactions#mfa_setup"
+        post "passkey-setup", to: "interactions#passkey_setup"
         post "sign-up", to: "interactions#sign_up"
         post "confirm-sign-up", to: "interactions#confirm_sign_up"
         post "resend-confirmation", to: "interactions#resend_confirmation"
@@ -73,6 +74,7 @@ Rails.application.routes.draw do
       post "passkey/options", to: "passkeys#options"
       post "passkey", to: "passkeys#create"
       post "respond-to-challenge/passkey-options", to: "passkeys#challenge_options"
+      post "passkey-setup", to: "passkeys#setup"
 
       get "providers", to: "providers#index"
       match "providers/callback", to: "providers#callback", via: %i[get post], as: :provider_callback
@@ -128,6 +130,7 @@ Rails.application.routes.draw do
           post "sign-in", to: "sign_ins#create"
           post "respond-to-challenge", to: "challenges#create"
           post "respond-to-challenge/passkey-options", to: "passkeys#challenge_options"
+          post "passkey-setup", to: "passkeys#setup"
           post "passkey/options", to: "passkeys#options"
           post "passkey", to: "passkeys#create"
           post "mfa-setup", to: "mfa_setups#create"

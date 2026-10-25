@@ -26,7 +26,7 @@ module Passkeys
     # @return [WebAuthn::RelyingParty]
     # @raise [ApiError] `passkeys_unavailable`
     def for_realm(realm, endpoints: nil, app_client: nil)
-      raise ApiError.new(:passkeys_unavailable) unless realm.auth_configuration.passkeys_optional?
+      raise ApiError.new(:passkeys_unavailable) unless realm.auth_configuration.passkeys_enabled?
       return console(realm.account) if realm.is_a?(Realms::AccountRealm)
 
       domain = realm.project.domains.status_verified.first
@@ -59,7 +59,7 @@ module Passkeys
     # @return [Array<String>]
     def related_origins(project)
       domain = project.domains.status_verified.first
-      return [] unless domain && project.auth_configuration!.passkeys_optional?
+      return [] unless domain && project.auth_configuration!.passkeys_enabled?
 
       project.app_clients.enabled.where(machine: false).pluck(:allowed_origins).flatten.uniq.sort - [ domain.base_url ]
     end

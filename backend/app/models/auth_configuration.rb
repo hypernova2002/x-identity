@@ -26,8 +26,9 @@ class AuthConfiguration < ApplicationRecord
   belongs_to :owner, polymorphic: true
 
   enum :mfa_requirement, { off: "off", optional: "optional", required: "required" }, prefix: :mfa, validate: true
-  # Whether users can add and sign in with passkeys. A project's also need its verified custom domain.
-  enum :passkeys, { off: "off", optional: "optional" }, prefix: true, validate: true
+  # Whether users can add and sign in with passkeys, or must use one wherever passkeys work. A
+  # project's also need its verified custom domain.
+  enum :passkeys, { off: "off", optional: "optional", required: "required" }, prefix: true, validate: true
 
   attribute :mfa_requirement, default: "optional"
   attribute :passkeys, default: "off"
@@ -77,6 +78,12 @@ class AuthConfiguration < ApplicationRecord
   validates :otp_method, inclusion: { in: OTP_METHODS, message: "must be totp or hotp" }
   DURATION_RANGES.each do |attribute, range|
     validates attribute, numericality: { only_integer: true, in: range }, allow_nil: OPTIONAL_DURATIONS.include?(attribute)
+  end
+  validate :passkeys_can_be_required, if: -> { passkeys_required? && (will_save_change_to_passkeys? || will_save_change_to_mfa_requirement?) }
+
+  # @return [Boolean] whether users can add passkeys and sign in with them
+  def passkeys_enabled?
+    !passkeys_off?
   end
 
   # @return [ActiveSupport::Duration]
@@ -132,5 +139,16 @@ class AuthConfiguration < ApplicationRecord
     violations << "must include a number" if password_require_number && !password.match?(/\d/)
     violations << "must include a symbol" if password_require_symbol && !password.match?(/[^[:alnum:]]/)
     violations
+  end
+
+  private
+
+  # Sign-ins where a passkey can't be used fall back to requiring MFA, so MFA can't be off; a
+  # project's passkeys need its custom domain.
+  def passkeys_can_be_required
+    errors.add(:passkeys, "can't be required while MFA is off, since sign-ins where passkeys can't be used then require MFA") if mfa_off?
+    return unless owner.is_a?(Project) && !owner.domains.status_verified.exists?
+
+    errors.add(:passkeys, "can only be required once the project has a verified custom domain")
   end
 end

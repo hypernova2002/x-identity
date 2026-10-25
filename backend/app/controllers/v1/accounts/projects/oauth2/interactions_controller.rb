@@ -34,6 +34,10 @@ module V1
             render json: hosted_login.passkey_challenge_options(**parse_request(::Passkeys::ChallengeOptionsRequest).to_h)
           end
 
+          def passkey_setup
+            render json: hosted_login.start_passkey_setup(**parse_request(::Passkeys::SetupRequest).to_h)
+          end
+
           def mfa_setup
             enrollment = hosted_login.start_mfa_setup(**parse_request(::HostedLogin::MfaSetupRequest).to_h)
             render json: MfaEnrollmentSerializer.new(enrollment).serializable_hash

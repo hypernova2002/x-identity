@@ -4,7 +4,7 @@ module Auth
   # hosted login carry their interaction, end with a {SignInCompletion} instead of tokens, and their
   # challenges can only be answered through that interaction.
   class SignInFlow
-    CHALLENGES = %w[otp passkey new_password mfa_setup].freeze
+    CHALLENGES = %w[otp passkey new_password mfa_setup passkey_setup].freeze
 
     # @param realm [Realms::AccountRealm, Realms::ProjectRealm]
     # @param app_client [AppClient, nil]
@@ -67,22 +67,26 @@ module Auth
     # @return [Array(String, Array<String>), Array(String, nil), nil] the challenge, and for a second
     #   factor the methods that can answer it
     def next_challenge(user, amr)
+      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
+      passkey = relying_party.present? && user.webauthn_credentials.exists?(rp_id: relying_party.id)
+
+      # Required passkeys must be used wherever they work: set one up here if there's none yet.
+      if @configuration.passkeys_required? && relying_party && !Factors.passkey?(amr)
+        return passkey ? [ "passkey", %w[passkey] ] : [ "passkey_setup", nil ]
+      end
+
+      # Where passkeys are required but can't be used, MFA is required instead.
+      mfa_required = @configuration.mfa_required? || (@configuration.passkeys_required? && relying_party.nil?)
       mfa = Factors.mfa?(amr)
       unless @configuration.mfa_off? || mfa
-        passkey = usable_passkey?(user)
         return [ "otp", passkey ? %w[otp passkey] : %w[otp] ] if user.mfa_enabled?
         # Users with only a passkey need it as a second factor where MFA is required, and where it works.
-        return [ "passkey", %w[passkey] ] if passkey && @configuration.mfa_required?
+        return [ "passkey", %w[passkey] ] if passkey && mfa_required
       end
       return [ "new_password", nil ] if amr.include?("pwd") && user.password_expired?(@configuration)
-      return [ "mfa_setup", nil ] if @configuration.mfa_required? && !user.mfa_enabled? && !mfa
+      return [ "mfa_setup", nil ] if mfa_required && !user.mfa_enabled? && !mfa
 
       nil
-    end
-
-    def usable_passkey?(user)
-      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
-      relying_party.present? && user.webauthn_credentials.exists?(rp_id: relying_party.id)
     end
   end
 end

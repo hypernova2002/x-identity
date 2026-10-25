@@ -271,6 +271,7 @@ paths:
                   enum:
                   - 'off'
                   - optional
+                  - required
                 password_max_age_seconds:
                   anyOf:
                   - type: 'null'
@@ -592,6 +593,42 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/auth/passkey-setup":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Options for creating the passkey a passkey_setup challenge asks for
+      tags:
+      - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                session:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - session
+              additionalProperties: false
+      responses:
+        '200':
+          description: 'options for navigator.credentials.create; answer with respond-to-challenge,
+            challenge: passkey_setup'
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PasskeyRegistrationOptions"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/auth/passkey/options":
     parameters:
     - name: account_uid
@@ -769,6 +806,7 @@ paths:
                   - passkey
                   - new_password
                   - mfa_setup
+                  - passkey_setup
                 code:
                   type: string
                   minLength: 1
@@ -779,6 +817,10 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 128
+                registration_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
                 session:
                   type: string
                   minLength: 1
@@ -6699,8 +6741,10 @@ components:
           enum:
           - 'off'
           - optional
-          description: Whether users can add passkeys and sign in with them. Projects
-            also need a verified custom domain.
+          - required
+          description: 'off; optional: users can add passkeys and sign in with them;
+            required: sign-ins must use a passkey wherever passkeys work (others require
+            MFA). Projects need a verified custom domain.'
         notify_new_devices:
           type: boolean
           description: Email users when they sign in from a device and country they
@@ -7985,6 +8029,7 @@ components:
           - passkey
           - new_password
           - mfa_setup
+          - passkey_setup
         session:
           type: string
           description: Pass to respond-to-challenge. Expires after 5 minutes.

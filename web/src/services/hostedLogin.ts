@@ -1,7 +1,7 @@
 import { apiRequest } from './http'
-import type { HostedLoginDetails, HostedSignInResult, MfaEnrollment, PasskeyAuthenticationOptions, SignInChallengeName } from '@/types/api'
+import type { HostedLoginDetails, HostedSignInResult, MfaEnrollment, PasskeyAuthenticationOptions, PasskeyRegistrationOptions, SignInChallengeName } from '@/types/api'
 import { apiBaseUrl, projectPath } from '@/utils/customDomain'
-import type { PasskeyAssertionJSON } from '@/utils/webauthn'
+import type { PasskeyAssertionJSON, PasskeyRegistrationJSON } from '@/utils/webauthn'
 
 /** One sign-in on a project's hosted login page, identified by its interaction. */
 export interface InteractionRef {
@@ -17,7 +17,9 @@ export interface HostedChallengeAnswer {
   new_password?: string
   /** For a passkey answer: from the challenge's passkey options. */
   authentication_id?: string
-  credential?: PasskeyAssertionJSON
+  /** For passkey_setup: from the passkey setup options. */
+  registration_id?: string
+  credential?: PasskeyAssertionJSON | PasskeyRegistrationJSON
 }
 
 export interface HostedSignUpInput {
@@ -47,6 +49,10 @@ export const hostedLoginService = {
   /** Options for answering a second-factor challenge with a passkey. */
   passkeyChallengeOptions: (ref: InteractionRef, session: string) =>
     apiRequest<PasskeyAuthenticationOptions>(interactionPath(ref, 'respond-to-challenge/passkey-options'), { method: 'POST', body: { session } }),
+
+  /** Options for creating the passkey a passkey_setup challenge asks for. */
+  passkeySetup: (ref: InteractionRef, session: string) =>
+    apiRequest<PasskeyRegistrationOptions>(interactionPath(ref, 'passkey-setup'), { method: 'POST', body: { session } }),
 
   respondToChallenge: (ref: InteractionRef, answer: HostedChallengeAnswer) =>
     apiRequest<HostedSignInResult>(interactionPath(ref, 'respond-to-challenge'), { method: 'POST', body: answer }),

@@ -60,6 +60,13 @@ module Oidc
       challenge_response.passkey_options(session: session)
     end
 
+    # Options for creating the passkey that answers a `passkey_setup` challenge.
+    # @param session [String]
+    # @return [Hash]
+    def start_passkey_setup(session:)
+      challenge_response.start_passkey_setup(session: session)
+    end
+
     # Home realm discovery: the SAML provider for the email's domain, which the page sends the user to
     # instead of asking for a password. Domains aren't listed on the page, so it can't reveal which
     # companies use the project.

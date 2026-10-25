@@ -24,6 +24,11 @@ module V1
             render json: ::Auth::ChallengeResponse.new(realm: realm, app_client: app_client, **client_info).passkey_options(**input)
           end
 
+          def setup
+            app_client, input = parse_client_request(::EndUserAuth::PasskeySetupRequest)
+            render json: ::Auth::ChallengeResponse.new(realm: realm, app_client: app_client, **client_info).start_passkey_setup(**input)
+          end
+
           private
 
           def authentication(app_client)

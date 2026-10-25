@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useHostedLogin } from '../useHostedLogin'
 import { hostedLoginService } from '@/services/hostedLogin'
 import type { HostedLoginDetails, MfaEnrollment } from '@/types/api'
-import { getPasskey } from '@/utils/webauthn'
+import { createPasskey, getPasskey } from '@/utils/webauthn'
 
 type Service = typeof hostedLoginService
 
@@ -11,6 +11,7 @@ vi.mock('@/utils/webauthn', async (original) => ({
   ...(await original<typeof import('@/utils/webauthn')>()),
   passkeyAutofillAvailable: async () => false,
   getPasskey: vi.fn<typeof import('@/utils/webauthn').getPasskey>(),
+  createPasskey: vi.fn<typeof import('@/utils/webauthn').createPasskey>(),
 }))
 
 vi.mock('@/services/hostedLogin', () => ({
@@ -28,6 +29,7 @@ vi.mock('@/services/hostedLogin', () => ({
     passkeyOptions: vi.fn<Service['passkeyOptions']>(),
     passkeySignIn: vi.fn<Service['passkeySignIn']>(),
     passkeyChallengeOptions: vi.fn<Service['passkeyChallengeOptions']>(),
+    passkeySetup: vi.fn<Service['passkeySetup']>(),
     providerUrl: vi.fn<Service['providerUrl']>(),
   },
 }))
@@ -196,6 +198,26 @@ describe('useHostedLogin', () => {
         session: 'sess_1',
         authentication_id: 'auth_2',
         credential: assertion,
+      })
+      expect(navigate).toHaveBeenCalledWith('http://api.test/resume')
+    })
+
+    it('creates a passkey when the sign-in asks for one to be set up', async () => {
+      const created = { id: 'new' } as Awaited<ReturnType<typeof createPasskey>>
+      vi.mocked(hostedLoginService.signIn).mockResolvedValue({ challenge: 'passkey_setup', session: 'sess_2' })
+      vi.mocked(hostedLoginService.passkeySetup).mockResolvedValue({ registration_id: 'reg_1', public_key: { challenge: 'Ag' } as never })
+      vi.mocked(createPasskey).mockResolvedValue(created)
+      vi.mocked(hostedLoginService.respondToChallenge).mockResolvedValue({ redirect_to: 'http://api.test/resume' })
+      const login = await loaded()
+      await login.signIn.run('secret-password')
+
+      await login.answerWithPasskey.run()
+
+      expect(hostedLoginService.respondToChallenge).toHaveBeenCalledWith(interaction, {
+        challenge: 'passkey_setup',
+        session: 'sess_2',
+        registration_id: 'reg_1',
+        credential: created,
       })
       expect(navigate).toHaveBeenCalledWith('http://api.test/resume')
     })

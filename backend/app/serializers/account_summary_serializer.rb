@@ -4,5 +4,5 @@ class AccountSummarySerializer
 
   attributes :uid, :name, :slug
   # Whether the sign-in page offers passkeys.
-  attribute(:passkeys) { |account| account.auth_configuration!.passkeys_optional? }
+  attribute(:passkeys) { |account| account.auth_configuration!.passkeys_enabled? }
 end

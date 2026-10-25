@@ -21,9 +21,10 @@ module Auth
     # @param code [String, nil] for `otp` and `mfa_setup`
     # @param new_password [String, nil] for `new_password`
     # @param authentication_id [String, nil] for `passkey`: from {#passkey_options}
-    # @param credential [Hash, nil] for `passkey`: the browser's answer, as JSON
+    # @param registration_id [String, nil] for `passkey_setup`: from {#start_passkey_setup}
+    # @param credential [Hash, nil] for `passkey` and `passkey_setup`: the browser's answer or new passkey, as JSON
     # @return [SignInResult]
-    def call(session:, challenge:, code: nil, new_password: nil, authentication_id: nil, credential: nil)
+    def call(session:, challenge:, code: nil, new_password: nil, authentication_id: nil, registration_id: nil, credential: nil)
       record = find_session!(session, challenge)
       user = record.subject
       amr = record.data["amr"]
@@ -36,6 +37,9 @@ module Auth
       when "passkey"
         _user, passkey_amr = passkey_authentication(user).verify(authentication_id: authentication_id, credential: credential.to_h, user: user)
         amr |= passkey_amr
+      when "passkey_setup"
+        passkey = passkey_registration(user, record).finish(registration_id: registration_id.to_s, credential: credential.to_h)
+        amr |= [ passkey.backup_eligible ? "swk" : "hwk", "user" ]
       when "new_password"
         Users::PasswordChange.new(user: user, ip: @ip, user_agent: @user_agent).set_password!(new_password)
       when "mfa_setup"
@@ -60,6 +64,15 @@ module Auth
     def passkey_options(session:)
       user = find_session!(session, "passkey").subject
       passkey_authentication(user).options(user: user)
+    end
+
+    # Options for creating the passkey that answers the `passkey_setup` challenge.
+    # @param session [String]
+    # @return [Hash] see {Passkeys::Registration#options}
+    # @raise [ApiError] `invalid_challenge` or `passkeys_unavailable`
+    def start_passkey_setup(session:)
+      record = find_session!(session, "passkey_setup")
+      passkey_registration(record.subject, record).options
     end
 
     # Starts OTP enrolment for a user answering the `mfa_setup` challenge.
@@ -90,6 +103,16 @@ module Auth
     # A passkey can answer any second-factor challenge that offers it.
     def answers?(record, challenge)
       record.data["challenge"] == challenge || (challenge == "passkey" && Array(record.data["mfa_methods"]).include?("passkey"))
+    end
+
+    # The sign-in in progress counts as the recent sign-in adding a passkey needs.
+    def passkey_registration(user, record)
+      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
+      raise ApiError.new(:passkeys_unavailable) unless relying_party
+
+      Passkeys::Registration.new(
+        user: user, relying_party: relying_party, authenticated_at: Time.iso8601(record.data["authenticated_at"]), ip: @ip, user_agent: @user_agent
+      )
     end
 
     def passkey_authentication(user)

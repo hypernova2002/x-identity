@@ -29,7 +29,8 @@ const emit = defineEmits<{
   startOver: []
 }>()
 
-const offersPasskey = computed(() => passkeysSupported() && (props.challenge.mfa_methods ?? []).includes('passkey'))
+const supportsPasskeys = passkeysSupported()
+const offersPasskey = computed(() => supportsPasskeys && (props.challenge.mfa_methods ?? []).includes('passkey'))
 
 const code = ref('')
 const newPassword = ref('')
@@ -48,7 +49,15 @@ watch(
     <BaseAlert v-if="error && error.details.length === 0" variant="danger">{{ error.message }}</BaseAlert>
     <BaseAlert v-if="passkeyError" variant="danger">{{ passkeyError }}</BaseAlert>
 
-    <template v-if="challenge.challenge === 'passkey'">
+    <template v-if="challenge.challenge === 'passkey_setup'">
+      <p class="text-sm text-text-muted">
+        Signing in here needs a passkey. Create one now: your device asks for your fingerprint, face or PIN, and you'll use it to sign in from
+        now on.
+      </p>
+      <p v-if="!supportsPasskeys" class="text-sm text-text-muted">This browser doesn't support passkeys. Try another browser or device.</p>
+    </template>
+
+    <template v-else-if="challenge.challenge === 'passkey'">
       <p class="text-sm text-text-muted">Confirm it's you with your passkey: your fingerprint, face or device PIN.</p>
       <p v-if="!offersPasskey" class="text-sm text-text-muted">This browser doesn't support passkeys. Try another browser or device.</p>
     </template>
@@ -85,7 +94,14 @@ watch(
 
     <div class="flex flex-wrap gap-2">
       <template v-if="error?.code !== 'invalid_challenge'">
-        <BaseButton v-if="challenge.challenge === 'passkey'" label="Use your passkey" :disabled="!offersPasskey" :loading="passkeyLoading" @click="emit('passkey')" />
+        <BaseButton
+          v-if="challenge.challenge === 'passkey_setup'"
+          label="Create a passkey"
+          :disabled="!supportsPasskeys"
+          :loading="passkeyLoading"
+          @click="emit('passkey')"
+        />
+        <BaseButton v-else-if="challenge.challenge === 'passkey'" label="Use your passkey" :disabled="!offersPasskey" :loading="passkeyLoading" @click="emit('passkey')" />
         <template v-else>
           <BaseButton type="submit" label="Continue" :loading="loading" />
           <BaseButton v-if="offersPasskey" label="Use your passkey instead" variant="secondary" :loading="passkeyLoading" @click="emit('passkey')" />

@@ -1,6 +1,6 @@
 import { apiRequest } from './http'
-import type { AccountSummary, MfaEnrollment, PasskeyAuthenticationOptions, SignInChallengeName, SignInResult, TokenSet, User } from '@/types/api'
-import type { PasskeyAssertionJSON } from '@/utils/webauthn'
+import type { AccountSummary, MfaEnrollment, PasskeyAuthenticationOptions, PasskeyRegistrationOptions, SignInChallengeName, SignInResult, TokenSet, User } from '@/types/api'
+import type { PasskeyAssertionJSON, PasskeyRegistrationJSON } from '@/utils/webauthn'
 
 export interface SignUpInput {
   account_name: string
@@ -17,7 +17,9 @@ export interface ChallengeAnswer {
   new_password?: string
   /** For a passkey answer: from the challenge's passkey options. */
   authentication_id?: string
-  credential?: PasskeyAssertionJSON
+  /** For passkey_setup: from the passkey setup options. */
+  registration_id?: string
+  credential?: PasskeyAssertionJSON | PasskeyRegistrationJSON
 }
 
 const authPath = (accountUid: string, action: string) => `/v1/accounts/${accountUid}/auth/${action}`
@@ -46,6 +48,11 @@ export const authService = {
   /** Options for answering a second-factor challenge with a passkey. */
   passkeyChallengeOptions(accountUid: string, session: string) {
     return apiRequest<PasskeyAuthenticationOptions>(authPath(accountUid, 'respond-to-challenge/passkey-options'), { method: 'POST', body: { session } })
+  },
+
+  /** Options for creating the passkey a passkey_setup challenge asks for. */
+  passkeySetup(accountUid: string, session: string) {
+    return apiRequest<PasskeyRegistrationOptions>(authPath(accountUid, 'passkey-setup'), { method: 'POST', body: { session } })
   },
 
   respondToChallenge(accountUid: string, answer: ChallengeAnswer) {

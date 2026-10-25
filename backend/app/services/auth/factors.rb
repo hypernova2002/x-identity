@@ -9,8 +9,14 @@ module Auth
     # @param amr [Array<String>]
     # @return [Boolean]
     def mfa?(amr)
+      Array(amr).include?("otp") || passkey?(amr)
+    end
+
+    # @param amr [Array<String>]
+    # @return [Boolean] whether the user unlocked a passkey
+    def passkey?(amr)
       amr = Array(amr)
-      amr.include?("otp") || (amr.include?("user") && amr.intersect?(PASSKEY_METHODS))
+      amr.include?("user") && amr.intersect?(PASSKEY_METHODS)
     end
   end
 end
