@@ -45,6 +45,8 @@ module XIdentity
 
     config.x.app_base_url = ENV.fetch("APP_BASE_URL", "http://localhost:3000")
     config.x.console_base_url = ENV.fetch("CONSOLE_BASE_URL", "http://localhost:5173")
+    # The hostname customers point their custom domains' CNAME records at.
+    config.x.custom_domain_target = ENV.fetch("CUSTOM_DOMAIN_TARGET", "domains.x-identity.localhost")
     config.x.mail_from = ENV.fetch("MAIL_FROM", "x-identity <no-reply@x-identity.localhost>")
     # Offline IP location database (DB-IP Lite city, GeoIP2 format); see GeoIp. Location is blank without it.
     config.x.geoip_database_path = ENV.fetch("GEOIP_DATABASE_PATH", Rails.root.join("vendor/geoip/dbip-city-lite.mmdb").to_s)

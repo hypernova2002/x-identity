@@ -49,6 +49,7 @@ module Projects
         @project.api_resources,
         @project.end_user_attribute_definitions,
         @project.signing_keys,
+        @project.domains,
         @project.project_memberships
       ]
     end

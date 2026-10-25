@@ -60,7 +60,7 @@ const projectNavigation = computed<NavGroup[]>(() => {
     {
       key: 'settings',
       label: 'Project settings',
-      items: [item('settings', 'General', 'project-settings'), item('members', 'Members', 'project-members')],
+      items: [item('settings', 'General', 'project-settings'), item('domain', 'Custom domain', 'project-domain'), item('members', 'Members', 'project-members')],
     },
   ]
 })

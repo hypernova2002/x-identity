@@ -17,6 +17,7 @@ class Project < ApplicationRecord
   has_many :groups
   has_many :saml_apps
   has_many :saml_certificates
+  has_many :domains, class_name: "ProjectDomain"
   has_many :app_assignments
   has_many :end_user_attribute_definitions
   has_many :signing_keys, as: :owner

@@ -172,6 +172,16 @@ export const projectRoutes: RouteRecordRaw[] = [
     meta: { title: 'General settings', navItem: 'settings', description: 'The project\'s name, sign-up and email links.' },
   },
   {
+    path: 'domain',
+    name: 'project-domain',
+    component: () => import('../views/console/project/ProjectDomainView.vue'),
+    meta: {
+      title: 'Custom domain',
+      navItem: 'domain',
+      description: 'Serve this project\'s hosted login and endpoints on your own domain, such as login.example.com.',
+    },
+  },
+  {
     path: 'members',
     name: 'project-members',
     component: () => import('../views/console/project/ProjectMembersView.vue'),

@@ -21,6 +21,7 @@ itself trust Google, Apple, OpenID Connect and SAML providers.
 | [SAML apps and the app portal](saml-apps-and-portal.md) | The project as a SAML identity provider, single logout, the portal |
 | [Security model](security.md) | Enumeration resistance, lockouts, token rotation, trust rules, key management |
 | [Example apps](examples.md) | Two tiny OIDC apps for trying hosted login, SSO and the portal |
+| [Custom domains](custom-domains.md) | Verifying a project's own domain, DNS records, certificates |
 | [Development](development.md) | Running locally, checks, API reference, YARD |
 
 ## Which sign-in flow?

@@ -3305,6 +3305,145 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/domains":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List the project's custom domain, and its replacement while one is
+        being set up
+      tags:
+      - Custom domains
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: at most two domains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/ProjectDomain"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Add a custom domain, or the replacement for the current one
+      tags:
+      - Custom domains
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                hostname:
+                  type: string
+                  minLength: 1
+                  maxLength: 253
+              type: object
+              unevaluatedProperties: false
+              required:
+              - hostname
+              additionalProperties: false
+      responses:
+        '201':
+          description: added; its DNS is checked until it's verified, for up to 72
+            hours
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ProjectDomain"
+        '403':
+          description: only project and account admins manage the domain
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: another domain is still being set up
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: not a hostname, x-identity's own, or used by another project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/domains/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Remove a custom domain
+      tags:
+      - Custom domains
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/domains/{uid}/check":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Check the domain's DNS records now
+      tags:
+      - Custom domains
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the domain after the check
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ProjectDomain"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/end-users":
     parameters:
     - name: account_uid
@@ -7005,6 +7144,84 @@ components:
           type: string
           format: date-time
       title: Project
+    ProjectDomain:
+      type: object
+      required:
+      - uid
+      - hostname
+      - status
+      - verified_at
+      - last_checked_at
+      - check_error
+      - dns_missing_since
+      - certificate_status
+      - verify_until
+      - created_at
+      - dns_records
+      properties:
+        uid:
+          type: string
+        hostname:
+          type: string
+        status:
+          type: string
+          enum:
+          - pending
+          - verified
+          - failed
+        verified_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        last_checked_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        check_error:
+          type:
+          - string
+          - 'null'
+          description: What the last DNS check found wrong.
+        dns_missing_since:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Since when a verified domain's DNS records have been missing.
+        certificate_status:
+          type: string
+          enum:
+          - external
+          description: 'external: TLS certificates are issued outside x-identity.'
+        verify_until:
+          type: string
+          format: date-time
+          description: When a pending domain stops being checked and fails.
+        created_at:
+          type: string
+          format: date-time
+        dns_records:
+          type: array
+          description: The records to create at the domain's DNS provider.
+          items:
+            type: object
+            required:
+            - type
+            - name
+            - value
+            properties:
+              type:
+                type: string
+                enum:
+                - CNAME
+                - TXT
+              name:
+                type: string
+              value:
+                type: string
+      title: ProjectDomain
     ProjectMember:
       type: object
       required:

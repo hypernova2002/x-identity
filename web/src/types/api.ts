@@ -77,6 +77,27 @@ export interface Project {
   updated_at: string
 }
 
+export type ProjectDomainStatus = 'pending' | 'verified' | 'failed'
+
+/** A custom domain for the project's hosted login and endpoints, e.g. login.acme.com. */
+export interface ProjectDomain {
+  uid: string
+  hostname: string
+  status: ProjectDomainStatus
+  verified_at: string | null
+  last_checked_at: string | null
+  /** What the last DNS check found wrong. */
+  check_error: string | null
+  /** Since when a verified domain's DNS records have been missing. */
+  dns_missing_since: string | null
+  /** external: TLS certificates are issued outside x-identity. */
+  certificate_status: 'external'
+  /** When a pending domain stops being checked and fails. */
+  verify_until: string
+  created_at: string
+  dns_records: { type: 'CNAME' | 'TXT'; name: string; value: string }[]
+}
+
 /** Headline counts shown above list pages. */
 export interface EndUserStats {
   total: number

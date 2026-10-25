@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_25_010002) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -409,6 +409,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_010002) do
     t.index ["subject_type", "subject_id"], name: "index_otp_credentials_on_subject_type_and_subject_id", unique: true
   end
 
+  create_table "project_domains", force: :cascade do |t|
+    t.string "uid", null: false
+    t.bigint "project_id", null: false
+    t.string "hostname", null: false
+    t.string "status", null: false
+    t.string "verification_token", null: false
+    t.datetime "verified_at"
+    t.datetime "last_checked_at"
+    t.integer "check_attempts", default: 0, null: false
+    t.string "check_error"
+    t.datetime "dns_missing_since"
+    t.string "certificate_status", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["hostname"], name: "index_project_domains_on_hostname", unique: true
+    t.index ["project_id"], name: "index_project_domains_one_unverified", unique: true, where: "((status)::text <> 'verified'::text)"
+    t.index ["project_id"], name: "index_project_domains_one_verified", unique: true, where: "((status)::text = 'verified'::text)"
+    t.index ["uid"], name: "index_project_domains_on_uid", unique: true
+  end
+
   create_table "project_memberships", force: :cascade do |t|
     t.bigint "project_id", null: false
     t.bigint "user_id", null: false
@@ -693,6 +713,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_010002) do
   add_foreign_key "app_client_secrets", "app_clients", on_delete: :cascade
   add_foreign_key "browser_sessions", "device_sessions", on_delete: :nullify
   add_foreign_key "device_sessions", "projects", on_delete: :cascade
+  add_foreign_key "project_domains", "projects"
   add_foreign_key "refresh_tokens", "device_sessions", on_delete: :nullify
   add_foreign_key "solid_queue_batch_executions", "solid_queue_batches", column: "batch_id", on_delete: :cascade
   add_foreign_key "solid_queue_batch_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

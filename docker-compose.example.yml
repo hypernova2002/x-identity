@@ -17,6 +17,8 @@ x-backend: &backend
     SMTP_PORT: "1025"
     APP_BASE_URL: http://localhost:3000
     CONSOLE_BASE_URL: http://localhost:5173
+    # Customers point their custom domains (CNAME) here.
+    CUSTOM_DOMAIN_TARGET: domains.x-identity.localhost
     MAIL_FROM: "x-identity <no-reply@x-identity.localhost>"
     # Development-only keys. Generate new ones (bin/rails db:encryption:init) for any other environment.
     ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: b31a5e01f80d018c57b4ef1864942804

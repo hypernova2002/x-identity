@@ -5,6 +5,9 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
+  # For a TLS proxy deciding whether to issue a certificate for a custom domain.
+  get "internal/domains/allowed", to: "internal/domains#allowed"
+
   namespace :v1, defaults: { format: :json } do
     post "sign-up", to: "sign_ups#create"
     get "account-lookup/:slug", to: "account_lookups#show", as: :account_lookup
@@ -158,6 +161,9 @@ Rails.application.routes.draw do
         resources :saml_apps, path: "saml-apps", param: :uid, only: %i[index show create update destroy] do
           post "parse-metadata", on: :collection, action: :parse_metadata
           resources :assignments, controller: "app_assignments", param: :uid, only: %i[index create destroy], defaults: { app_kind: "saml_app" }
+        end
+        resources :domains, param: :uid, only: %i[index create destroy] do
+          post "check", on: :member
         end
         resources :saml_certificates, path: "saml-certificates", param: :uid, only: %i[index create destroy] do
           post "activate", on: :member

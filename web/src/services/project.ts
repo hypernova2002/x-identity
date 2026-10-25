@@ -35,6 +35,7 @@ import type {
   EndUserStatus,
   Group,
   GroupStats,
+  ProjectDomain,
   IdentityProvider,
   IdentityProviderKind,
   PrincipalType,
@@ -314,6 +315,17 @@ export const projectAdminService = {
 
   parseSamlMetadata: (accountUid: string, projectUid: string, source: { metadata_xml: string } | { metadata_url: string }) =>
     apiRequest<SamlAppMetadata>(`${base(accountUid, projectUid)}/saml-apps/parse-metadata`, { ...authenticated, method: 'POST', body: source }),
+
+  listDomains: (accountUid: string, projectUid: string) => apiRequest<ProjectDomain[]>(`${base(accountUid, projectUid)}/domains`, authenticated),
+
+  addDomain: (accountUid: string, projectUid: string, hostname: string) =>
+    apiRequest<ProjectDomain>(`${base(accountUid, projectUid)}/domains`, { ...authenticated, method: 'POST', body: { hostname } }),
+
+  checkDomain: (accountUid: string, projectUid: string, domainUid: string) =>
+    apiRequest<ProjectDomain>(`${base(accountUid, projectUid)}/domains/${domainUid}/check`, { ...authenticated, method: 'POST' }),
+
+  removeDomain: (accountUid: string, projectUid: string, domainUid: string) =>
+    apiRequest<null>(`${base(accountUid, projectUid)}/domains/${domainUid}`, { ...authenticated, method: 'DELETE' }),
 
   getSamlIdentityProvider: (accountUid: string, projectUid: string) =>
     apiRequest<SamlIdentityProviderInfo>(`${base(accountUid, projectUid)}/saml-certificates`, authenticated),

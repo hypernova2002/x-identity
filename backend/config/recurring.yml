@@ -4,6 +4,10 @@ default: &default
     class: PurgeDeletedProjectsJob
     queue: maintenance
     schedule: every hour
+  check_domains:
+    class: CheckDomainsJob
+    queue: maintenance
+    schedule: every hour at minute 30
   clear_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     queue: maintenance
