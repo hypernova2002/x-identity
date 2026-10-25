@@ -97,7 +97,7 @@ const save = useAsyncAction(async () => {
           label="Allowed origins"
           monospace
           :rows="2"
-          hint="Browser apps only: origins that may call the API, e.g. https://shop.example.com, without a path. One per line."
+          hint="Browser apps only: origins that may call the API, e.g. https://shop.example.com, without a path. One per line. With passkeys on and a custom domain, your sign-in screen on these origins can also use the project's passkeys (in Chrome, Edge and Safari)."
           :error="save.error.value?.fieldError('allowed_origins')"
         />
       </BaseCard>

@@ -171,7 +171,7 @@ RSpec.describe "Passkeys", type: :openapi do
       post "#{URI.parse(project.token_issuer).path}/me/passkeys/options", headers: headers
 
       expect(response).to have_http_status(:conflict)
-      expect(response.parsed_body.dig("error", "message")).to eq("Passkeys work on the project's custom domain.")
+      expect(response.parsed_body.dig("error", "message")).to eq("Passkeys work on the project's custom domain, and from its apps' allowed origins.")
     end
 
     it "belong to the custom domain" do

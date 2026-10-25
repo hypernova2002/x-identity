@@ -71,17 +71,44 @@ app access checks, an expired password isn't asked for, and the new-device email
 | `POST /v1/accounts/:account_uid/auth/passkey` | Console: the passkey's answer (`credential`) with the `authentication_id`; returns tokens, or a challenge |
 | `POST …/oauth2/interactions/:interaction/passkey/options`, `…/passkey` | The same for hosted login, which then continues like a password sign-in |
 
-Passkey sign-in isn't offered through the end-user sign-in API yet. Option requests are rate
-limited per IP address, and failed passkey sign-ins count towards the lockout like wrong passwords.
+Option requests are rate limited per IP address, and failed passkey sign-ins count towards the
+lockout like wrong passwords.
+
+## In your own sign-in screens
+
+An app with its own sign-in screen, e.g. at `https://app.acme.com`, can use the project's passkeys
+too, though they belong to `login.acme.com`. The custom domain publishes the app clients' allowed
+origins at `https://login.acme.com/.well-known/webauthn`, and browsers that support related origins
+(Chrome, Edge, Safari) then let those pages use its passkeys. Elsewhere, send users to hosted login.
+
+1. Add the screen's origin to the app client's **Allowed origins** (its Sign-in tab).
+2. Ask for options, have the browser pick a passkey, and send its answer:
+
+```js
+const api = 'https://login.acme.com/auth' // or the project's standard URL + /auth
+const post = (path, body) => fetch(`${api}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json())
+
+const options = await post('passkey/options', { client_id })
+const credential = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options.public_key) })
+const result = await post('passkey', { client_id, authentication_id: options.authentication_id, credential: credential.toJSON() })
+// result: tokens, or a challenge, as with auth/sign-in
+```
+
+The same app can add passkeys for its users with `/me/passkeys` and their access token, and answer
+second-factor challenges with `respond-to-challenge/passkey-options` (plus `client_id`). Passkey
+sign-ins through the API check the page's origin against the domain and the app client's allowed
+origins. Apps without allowed origins (native apps, server-side sign-in) don't get passkeys: their
+users answer second-factor challenges with an authenticator app.
 
 **As a second factor.** After a password, a user who has an authenticator app gets the usual `otp`
-challenge; if they also have a passkey that works here, its `mfa_methods` include `passkey`, and the
+challenge; if they also have a passkey that works here (the console, hosted login on the custom
+domain, or an app with allowed origins), its `mfa_methods` include `passkey`, and the
 page offers **Use your passkey instead**. A user with only a passkey gets a `passkey` challenge where
 the policy requires MFA; elsewhere a password alone still signs them in, as before. Answer with
 `respond-to-challenge/passkey-options` (the challenge's `session`), then `respond-to-challenge` with
-`challenge: passkey`, the `authentication_id` and the `credential`. Where a passkey can't be used (the
-end-user sign-in API, or another domain) and MFA is required, users without an authenticator app are
-asked to set one up.
+`challenge: passkey`, the `authentication_id` and the `credential`. Where a passkey can't be used (an
+app without allowed origins, or hosted login on the standard URLs) and MFA is required, users without
+an authenticator app are asked to set one up.
 
 ## Multi-factor authentication
 

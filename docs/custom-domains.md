@@ -41,6 +41,7 @@ The project's public endpoints, at the root of the domain:
 | Path | |
 | --- | --- |
 | `/.well-known/openid-configuration`, `/.well-known/jwks.json` | Discovery and keys; the domain is the issuer |
+| `/.well-known/webauthn` | The apps' allowed origins that can use the domain's [passkeys](passkeys.md) |
 | `/oauth2/*` | Authorize, token, userinfo, revoke, logout, hosted login interactions |
 | `/saml/*` | SAML sign-on, logout, metadata and app launches |
 | `/auth/*` | The end-user sign-in API, plus `/auth/domain`, which tells hosted pages their project |

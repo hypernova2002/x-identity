@@ -12,6 +12,8 @@ class ProjectDomainSerializer
   attribute(:passkey_count) do |domain|
     WebauthnCredential.where(rp_id: domain.hostname, subject_type: "EndUser", subject_id: domain.project.end_users.select(:id)).count
   end
+  # Other origins listed in the domain's /.well-known/webauthn, which can use its passkeys.
+  attribute(:passkey_related_origins) { |domain| domain.status_verified? ? Passkeys::RelyingParties.related_origins(domain.project) : [] }
   attribute(:dns_records) do |domain|
     [
       { type: "CNAME", name: domain.hostname, value: domain.cname_target },

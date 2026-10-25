@@ -93,7 +93,7 @@ module Auth
     end
 
     def passkey_authentication(user)
-      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction)
+      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
       raise ApiError.new(:passkeys_unavailable) unless relying_party
 
       Passkeys::Authentication.new(realm: @realm, relying_party: relying_party)

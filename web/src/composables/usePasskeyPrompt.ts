@@ -1,4 +1,4 @@
-import { onScopeDispose, ref } from 'vue'
+import { getCurrentScope, onScopeDispose, ref } from 'vue'
 
 import { ApiError } from '@/services/http'
 import type { PasskeyAuthenticationOptions } from '@/types/api'
@@ -44,7 +44,7 @@ export function usePasskeyPrompt() {
     }
   }
 
-  onScopeDispose(cancel)
+  if (getCurrentScope()) onScopeDispose(cancel)
 
   return { prompt, cancel, error }
 }

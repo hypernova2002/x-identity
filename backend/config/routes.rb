@@ -70,6 +70,10 @@ Rails.application.routes.draw do
       post "confirm-forgot-password", to: "password_resets#update"
       post "accept-invitation", to: "invitation_acceptances#create"
 
+      post "passkey/options", to: "passkeys#options"
+      post "passkey", to: "passkeys#create"
+      post "respond-to-challenge/passkey-options", to: "passkeys#challenge_options"
+
       get "providers", to: "providers#index"
       match "providers/callback", to: "providers#callback", via: %i[get post], as: :provider_callback
       post "providers/token", to: "providers#token", as: :provider_token
@@ -104,6 +108,7 @@ Rails.application.routes.draw do
     scope module: "v1/accounts/projects", as: :custom_domain, defaults: { format: :json } do
       concerns :project_endpoints
       get "auth/domain", to: "hosted_domains#show"
+      get ".well-known/webauthn", to: "webauthn_related_origins#show", format: false
     end
   end
 

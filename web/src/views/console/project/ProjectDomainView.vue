@@ -148,6 +148,17 @@ onMounted(() => domains.reload())
       Keep both records while the domain is in use. HTTPS certificates for it are set up by your x-identity operator.
     </p>
 
+    <section v-if="domain.passkey_related_origins.length > 0" class="flex flex-col gap-2" aria-labelledby="passkey-origins">
+      <h3 id="passkey-origins" class="text-sm font-semibold">Apps that can use its passkeys</h3>
+      <p class="text-sm text-text-muted">
+        Published in {{ domain.hostname }}/.well-known/webauthn, so these apps' own sign-in screens can use the passkeys end users add here. They come
+        from the apps' allowed origins.
+      </p>
+      <ul class="flex flex-col gap-1">
+        <li v-for="origin in domain.passkey_related_origins" :key="origin"><code class="font-mono text-xs break-all">{{ origin }}</code></li>
+      </ul>
+    </section>
+
     <section v-if="domain.status === 'verified' && connections(domain).length > 0" class="flex flex-col gap-2" aria-labelledby="saml-connections">
       <h3 id="saml-connections" class="text-sm font-semibold">SAML apps and identity providers</h3>
       <p class="text-sm text-text-muted">

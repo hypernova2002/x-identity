@@ -81,7 +81,7 @@ module Auth
     end
 
     def usable_passkey?(user)
-      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction)
+      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
       relying_party.present? && user.webauthn_credentials.exists?(rp_id: relying_party.id)
     end
   end

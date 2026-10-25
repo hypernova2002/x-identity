@@ -3,7 +3,7 @@ class Schemas::ProjectDomain
 
   schema(
     type: :object,
-    required: %w[uid hostname status verified_at last_checked_at check_error dns_missing_since certificate_status verify_until created_at saml_apps saml_identity_providers passkey_count dns_records],
+    required: %w[uid hostname status verified_at last_checked_at check_error dns_missing_since certificate_status verify_until created_at saml_apps saml_identity_providers passkey_count passkey_related_origins dns_records],
     properties: {
       uid: { type: :string },
       hostname: { type: :string },
@@ -20,6 +20,10 @@ class Schemas::ProjectDomain
         type: :array, description: "The project's SAML identity providers, and whether each uses the custom domain.", items: Schemas::SamlConnection
       },
       passkey_count: { type: :integer, description: "End users' passkeys that belong to the domain; they stop working if it's removed or replaced." },
+      passkey_related_origins: {
+        type: :array, items: { type: :string },
+        description: "Other origins listed in the domain's /.well-known/webauthn: the project's apps' allowed origins, which can use its passkeys."
+      },
       dns_records: {
         type: :array,
         description: "The records to create at the domain's DNS provider.",

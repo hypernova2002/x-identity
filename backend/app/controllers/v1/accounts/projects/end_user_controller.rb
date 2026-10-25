@@ -10,6 +10,11 @@ module V1
         def token_realm
           current_project.realm
         end
+
+        # @return [AppClient, nil] the app the access token was issued to (its audience)
+        def token_app_client
+          current_project.app_clients.enabled.find_by(uid: @access_token_claims["aud"])
+        end
       end
     end
   end

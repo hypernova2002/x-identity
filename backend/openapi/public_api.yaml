@@ -3017,6 +3017,118 @@ paths:
           description: accepted, whether or not the email exists
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/passkey":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Sign in with the passkey the browser chose
+      tags:
+      - End-user authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                authentication_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                credential:
+                  type: object
+              type: object
+              unevaluatedProperties: false
+              required:
+              - authentication_id
+              - client_id
+              - credential
+              additionalProperties: false
+      responses:
+        '200':
+          description: tokens, or a challenge
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignInResult"
+        '400':
+          description: the passkey couldn't be verified, e.g. the page isn't on one
+            of the app's allowed origins
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/passkey/options":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Start a passkey sign-in from the app's own screen
+      tags:
+      - End-user authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              additionalProperties: false
+      responses:
+        '200':
+          description: options for navigator.credentials.get, for the project's custom
+            domain's passkeys
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - authentication_id
+                - public_key
+        '409':
+          description: passkeys are off, the project has no custom domain, or the
+            app has no allowed origins
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers":
     parameters:
     - name: account_uid
@@ -3391,6 +3503,58 @@ paths:
       responses:
         '202':
           description: accepted, whether or not the email exists
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/respond-to-challenge/passkey-options":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Options for answering a second-factor challenge with a passkey
+      tags:
+      - End-user authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                session:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - session
+              additionalProperties: false
+      responses:
+        '200':
+          description: options allowing only the user's own passkeys
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - authentication_id
+                - public_key
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/auth/sign-in":
@@ -7512,6 +7676,7 @@ components:
       - saml_apps
       - saml_identity_providers
       - passkey_count
+      - passkey_related_origins
       - dns_records
       properties:
         uid:
@@ -7572,6 +7737,12 @@ components:
           type: integer
           description: End users' passkeys that belong to the domain; they stop working
             if it's removed or replaced.
+        passkey_related_origins:
+          type: array
+          items:
+            type: string
+          description: 'Other origins listed in the domain''s /.well-known/webauthn:
+            the project''s apps'' allowed origins, which can use its passkeys.'
         dns_records:
           type: array
           description: The records to create at the domain's DNS provider.

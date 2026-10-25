@@ -38,6 +38,7 @@ const domain = (changes: Partial<ProjectDomain> = {}): ProjectDomain => ({
   saml_apps: [],
   saml_identity_providers: [],
   passkey_count: 0,
+  passkey_related_origins: [],
   dns_records: [
     { type: 'CNAME', name: 'login.acme.com', value: 'domains.x-identity.localhost' },
     { type: 'TXT', name: '_x-identity.login.acme.com', value: 'token-123' },
@@ -122,6 +123,17 @@ describe('ProjectDomainView', () => {
     expect(document.body.textContent).toContain('These go back to the standard URLs')
     expect(document.body.textContent).toContain('Wiki (SAML app)')
     expect(document.body.textContent).not.toContain('Acme Okta (SAML identity provider)')
+    wrapper.unmount()
+  })
+
+  it("lists the apps' origins that can use the domain's passkeys", async () => {
+    vi.mocked(projectAdminService.listDomains).mockResolvedValue([
+      domain({ status: 'verified', verified_at: '2026-10-20T12:00:00Z', passkey_related_origins: ['https://app.acme.com'] }),
+    ])
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('Apps that can use its passkeys')
+    expect(wrapper.text()).toContain('https://app.acme.com')
     wrapper.unmount()
   })
 

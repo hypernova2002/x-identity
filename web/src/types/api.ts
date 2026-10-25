@@ -143,6 +143,8 @@ export interface ProjectDomain {
   saml_identity_providers: SamlConnection[]
   /** End users' passkeys that belong to the domain; they stop working if it's removed or replaced. */
   passkey_count: number
+  /** Other origins in the domain's /.well-known/webauthn: apps' own sign-in screens that can use its passkeys. */
+  passkey_related_origins: string[]
   dns_records: { type: 'CNAME' | 'TXT'; name: string; value: string }[]
 }
 
