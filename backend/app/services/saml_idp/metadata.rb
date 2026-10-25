@@ -1,22 +1,25 @@
 module SamlIdp
-  # A project's identity provider metadata, which SAML apps import.
+  # A project's identity provider metadata, which SAML apps import. Its entity ID and URLs are those
+  # of the project's standard URLs or its custom domain; see {OnCustomDomain#project_endpoints}.
   class Metadata
     # @param project [Project]
-    def initialize(project)
+    # @param endpoints [ProjectEndpoints]
+    def initialize(project, endpoints: ProjectEndpoints.new(project))
       @project = project
+      @endpoints = endpoints
     end
 
     # @return [String] the entity ID apps know the project by
     def entity_id
-      "#{@project.token_issuer}/saml/metadata"
+      @endpoints.url("/saml/metadata")
     end
 
     def sso_url
-      "#{@project.token_issuer}/saml/sso"
+      @endpoints.url("/saml/sso")
     end
 
     def slo_url
-      "#{@project.token_issuer}/saml/slo"
+      @endpoints.url("/saml/slo")
     end
 
     # @return [String] XML

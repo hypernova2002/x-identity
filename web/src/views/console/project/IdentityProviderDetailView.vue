@@ -11,10 +11,12 @@ import ConfirmDialog from '@/components/console/ConfirmDialog.vue'
 import PageBreadcrumbs from '@/components/console/PageBreadcrumbs.vue'
 import PageHeader from '@/components/console/PageHeader.vue'
 import StatusBadge from '@/components/console/StatusBadge.vue'
+import CustomDomainSwitch from '@/components/project/CustomDomainSwitch.vue'
 import IdentityProviderForm from '@/components/project/IdentityProviderForm.vue'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { useProviderEditor } from '@/composables/useProviderEditor'
+import { useVerifiedDomain } from '@/composables/useVerifiedDomain'
 import type { ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
 import type { IdentityProvider } from '@/types/api'
@@ -49,6 +51,15 @@ const toggle = useAsyncAction(async () => {
   if (!project.value || !provider.value) return
   provider.value = await projectAdminService.updateIdentityProvider(accountUid.value, project.value.uid, provider.value.uid, { enabled: !provider.value.enabled })
   disableOpen.value = false
+})
+
+const { hostname: domain } = useVerifiedDomain(() => (project.value ? { accountUid: accountUid.value, projectUid: project.value.uid } : null))
+const domainSwitch = ref<InstanceType<typeof CustomDomainSwitch> | null>(null)
+
+const switchDomain = useAsyncAction(async (onCustomDomain: boolean) => {
+  if (!project.value || !provider.value) return
+  provider.value = await projectAdminService.updateIdentityProvider(accountUid.value, project.value.uid, provider.value.uid, { on_custom_domain: onCustomDomain })
+  domainSwitch.value?.close()
 })
 
 const destroy = useAsyncAction(async () => {
@@ -124,6 +135,20 @@ onMounted(() => load.run())
         </template>
       </dl>
     </BaseCard>
+
+    <CustomDomainSwitch
+      v-if="isSaml"
+      ref="domainSwitch"
+      kind="provider"
+      :name="provider.name"
+      :on-custom-domain="provider.on_custom_domain ?? false"
+      :domain="domain"
+      :project-uid="project.uid"
+      :can-change="access.admin"
+      :saving="switchDomain.loading.value"
+      :error="switchDomain.error.value"
+      @change="switchDomain.run"
+    />
 
     <BaseCard v-if="isSaml" title="Service provider details" description="Give these to the company's identity provider admin, or have them import the metadata URL.">
       <dl class="grid gap-2 text-sm sm:grid-cols-[max-content_1fr]">

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { ref } from 'vue'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import OpenVue from 'openvue/config'
 
 import ProjectDomainView from '../ProjectDomainView.vue'
@@ -34,6 +35,8 @@ const domain = (changes: Partial<ProjectDomain> = {}): ProjectDomain => ({
   certificate_status: 'external',
   verify_until: '2026-10-28T12:00:00Z',
   created_at: '2026-10-25T12:00:00Z',
+  saml_apps: [],
+  saml_identity_providers: [],
   dns_records: [
     { type: 'CNAME', name: 'login.acme.com', value: 'domains.x-identity.localhost' },
     { type: 'TXT', name: '_x-identity.login.acme.com', value: 'token-123' },
@@ -41,8 +44,13 @@ const domain = (changes: Partial<ProjectDomain> = {}): ProjectDomain => ({
   ...changes,
 })
 
+const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', name: 'any', component: { render: () => null } }] })
+for (const name of ['project-saml-app-credentials', 'project-identity-provider']) {
+  router.addRoute({ path: `/${name}/:projectUid/:uid?/:samlAppUid?/:providerUid?`, name, component: { render: () => null } })
+}
+
 async function mountView() {
-  const wrapper = mount(ProjectDomainView, { global: { plugins: [[OpenVue, { unstyled: true }]] } })
+  const wrapper = mount(ProjectDomainView, { global: { plugins: [router, [OpenVue, { unstyled: true }]] }, attachTo: document.body })
   await flushPromises()
   return wrapper
 }
@@ -92,6 +100,28 @@ describe('ProjectDomainView', () => {
 
     expect(wrapper.text()).toContain('DNS records missing')
     expect(wrapper.text()).toContain('No CNAME record for login.acme.com was found.')
+  })
+
+  it('lists the SAML connections on a verified domain, and warns which ones removing it affects', async () => {
+    vi.mocked(projectAdminService.listDomains).mockResolvedValue([
+      domain({
+        status: 'verified',
+        verified_at: '2026-10-20T12:00:00Z',
+        saml_apps: [{ uid: 'sapp_1', name: 'Wiki', on_custom_domain: true }],
+        saml_identity_providers: [{ uid: 'idp_1', name: 'Acme Okta', on_custom_domain: false }],
+      }),
+    ])
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('Uses login.acme.com')
+    expect(wrapper.text()).toContain('Uses the standard URLs')
+
+    await button(wrapper, 'Remove domain')!.trigger('click')
+    await flushPromises()
+    expect(document.body.textContent).toContain('These go back to the standard URLs')
+    expect(document.body.textContent).toContain('Wiki (SAML app)')
+    expect(document.body.textContent).not.toContain('Acme Okta (SAML identity provider)')
+    wrapper.unmount()
   })
 
   it('shows the domain to non-admins without letting them change it', async () => {

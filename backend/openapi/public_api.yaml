@@ -4493,6 +4493,9 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                on_custom_domain:
+                  anyOf:
+                  - type: boolean
                 saml_email_attribute:
                   anyOf:
                   - type: 'null'
@@ -6820,6 +6823,7 @@ components:
       - domains
       - create_users
       - allow_idp_initiated
+      - on_custom_domain
       - sp_entity_id
       - acs_url
       - sp_slo_url
@@ -6920,6 +6924,12 @@ components:
           type: boolean
         allow_idp_initiated:
           type: boolean
+        on_custom_domain:
+          type:
+          - boolean
+          - 'null'
+          description: 'SAML providers: whether the service provider URLs use the
+            project''s custom domain.'
         sp_entity_id:
           type:
           - string
@@ -7157,6 +7167,8 @@ components:
       - certificate_status
       - verify_until
       - created_at
+      - saml_apps
+      - saml_identity_providers
       - dns_records
       properties:
         uid:
@@ -7202,6 +7214,17 @@ components:
         created_at:
           type: string
           format: date-time
+        saml_apps:
+          type: array
+          description: The project's SAML apps, and whether each uses the custom domain.
+          items:
+            "$ref": "#/components/schemas/SamlConnection"
+        saml_identity_providers:
+          type: array
+          description: The project's SAML identity providers, and whether each uses
+            the custom domain.
+          items:
+            "$ref": "#/components/schemas/SamlConnection"
         dns_records:
           type: array
           description: The records to create at the domain's DNS provider.
@@ -7277,6 +7300,8 @@ components:
       - require_signed_requests
       - default_relay_state
       - launch_url
+      - on_custom_domain
+      - idp
       - created_at
       - updated_at
       properties:
@@ -7332,6 +7357,27 @@ components:
         launch_url:
           type: string
           description: Starts an IdP-initiated sign-in.
+        on_custom_domain:
+          type: boolean
+          description: Whether the app uses the project's custom domain for its entity
+            ID and URLs.
+        idp:
+          type: object
+          description: What to enter in the app's SAML settings.
+          required:
+          - entity_id
+          - metadata_url
+          - sso_url
+          - slo_url
+          properties:
+            entity_id:
+              type: string
+            metadata_url:
+              type: string
+            sso_url:
+              type: string
+            slo_url:
+              type: string
         created_at:
           type: string
           format: date-time
@@ -7339,6 +7385,20 @@ components:
           type: string
           format: date-time
       title: SamlApp
+    SamlConnection:
+      type: object
+      required:
+      - uid
+      - name
+      - on_custom_domain
+      properties:
+        uid:
+          type: string
+        name:
+          type: string
+        on_custom_domain:
+          type: boolean
+      title: SamlConnection
     SamlIdentityProvider:
       type: object
       required:

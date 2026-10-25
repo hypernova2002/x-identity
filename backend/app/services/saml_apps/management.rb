@@ -2,7 +2,7 @@ module SamlApps
   class Management
     EDITABLE = %i[
       name enabled entity_id acs_urls slo_url sp_certificate name_id_format attribute_mappings
-      sign_assertion sign_response require_signed_requests default_relay_state
+      sign_assertion sign_response require_signed_requests default_relay_state on_custom_domain
     ].freeze
 
     # @param actor [User]
@@ -18,13 +18,14 @@ module SamlApps
       @http_client = http_client
     end
 
-    # New apps need an assignment before anyone can use them.
+    # New apps need an assignment before anyone can use them. They use the project's custom domain
+    # when it has a verified one, unless told otherwise.
     # @param attributes [Hash] any of {EDITABLE}
     # @return [SamlApp]
     # @raise [ApiError] `forbidden` or `validation_failed`
     def create(**attributes)
       authorize!
-      app = @project.saml_apps.new(normalize(attributes))
+      app = @project.saml_apps.new(on_custom_domain: @project.domains.status_verified.exists?, **normalize(attributes))
       raise ApiError.from_record(app) unless app.save
 
       recorder.record(action: "saml_app.created", actor: @actor, target: app)

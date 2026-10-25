@@ -136,6 +136,7 @@ export const identityProviderSchema = z.object({
   domains: z.array(z.string()),
   create_users: z.boolean(),
   allow_idp_initiated: z.boolean(),
+  on_custom_domain: z.boolean().nullable(),
   sp_entity_id: nullableString,
   acs_url: nullableString,
   sp_slo_url: nullableString,
@@ -187,6 +188,8 @@ export const samlAppSchema = z.object({
   require_signed_requests: z.boolean(),
   default_relay_state: nullableString,
   launch_url: z.string(),
+  on_custom_domain: z.boolean(),
+  idp: z.object({ entity_id: z.string(), metadata_url: z.string(), sso_url: z.string(), slo_url: z.string() }),
   created_at: timestamp,
   updated_at: timestamp,
 }) satisfies z.ZodType<SamlApp>

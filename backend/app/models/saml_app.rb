@@ -2,6 +2,7 @@
 # its identity provider.
 class SamlApp < ApplicationRecord
   include HasUid
+  include OnCustomDomain
 
   self.uid_prefix = "saml"
 
@@ -56,7 +57,7 @@ class SamlApp < ApplicationRecord
 
   # @return [String] starts an IdP-initiated sign-in, e.g. from the app portal
   def launch_url
-    "#{project.token_issuer}/saml/apps/#{uid}/launch"
+    project_endpoints.url("/saml/apps/#{uid}/launch")
   end
 
   private

@@ -13,7 +13,7 @@ module SamlIdp
     def initialize(app)
       @app = app
       @project = app.project
-      @issuer = Metadata.new(@project).entity_id
+      @issuer = Metadata.new(@project, endpoints: app.project_endpoints).entity_id
     end
 
     # @param end_user [EndUser]

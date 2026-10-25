@@ -15,5 +15,7 @@ module SamlApps
     attribute? :default_relay_state, RequestTypes::T::String.constrained(max_size: 1024).optional
       .meta(description: "Sent with IdP-initiated sign-ins, e.g. the page to open in the app.")
     attribute? :enabled, RequestTypes::T::Bool
+    attribute? :on_custom_domain, RequestTypes::T::Bool
+      .meta(description: "Use the project's verified custom domain for this app's entity ID and URLs. Re-import the metadata in the app after switching.")
   end
 end

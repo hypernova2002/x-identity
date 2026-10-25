@@ -4,7 +4,7 @@ class Schemas::SamlApp
   schema(
     type: :object,
     required: %w[uid name enabled entity_id acs_urls slo_url sp_certificate name_id_format attribute_mappings sign_assertion
-      sign_response require_signed_requests default_relay_state launch_url created_at updated_at],
+      sign_response require_signed_requests default_relay_state launch_url on_custom_domain idp created_at updated_at],
     properties: {
       uid: { type: :string, example: "saml_9Lq3Wm7Xc2Vb8Nz4Rt6Kj5Hd" },
       name: { type: :string },
@@ -23,6 +23,13 @@ class Schemas::SamlApp
       require_signed_requests: { type: :boolean },
       default_relay_state: { type: [ :string, :null ] },
       launch_url: { type: :string, description: "Starts an IdP-initiated sign-in." },
+      on_custom_domain: { type: :boolean, description: "Whether the app uses the project's custom domain for its entity ID and URLs." },
+      idp: {
+        type: :object,
+        description: "What to enter in the app's SAML settings.",
+        required: %w[entity_id metadata_url sso_url slo_url],
+        properties: { entity_id: { type: :string }, metadata_url: { type: :string }, sso_url: { type: :string }, slo_url: { type: :string } }
+      },
       created_at: { type: :string, format: "date-time" },
       updated_at: { type: :string, format: "date-time" }
     }

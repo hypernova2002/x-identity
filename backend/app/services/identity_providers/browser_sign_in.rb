@@ -84,11 +84,15 @@ module IdentityProviders
         return continue_after_provider(record.data, provider, resolve)
       end
 
+      # Unsolicited responses arrive at the provider's ACS URL, so the portal sign-in continues on that domain.
+      endpoints = provider.project_endpoints
       unless provider.allow_idp_initiated && provider.enabled?
-        return Oidc::Urls.hosted_page(@project, "error", error: "invalid_request", error_description: "#{provider.name} sent a sign-in that wasn't started here. Start from the app instead.")
+        return endpoints.hosted_page("error", error: "invalid_request", error_description: "#{provider.name} sent a sign-in that wasn't started here. Start from the app instead.")
       end
 
-      interaction, token = OneTimeToken.issue!(subject: @project.portal_client!, purpose: :oidc_interaction, replace: false, data: { "protocol" => "portal" })
+      interaction, token = OneTimeToken.issue!(
+        subject: @project.portal_client!, purpose: :oidc_interaction, replace: false, data: { "protocol" => "portal", "issuer" => endpoints.issuer }
+      )
       resolve = ->(app_client, current) { saml_user(provider, app_client, current, saml_response, nil) }
       hosted_callback({ "interaction_id" => interaction.id, "interaction_token" => token }, provider, resolve)
     end

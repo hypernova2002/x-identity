@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -12,7 +13,7 @@ import { useAsync } from '@/composables/useAsync'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectAdminService } from '@/services/project'
-import type { ProjectDomain } from '@/types/api'
+import type { ProjectDomain, SamlConnection } from '@/types/api'
 import { formatDateTime } from '@/utils/format'
 
 const { accountUid, project, access } = useProjectContext()
@@ -26,6 +27,26 @@ const domains = useAsync(() => projectAdminService.listDomains(accountUid.value,
 const current = computed(() => domains.data.value?.find((domain) => domain.status === 'verified') ?? null)
 const settingUp = computed(() => domains.data.value?.find((domain) => domain.status !== 'verified') ?? null)
 const ordered = computed(() => [current.value, settingUp.value].filter((domain): domain is ProjectDomain => domain !== null))
+
+interface ConnectionLink extends SamlConnection {
+  kind: string
+  to: { name: string; params: Record<string, string> }
+}
+
+/** The project's SAML apps and identity providers, with where each one's settings are. */
+function connections(domain: ProjectDomain): ConnectionLink[] {
+  const projectUid = project.value?.uid ?? ''
+  return [
+    ...domain.saml_apps.map((app) => ({ ...app, kind: 'SAML app', to: { name: 'project-saml-app-credentials', params: { projectUid, samlAppUid: app.uid } } })),
+    ...domain.saml_identity_providers.map((provider) => ({
+      ...provider,
+      kind: 'SAML identity provider',
+      to: { name: 'project-identity-provider', params: { projectUid, providerUid: provider.uid } },
+    })),
+  ]
+}
+
+const onRemovedDomain = computed(() => (pendingRemoval.value ? connections(pendingRemoval.value).filter((connection) => connection.on_custom_domain) : []))
 
 function status(domain: ProjectDomain): { tone: StatusTone; label: string } {
   if (domain.status === 'failed') return { tone: 'danger', label: 'Verification failed' }
@@ -127,6 +148,25 @@ onMounted(() => domains.reload())
       Keep both records while the domain is in use. HTTPS certificates for it are set up by your x-identity operator.
     </p>
 
+    <section v-if="domain.status === 'verified' && connections(domain).length > 0" class="flex flex-col gap-2" aria-labelledby="saml-connections">
+      <h3 id="saml-connections" class="text-sm font-semibold">SAML apps and identity providers</h3>
+      <p class="text-sm text-text-muted">
+        Their entity IDs and URLs are set separately, because the other side has them saved. Switch each one on its page, then update its other side.
+      </p>
+      <ul class="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <li v-for="connection in connections(domain)" :key="connection.uid" class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
+          <span class="flex flex-col">
+            <RouterLink :to="connection.to" class="font-medium text-primary underline-offset-2 hover:underline">{{ connection.name }}</RouterLink>
+            <span class="text-xs text-text-muted">{{ connection.kind }}</span>
+          </span>
+          <StatusBadge
+            :tone="connection.on_custom_domain ? 'success' : 'neutral'"
+            :label="connection.on_custom_domain ? `Uses ${domain.hostname}` : 'Uses the standard URLs'"
+          />
+        </li>
+      </ul>
+    </section>
+
     <div v-if="access.admin" class="flex flex-wrap gap-2">
       <BaseButton
         label="Check now"
@@ -144,7 +184,7 @@ onMounted(() => domains.reload())
     :title="current ? 'Replace the custom domain' : 'Add a custom domain'"
     :description="
       current
-        ? `The new domain is checked while ${current.hostname} keeps working, and replaces it once verified.`
+        ? `The new domain is checked while ${current.hostname} keeps working, and replaces it once verified. SAML apps and identity providers using ${current.hostname} then move to it, and need their other side updated.`
         : 'Use a subdomain you control. Apps keep using their current URLs until you switch them.'
     "
   >
@@ -175,10 +215,18 @@ onMounted(() => domains.reload())
     @update:visible="(open: boolean) => !open && (pendingRemoval = null)"
     @confirm="remove.run()"
   >
-    <p v-if="pendingRemoval?.status === 'verified'">
-      Hosted login and endpoints stop being served on <strong>{{ pendingRemoval.hostname }}</strong>. Apps using it must switch back to the
-      project's standard URLs.
-    </p>
+    <template v-if="pendingRemoval?.status === 'verified'">
+      <p>
+        Hosted login and endpoints stop being served on <strong>{{ pendingRemoval.hostname }}</strong>. Apps using it must switch back to the
+        project's standard URLs.
+      </p>
+      <BaseAlert v-if="onRemovedDomain.length > 0" variant="warning" title="These go back to the standard URLs">
+        Sign-ins through them fail until their other side is updated with the standard URLs:
+        <ul class="mt-1 list-disc pl-5">
+          <li v-for="connection in onRemovedDomain" :key="connection.uid">{{ connection.name }} ({{ connection.kind }})</li>
+        </ul>
+      </BaseAlert>
+    </template>
     <p v-else>
       <strong>{{ pendingRemoval?.hostname }}</strong> stops being checked. You can add it again later.
     </p>

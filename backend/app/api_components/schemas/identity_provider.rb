@@ -6,7 +6,7 @@ class Schemas::IdentityProvider
     required: %w[uid kind name enabled client_id client_secret_set additional_audiences scopes discovery_url issuer
       apple_team_id apple_key_id apple_private_key_set callback_url saml_idp_entity_id saml_sso_url saml_slo_url
       saml_idp_certificates saml_name_id_format saml_email_attribute saml_name_attribute saml_groups_attribute domains
-      create_users allow_idp_initiated sp_entity_id acs_url sp_slo_url group_mappings created_at updated_at],
+      create_users allow_idp_initiated on_custom_domain sp_entity_id acs_url sp_slo_url group_mappings created_at updated_at],
     properties: {
       uid: { type: :string, example: "idp_7Gq2Lm9Xc4Vb8Nz3Rt6Wk5Jh" },
       kind: { type: :string, enum: IdentityProvider.kinds.values },
@@ -33,6 +33,7 @@ class Schemas::IdentityProvider
       domains: { type: :array, items: { type: :string } },
       create_users: { type: :boolean },
       allow_idp_initiated: { type: :boolean },
+      on_custom_domain: { type: [ :boolean, :null ], description: "SAML providers: whether the service provider URLs use the project's custom domain." },
       sp_entity_id: { type: [ :string, :null ], description: "SAML providers: the service provider metadata URL and entity ID to give the IdP." },
       acs_url: { type: [ :string, :null ] },
       sp_slo_url: { type: [ :string, :null ] },

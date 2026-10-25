@@ -105,7 +105,16 @@ export interface ProjectDomain {
   /** When a pending domain stops being checked and fails. */
   verify_until: string
   created_at: string
+  /** The project's SAML apps, and whether each uses the custom domain. */
+  saml_apps: SamlConnection[]
+  saml_identity_providers: SamlConnection[]
   dns_records: { type: 'CNAME' | 'TXT'; name: string; value: string }[]
+}
+
+export interface SamlConnection {
+  uid: string
+  name: string
+  on_custom_domain: boolean
 }
 
 /** Headline counts shown above list pages. */
@@ -239,6 +248,10 @@ export interface SamlApp {
   require_signed_requests: boolean
   default_relay_state: string | null
   launch_url: string
+  /** Whether the app uses the project's custom domain for its entity ID and URLs. */
+  on_custom_domain: boolean
+  /** What to enter in the app's SAML settings. */
+  idp: { entity_id: string; metadata_url: string; sso_url: string; slo_url: string }
   created_at: string
   updated_at: string
 }
@@ -308,6 +321,8 @@ export interface IdentityProvider {
   domains: string[]
   create_users: boolean
   allow_idp_initiated: boolean
+  /** SAML providers: whether the service provider URLs use the project's custom domain. */
+  on_custom_domain: boolean | null
   sp_entity_id: string | null
   acs_url: string | null
   sp_slo_url: string | null

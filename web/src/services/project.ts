@@ -76,13 +76,15 @@ export interface GroupInput {
   default_for_new_users: boolean
 }
 
-export type SamlAppInput = Omit<SamlApp, 'uid' | 'launch_url' | 'created_at' | 'updated_at'>
+export type SamlAppInput = Omit<SamlApp, 'uid' | 'launch_url' | 'on_custom_domain' | 'idp' | 'created_at' | 'updated_at'> & { on_custom_domain?: boolean }
 
 const appPath = (kind: AppKind) => (kind === 'saml_app' ? 'saml-apps' : 'app-clients')
 
 /** Settings for an identity provider. Secrets are write-only: leave them out to keep the current ones. */
 export interface IdentityProviderInput {
   name: string
+  /** SAML only: use the project's verified custom domain for the service provider URLs. */
+  on_custom_domain?: boolean
   client_id?: string
   client_secret?: string
   additional_audiences: string[]

@@ -128,7 +128,7 @@ module SamlIdp
 
       if participation
         app = participation.saml_app
-        xml = logout_request_xml(issuer: issuer, destination: app.slo_url, name_id: participation.name_id, format: app.name_id_format_uri, session_index: participation.session_index)
+        xml = logout_request_xml(issuer: issuer_for(app), destination: app.slo_url, name_id: participation.name_id, format: app.name_id_format_uri, session_index: participation.session_index)
         return Messages.redirect_url(app.slo_url, type: "SAMLRequest", xml: xml, relay_state: token, certificate: certificate)
       end
 
@@ -154,7 +154,7 @@ module SamlIdp
       app = @project.saml_apps.find_by(id: origin["app_id"])
       return @endpoints.hosted_page("signed-out") if app&.slo_url.blank?
 
-      xml = logout_response_xml(issuer: issuer, destination: app.slo_url, request_id: origin["request_id"])
+      xml = logout_response_xml(issuer: issuer_for(app), destination: app.slo_url, request_id: origin["request_id"])
       Messages.redirect_url(app.slo_url, type: "SAMLResponse", xml: xml, relay_state: origin["relay_state"], certificate: certificate)
     end
 
@@ -210,8 +210,8 @@ module SamlIdp
         %(<saml:Issuer>#{escape(issuer)}</saml:Issuer><samlp:Status><samlp:StatusCode Value="#{SUCCESS}"/></samlp:Status></samlp:LogoutResponse>)
     end
 
-    def issuer
-      Metadata.new(@project).entity_id
+    def issuer_for(app)
+      Metadata.new(@project, endpoints: app.project_endpoints).entity_id
     end
 
     def certificate

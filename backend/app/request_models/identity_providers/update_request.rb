@@ -27,5 +27,7 @@ module IdentityProviders
     attribute? :group_mappings, RequestTypes::T::Array.of(IdentityProviders::GroupMappingRequest).constrained(max_size: 100)
       .meta(description: "Provider group values mapped to project groups. Replaces the current mappings.")
     attribute? :enabled, RequestTypes::T::Bool
+    attribute? :on_custom_domain, RequestTypes::T::Bool
+      .meta(description: "SAML only: use the project's verified custom domain for the service provider's entity ID and URLs. Send the new metadata to the identity provider's admin after switching.")
   end
 end

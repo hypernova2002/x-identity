@@ -13,7 +13,7 @@ import { useProjectContext } from '@/composables/useProjectContext'
 import { LOOKUP, type ListParams } from '@/services/list'
 import { projectAdminService } from '@/services/project'
 import { useSessionStore } from '@/stores/session'
-import type { AppKind, IdentityProvider } from '@/types/api'
+import type { AppKind, IdentityProvider, ProjectDomain } from '@/types/api'
 
 interface AppSummary {
   kind: AppKind
@@ -31,6 +31,7 @@ const { account } = storeToRefs(useSessionStore())
 const apps = ref<AppSummary[]>([])
 const endUserCount = ref(0)
 const providers = ref<IdentityProvider[]>([])
+const domains = ref<ProjectDomain[]>([])
 const signIns = ref<number | null>(null)
 const failuresToday = ref<number | null>(null)
 const refusalsToday = ref<number | null>(null)
@@ -81,6 +82,41 @@ const checklist = computed(() => [
 
 const unassignedApps = computed(() => apps.value.filter((app) => !app.machine && app.assignments === 0))
 const machineAppsWithoutApis = computed(() => apps.value.filter((app) => app.machine && app.assignments === 0))
+const verifiedDomain = computed(() => domains.value.find((domain) => domain.status === 'verified') ?? null)
+
+/** Domain problems, and SAML connections still on the standard URLs once a custom domain is in use. */
+const domainAttention = computed(() => {
+  const projectUid = project.value?.uid ?? ''
+  const domainPage = { name: 'project-domain', params: { projectUid } }
+  const items = domains.value.flatMap((domain) => {
+    if (domain.status === 'pending') return [{ key: domain.uid, text: `${domain.hostname} is waiting for its DNS records.`, action: 'Set up', to: domainPage }]
+    if (domain.status === 'failed') return [{ key: domain.uid, text: `${domain.hostname} failed verification.`, action: 'Fix', to: domainPage }]
+    if (domain.dns_missing_since) return [{ key: domain.uid, text: `${domain.hostname}'s DNS records are missing.`, action: 'Fix', to: domainPage }]
+    return []
+  })
+  const domain = verifiedDomain.value
+  if (!domain) return items
+  return [
+    ...items,
+    ...domain.saml_apps
+      .filter((app) => !app.on_custom_domain)
+      .map((app) => ({
+        key: app.uid,
+        text: `${app.name} still uses the standard URLs, not ${domain.hostname}.`,
+        action: 'Review',
+        to: { name: 'project-saml-app-credentials', params: { projectUid, samlAppUid: app.uid } },
+      })),
+    ...domain.saml_identity_providers
+      .filter((provider) => !provider.on_custom_domain)
+      .map((provider) => ({
+        key: provider.uid,
+        text: `${provider.name} still uses the standard URLs, not ${domain.hostname}.`,
+        action: 'Review',
+        to: { name: 'project-identity-provider', params: { projectUid, providerUid: provider.uid } },
+      })),
+  ]
+})
+
 const samlProvidersWithoutDomains = computed(() => providers.value.filter((provider) => provider.kind === 'saml' && provider.enabled && provider.domains.length === 0))
 
 const appAccessRoute = (app: AppSummary) =>
@@ -97,13 +133,15 @@ const countEvents = async (filters: Record<string, string>) => (await fetchAudit
 const load = useAsyncAction(async () => {
   if (!project.value) return
   const projectUid = project.value.uid
-  const [applications, endUsers, loadedProviders] = await Promise.all([
+  const [applications, endUsers, loadedProviders, loadedDomains] = await Promise.all([
     projectAdminService.listApplications(accountUid.value, projectUid, LOOKUP),
     projectAdminService.listEndUsers(accountUid.value, projectUid, { perPage: 1 }),
     projectAdminService.listIdentityProviders(accountUid.value, projectUid),
+    projectAdminService.listDomains(accountUid.value, projectUid),
   ])
   endUserCount.value = endUsers.total
   providers.value = loadedProviders.items
+  domains.value = loadedDomains
   apps.value = applications.items.map((app) => ({
     kind: app.app_type,
     uid: app.uid,
@@ -147,6 +185,10 @@ onMounted(() => load.run())
         <dd class="font-mono text-xs break-all">
           <a :href="portalUrl" target="_blank" rel="noopener" class="text-primary underline">{{ portalUrl }}</a>
         </dd>
+        <template v-if="verifiedDomain">
+          <dt class="font-medium">Custom domain</dt>
+          <dd class="font-mono text-xs break-all">{{ verifiedDomain.hostname }}</dd>
+        </template>
         <dt class="font-medium">Self sign-up</dt>
         <dd>{{ project.allow_self_sign_up ? 'On' : 'Off' }}</dd>
       </dl>
@@ -177,7 +219,7 @@ onMounted(() => load.run())
     </div>
 
     <BaseCard
-      v-if="!load.loading.value && (unassignedApps.length > 0 || machineAppsWithoutApis.length > 0 || samlProvidersWithoutDomains.length > 0)"
+      v-if="!load.loading.value && (unassignedApps.length > 0 || machineAppsWithoutApis.length > 0 || samlProvidersWithoutDomains.length > 0 || domainAttention.length > 0)"
       title="Needs attention"
     >
       <ul class="flex flex-col divide-y divide-border">
@@ -190,6 +232,10 @@ onMounted(() => load.run())
           <RouterLink :to="{ name: 'project-app-client-api-access', params: { projectUid: project.uid, clientUid: app.uid } }" class="font-medium text-primary underline">
             Give API access
           </RouterLink>
+        </li>
+        <li v-for="item in domainAttention" :key="item.key" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+          <span>{{ item.text }}</span>
+          <RouterLink :to="item.to" class="font-medium text-primary underline">{{ item.action }}</RouterLink>
         </li>
         <li v-for="provider in samlProvidersWithoutDomains" :key="provider.uid" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
           <span><strong>{{ provider.name }}</strong> has no email domains, so sign-ins through it are refused.</span>

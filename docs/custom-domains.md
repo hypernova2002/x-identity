@@ -61,9 +61,36 @@ domain.
 
 **Emails.** Links to the app portal in emails use the custom domain once it's verified.
 
-SAML apps keep their entity IDs, and SAML identity providers their service provider URLs, on the
-standard URLs for now. Sign-ins through social and SAML identity providers that start on the custom
-domain complete, but their single sign-on session is created on the standard URLs.
+**Sign-ins through identity providers.** Social and OpenID Connect providers keep returning to
+the callback URL registered with them, on the standard URLs, and SAML providers to their ACS URL.
+When a sign-in that started on the custom domain comes back there, it's handed back to the custom
+domain with a single-use, short-lived ticket, and the session is created on the custom domain. The
+callback URLs registered with providers never need to change.
+
+## SAML apps and SAML identity providers
+
+The other side of a SAML connection has x-identity's entity ID and URLs saved, and checks them, so
+they don't follow the domain automatically. Each SAML app and SAML identity provider records whether
+it uses the custom domain:
+
+| | Standard URLs | Custom domain |
+| --- | --- | --- |
+| SAML app: entity ID and metadata | `…/projects/<uid>/saml/metadata` | `https://login.acme.com/saml/metadata` |
+| SAML app: sign-on and logout | `…/saml/sso`, `…/saml/slo` | `https://login.acme.com/saml/sso`, `/saml/slo` |
+| SAML identity provider: SP entity ID, ACS, logout | `…/saml/sp/<uid>/metadata`, `/acs`, `/slo` | `https://login.acme.com/saml/sp/<uid>/…` |
+
+- Existing apps and providers stay on the standard URLs. Ones created after the domain is verified
+  start on it.
+- The **Domain** card on a SAML app's Credentials tab, or a SAML provider's page, switches it. The
+  confirmation says what to update on the other side: re-import the metadata in the app, or send the
+  new metadata URL to the identity provider's admin. Sign-ins fail until that's done.
+- An app's assertions are issued with its own entity ID, whichever domain the request arrives on,
+  and both domains answer its SAML endpoints, so an app that only updated its sign-on URL keeps
+  working. Responses from a provider are checked against the URLs it was set up with.
+- The signing certificates are the project's, on both domains.
+- Removing the domain moves apps and providers that use it back to the standard URLs; replacing it
+  moves them to the new domain. The Domain page lists which ones are affected before either.
+- The project overview lists apps and providers still on the standard URLs once a domain is in use.
 
 ## Routing in production
 

@@ -3,7 +3,7 @@ class Schemas::ProjectDomain
 
   schema(
     type: :object,
-    required: %w[uid hostname status verified_at last_checked_at check_error dns_missing_since certificate_status verify_until created_at dns_records],
+    required: %w[uid hostname status verified_at last_checked_at check_error dns_missing_since certificate_status verify_until created_at saml_apps saml_identity_providers dns_records],
     properties: {
       uid: { type: :string },
       hostname: { type: :string },
@@ -15,6 +15,10 @@ class Schemas::ProjectDomain
       certificate_status: { type: :string, enum: %w[external], description: "external: TLS certificates are issued outside x-identity." },
       verify_until: { type: :string, format: "date-time", description: "When a pending domain stops being checked and fails." },
       created_at: { type: :string, format: "date-time" },
+      saml_apps: { type: :array, description: "The project's SAML apps, and whether each uses the custom domain.", items: Schemas::SamlConnection },
+      saml_identity_providers: {
+        type: :array, description: "The project's SAML identity providers, and whether each uses the custom domain.", items: Schemas::SamlConnection
+      },
       dns_records: {
         type: :array,
         description: "The records to create at the domain's DNS provider.",

@@ -5,6 +5,7 @@
 # the email domains they list, which also route users to them on the hosted login page.
 class IdentityProvider < ApplicationRecord
   include HasUid
+  include OnCustomDomain
 
   self.uid_prefix = "idp"
 
@@ -146,7 +147,7 @@ class IdentityProvider < ApplicationRecord
   private
 
   def sp_base_url
-    "#{project.token_issuer}/saml/sp/#{uid}"
+    project_endpoints.url("/saml/sp/#{uid}")
   end
 
   def saml_urls_are_web_urls

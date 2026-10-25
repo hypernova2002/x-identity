@@ -5,7 +5,7 @@ module IdentityProviders
     EDITABLE = %i[
       name enabled client_id client_secret additional_audiences scopes discovery_url apple_team_id apple_key_id apple_private_key
       saml_idp_entity_id saml_sso_url saml_slo_url saml_idp_certificates saml_name_id_format saml_email_attribute saml_name_attribute
-      saml_groups_attribute domains create_users allow_idp_initiated
+      saml_groups_attribute domains create_users allow_idp_initiated on_custom_domain
     ].freeze
     BLANK_TO_NIL = %i[saml_slo_url saml_email_attribute saml_name_attribute saml_groups_attribute].freeze
     SECRET_FIELDS = %w[client_secret apple_private_key].freeze
@@ -31,7 +31,8 @@ module IdentityProviders
     # @raise [ApiError] `forbidden` or `validation_failed`
     def create(kind:, group_mappings: nil, **attributes)
       authorize!
-      provider = @project.identity_providers.new(kind: kind, **normalize(attributes))
+      on_custom_domain = kind == "saml" && @project.domains.status_verified.exists?
+      provider = @project.identity_providers.new(kind: kind, on_custom_domain: on_custom_domain, **normalize(attributes))
       load_metadata(provider)
       mappings = mappings_for(group_mappings) if group_mappings
       IdentityProvider.transaction do

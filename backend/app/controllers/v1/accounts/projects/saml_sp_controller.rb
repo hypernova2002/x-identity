@@ -19,7 +19,7 @@ module V1
           )
           redirect_to url, allow_other_host: true, status: :see_other
         rescue ApiError => error
-          redirect_to ::Oidc::Urls.hosted_page(current_project, "error", error: error.code, error_description: error.message), allow_other_host: true, status: :see_other
+          redirect_to current_endpoints.hosted_page("error", error: error.code, error_description: error.message), allow_other_host: true, status: :see_other
         end
 
         def slo

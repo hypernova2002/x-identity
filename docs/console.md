@@ -56,7 +56,7 @@ pages renamed in the redesign (`app-clients`, `saml-apps`, `sign-in-providers`) 
 | Monitoring & testing | Test sign-in | Signs an end user in through the public API or through hosted login, walks through challenges, and decodes the tokens, which are kept in memory only. Failures are explained without revealing whether an email is registered. Linked from each application. | Any project member |
 | Monitoring & testing | Audit log | The project's events, filterable by action; links from users and apps open it pre-filtered. | Developers |
 | Project settings | General | Name, self sign-up, email link templates (confirm sign-up, reset password, accept invitation). Deleting the project. | Project admins (delete: account admins) |
-| Project settings | Custom domain | The project's own domain (e.g. `login.acme.com`): the CNAME and TXT records to create, verification status, checking now, replacing and removing it. See [Custom domains](custom-domains.md). | Project admins (view: everyone) |
+| Project settings | Custom domain | The project's own domain (e.g. `login.acme.com`): the CNAME and TXT records to create, verification status, checking now, replacing and removing it, and which SAML apps and identity providers use it. SAML apps (Credentials tab) and SAML identity providers switch to it on their own pages. See [Custom domains](custom-domains.md). | Project admins (view: everyone; SAML app switch: developers) |
 | Project settings | Members | Console users with a role in the project. | Project admins |
 
 Leaving a form with unsaved changes asks for confirmation.

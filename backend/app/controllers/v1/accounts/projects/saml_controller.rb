@@ -7,7 +7,7 @@ module V1
         include SsoSessionCookie
 
         def metadata
-          render xml: ::SamlIdp::Metadata.new(current_project).to_xml
+          render xml: ::SamlIdp::Metadata.new(current_project, endpoints: current_endpoints).to_xml
         end
 
         def sso
