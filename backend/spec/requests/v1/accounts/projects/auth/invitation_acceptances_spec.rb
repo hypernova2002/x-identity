@@ -39,7 +39,7 @@ RSpec.describe "End-user invitation acceptance", type: :openapi do
   it "lets the end user sign in afterwards" do
     accept(204, token: issued.token)
 
-    result = Auth::SignIn.new(realm: project.realm, app_client: app_client).call(email: end_user.email, password: "my first password")
+    result = Auth::SignIn.new(context: Auth::SignInContext.new(realm: project.realm, app_client: app_client)).call(email: end_user.email, password: "my first password")
     expect(result.tokens).to be_present
   end
 

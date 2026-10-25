@@ -2,18 +2,11 @@ module Auth
   # Answers a sign-in challenge issued by {SignInFlow}. A session token stays valid across wrong
   # answers (failures count towards lockout) and is consumed only once the challenge is passed.
   class ChallengeResponse
-    # @param realm [Realms::AccountRealm, Realms::ProjectRealm]
-    # @param app_client [AppClient, nil] must be the client the sign-in started with
-    # @param ip [String, nil] the caller's IP address, for the audit log
-    # @param user_agent [String, nil]
-    # @param interaction [OneTimeToken, nil] must be the hosted login interaction the sign-in started in
-    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil, interaction: nil)
-      @realm = realm
-      @app_client = app_client
-      @interaction = interaction
-      @ip = ip
-      @user_agent = user_agent
-      @configuration = realm.auth_configuration
+    # @param context [SignInContext] the app client and hosted login interaction must be the ones the sign-in started with
+    def initialize(context:)
+      @context = context
+      @realm = context.realm
+      @configuration = context.configuration
     end
 
     # @param session [String]
@@ -41,15 +34,15 @@ module Auth
         passkey = passkey_registration(user, record).finish(registration_id: registration_id.to_s, credential: credential.to_h)
         amr |= passkey.amr
       when Challenges::NEW_PASSWORD
-        Users::PasswordChange.new(user: user, ip: @ip, user_agent: @user_agent).set_password!(new_password)
+        Users::PasswordChange.new(user: user, **@context.client_info).set_password!(new_password)
       when Challenges::MFA_SETUP
-        recovery_codes = Mfa::OtpEnrollment.new(user: user, ip: @ip, user_agent: @user_agent).confirm(code: code)
+        recovery_codes = Mfa::OtpEnrollment.new(user: user, **@context.client_info).confirm(code: code)
         amr |= [ Amr::OTP ]
       end
 
       raise ApiError.new(:invalid_challenge) unless record.consume!
 
-      SignInFlow.new(realm: @realm, app_client: @app_client, ip: @ip, user_agent: @user_agent, interaction: @interaction).continue(
+      SignInFlow.new(context: @context).continue(
         user: user,
         amr: amr,
         authenticated_at: Time.iso8601(record.data["authenticated_at"]),
@@ -80,7 +73,7 @@ module Auth
     # @return [Mfa::Enrollment]
     def start_mfa_setup(session:)
       record = find_session!(session, Challenges::MFA_SETUP)
-      Mfa::OtpEnrollment.new(user: record.subject, ip: @ip, user_agent: @user_agent).start
+      Mfa::OtpEnrollment.new(user: record.subject, **@context.client_info).start
     end
 
     private
@@ -91,41 +84,34 @@ module Auth
       valid = record.present? &&
         @realm.owns?(user) &&
         user.active? &&
-        answers?(record, challenge) &&
-        record.data["app_client_id"] == @app_client&.id &&
-        record.data["interaction_id"] == @interaction&.id
+        Challenge.new(name: record.data["challenge"], mfa_methods: record.data["mfa_methods"]).answered_by?(challenge) &&
+        record.data["app_client_id"] == @context.app_client&.id &&
+        record.data["interaction_id"] == @context.interaction&.id
 
       raise ApiError.new(:invalid_challenge) unless valid
 
       record
     end
 
-    # A passkey can answer any second-factor challenge that offers it.
-    def answers?(record, challenge)
-      record.data["challenge"] == challenge || (challenge == Challenges::PASSKEY && Array(record.data["mfa_methods"]).include?(Challenges::PASSKEY))
-    end
-
     # The sign-in in progress counts as the recent sign-in adding a passkey needs.
     def passkey_registration(user, record)
-      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
-      raise ApiError.new(:passkeys_unavailable) unless relying_party
-
       Passkeys::Registration.new(
-        user: user, relying_party: relying_party, authenticated_at: Time.iso8601(record.data["authenticated_at"]), ip: @ip, user_agent: @user_agent
+        user: user, relying_party: passkey_relying_party!(user), authenticated_at: Time.iso8601(record.data["authenticated_at"]), **@context.client_info
       )
     end
 
     def passkey_authentication(user)
-      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
-      raise ApiError.new(:passkeys_unavailable) unless relying_party
+      Passkeys::Authentication.new(realm: @realm, relying_party: passkey_relying_party!(user))
+    end
 
-      Passkeys::Authentication.new(realm: @realm, relying_party: relying_party)
+    def passkey_relying_party!(user)
+      @context.passkey_relying_party(user) || raise(ApiError.new(:passkeys_unavailable))
     end
 
     def verify_otp!(user, code)
       raise ApiError.new(:too_many_attempts) if Lockout.new(owner: @realm.owner, configuration: @configuration).locked?(user.email)
 
-      Mfa::Verifier.new(user: user, ip: @ip, user_agent: @user_agent, app_client: @app_client).verify!(code)
+      Mfa::Verifier.new(user: user, app_client: @context.app_client, **@context.client_info).verify!(code)
     end
   end
 end

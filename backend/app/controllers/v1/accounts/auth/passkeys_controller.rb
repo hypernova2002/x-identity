@@ -12,22 +12,26 @@ module V1
 
         def create
           user, amr = authentication.verify(**parse_request(::Passkeys::SignInRequest).to_h)
-          result = ::Auth::SignInFlow.new(realm: realm, **client_info).continue(user: user, amr: amr, authenticated_at: Time.current)
+          result = ::Auth::SignInFlow.new(context: sign_in_context).continue(user: user, amr: amr, authenticated_at: Time.current)
           render json: SignInResultSerializer.new(result).serializable_hash
         end
 
         def challenge_options
-          render json: ::Auth::ChallengeResponse.new(realm: realm, **client_info).passkey_options(**parse_request(::Passkeys::ChallengeOptionsRequest).to_h)
+          render json: ::Auth::ChallengeResponse.new(context: sign_in_context).passkey_options(**parse_request(::Passkeys::ChallengeOptionsRequest).to_h)
         end
 
         def setup
-          render json: ::Auth::ChallengeResponse.new(realm: realm, **client_info).start_passkey_setup(**parse_request(::Passkeys::SetupRequest).to_h)
+          render json: ::Auth::ChallengeResponse.new(context: sign_in_context).start_passkey_setup(**parse_request(::Passkeys::SetupRequest).to_h)
         end
 
         private
 
         def realm
           current_account.realm
+        end
+
+        def sign_in_context
+          ::Auth::SignInContext.new(realm: realm, **client_info)
         end
 
         def authentication

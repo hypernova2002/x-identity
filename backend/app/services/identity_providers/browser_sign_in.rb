@@ -113,7 +113,7 @@ module IdentityProviders
       end_user = record.subject
       raise ApiError.new(:user_disabled, message: DISABLED_MESSAGE) unless end_user.active?
 
-      Auth::SignInFlow.new(realm: @project.realm(issuer: data["issuer"]), app_client: app_client, ip: @ip, user_agent: @user_agent)
+      Auth::SignInFlow.new(context: Auth::SignInContext.new(realm: @project.realm(issuer: data["issuer"]), app_client: app_client, ip: @ip, user_agent: @user_agent))
         .continue(user: end_user, amr: [ Auth::Amr::FEDERATED ], authenticated_at: Time.zone.parse(data["authenticated_at"]))
     end
 
@@ -186,11 +186,12 @@ module IdentityProviders
 
       begin
         end_user = resolve.call(app_client, interaction)
-        result = Auth::SignInFlow.new(realm: @project.realm, app_client: app_client, ip: @ip, user_agent: @user_agent, interaction: interaction)
+        context = Auth::SignInContext.new(realm: @project.realm, app_client: app_client, interaction: interaction, ip: @ip, user_agent: @user_agent)
+        result = Auth::SignInFlow.new(context: context)
           .continue(user: end_user, amr: [ Auth::Amr::FEDERATED ], authenticated_at: Time.current)
         return Oidc::Authorization.new(project: @project, ip: @ip, user_agent: @user_agent).complete(interaction, result.completion) if result.completed?
 
-        endpoints.hosted_page("login", interaction: data["interaction_token"], challenge: result.challenge, session: result.session)
+        endpoints.hosted_page("login", interaction: data["interaction_token"], challenge: result.challenge.name, session: result.session)
       rescue ApiError => failure
         endpoints.hosted_page("login", interaction: data["interaction_token"], error: failure.code, error_description: failure.message)
       end

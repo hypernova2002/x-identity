@@ -15,18 +15,18 @@ module V1
           def create
             app_client, input = parse_client_request(::EndUserAuth::PasskeySignInRequest)
             user, amr = authentication(app_client).verify(**input)
-            result = ::Auth::SignInFlow.new(realm: realm, app_client: app_client, **client_info).continue(user: user, amr: amr, authenticated_at: Time.current)
+            result = ::Auth::SignInFlow.new(context: sign_in_context(app_client)).continue(user: user, amr: amr, authenticated_at: Time.current)
             render json: SignInResultSerializer.new(result).serializable_hash
           end
 
           def challenge_options
             app_client, input = parse_client_request(::EndUserAuth::PasskeyChallengeOptionsRequest)
-            render json: ::Auth::ChallengeResponse.new(realm: realm, app_client: app_client, **client_info).passkey_options(**input)
+            render json: ::Auth::ChallengeResponse.new(context: sign_in_context(app_client)).passkey_options(**input)
           end
 
           def setup
             app_client, input = parse_client_request(::EndUserAuth::PasskeySetupRequest)
-            render json: ::Auth::ChallengeResponse.new(realm: realm, app_client: app_client, **client_info).start_passkey_setup(**input)
+            render json: ::Auth::ChallengeResponse.new(context: sign_in_context(app_client)).start_passkey_setup(**input)
           end
 
           private

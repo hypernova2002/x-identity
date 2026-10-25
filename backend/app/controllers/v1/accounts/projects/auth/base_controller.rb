@@ -20,6 +20,12 @@ module V1
           def realm
             current_project.realm(issuer: current_endpoints.issuer)
           end
+
+          # @param app_client [AppClient]
+          # @return [::Auth::SignInContext]
+          def sign_in_context(app_client)
+            ::Auth::SignInContext.new(realm: realm, app_client: app_client, **client_info)
+          end
         end
       end
     end

@@ -3,7 +3,7 @@ module V1
     module Auth
       class SignInsController < BaseController
         def create
-          result = ::Auth::SignIn.new(realm: current_account.realm, **client_info)
+          result = ::Auth::SignIn.new(context: ::Auth::SignInContext.new(realm: current_account.realm, **client_info))
             .call(**parse_request(::Auth::SignInRequest).to_h)
           render json: SignInResultSerializer.new(result).serializable_hash
         end

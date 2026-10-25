@@ -9,7 +9,7 @@ RSpec.describe "Sign-in challenges", type: :openapi do
   let(:path_params) { { account_uid: account.uid } }
 
   def start_sign_in(user)
-    Auth::SignIn.new(realm: account.realm).call(email: user.email, password: "correct horse battery staple").session
+    Auth::SignIn.new(context: Auth::SignInContext.new(realm: account.realm)).call(email: user.email, password: "correct horse battery staple").session
   end
 
   describe "responding to a challenge" do
@@ -134,7 +134,7 @@ RSpec.describe "Sign-in challenges", type: :openapi do
       before { configuration.update!(mfa_requirement: "required") }
 
       it "confirms the new authenticator and returns tokens with recovery codes" do
-        enrollment = Auth::ChallengeResponse.new(realm: account.realm).start_mfa_setup(session: session)
+        enrollment = Auth::ChallengeResponse.new(context: Auth::SignInContext.new(realm: account.realm)).start_mfa_setup(session: session)
         code = ROTP::TOTP.new(enrollment.secret).now
 
         assert_api_response :post, 200, body: { challenge: "mfa_setup", session: session, code: code }, path_params: path_params do

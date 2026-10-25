@@ -5,7 +5,7 @@ module V1
         class MfaSetupsController < BaseController
           def create
             app_client, input = parse_client_request(::EndUserAuth::MfaSetupRequest)
-            enrollment = ::Auth::ChallengeResponse.new(realm: realm, app_client: app_client, **client_info)
+            enrollment = ::Auth::ChallengeResponse.new(context: sign_in_context(app_client))
               .start_mfa_setup(**input)
             render json: MfaEnrollmentSerializer.new(enrollment).serializable_hash
           end

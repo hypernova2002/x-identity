@@ -4,18 +4,9 @@ module Auth
   # hosted login carry their interaction, end with a {SignInCompletion} instead of tokens, and their
   # challenges can only be answered through that interaction.
   class SignInFlow
-    # @param realm [Realms::AccountRealm, Realms::ProjectRealm]
-    # @param app_client [AppClient, nil]
-    # @param ip [String, nil] the caller's IP address, for the audit log
-    # @param user_agent [String, nil]
-    # @param interaction [OneTimeToken, nil] the hosted login interaction the sign-in belongs to
-    def initialize(realm:, app_client: nil, ip: nil, user_agent: nil, interaction: nil)
-      @realm = realm
-      @app_client = app_client
-      @interaction = interaction
-      @ip = ip
-      @user_agent = user_agent
-      @configuration = realm.auth_configuration
+    # @param context [SignInContext]
+    def initialize(context:)
+      @context = context
     end
 
     # @param user [User, EndUser]
@@ -24,72 +15,38 @@ module Auth
     # @param recovery_codes [Array<String>, nil] passed through to the client after MFA setup
     # @return [SignInResult]
     def continue(user:, amr:, authenticated_at:, recovery_codes: nil)
-      app = @interaction&.subject || @app_client
-      Apps::Access.authorize!(app, user, recorder: recorder) if user.is_a?(EndUser) && app
+      app = @context.interaction&.subject || @context.app_client
+      Apps::Access.authorize!(app, user, recorder: @context.recorder) if user.is_a?(EndUser) && app
 
-      challenge, mfa_methods = next_challenge(user, amr)
+      challenge = ChallengePolicy.new(configuration: @context.configuration, relying_party: @context.passkey_relying_party(user)).next_for(user, amr)
 
       if challenge
         _record, session = OneTimeToken.issue!(
           subject: user,
           purpose: :sign_in_challenge,
           data: {
-            "challenge" => challenge,
+            "challenge" => challenge.name,
             "amr" => amr,
             "authenticated_at" => authenticated_at.utc.iso8601(6),
-            "app_client_id" => @app_client&.id,
-            "interaction_id" => @interaction&.id,
-            "mfa_methods" => mfa_methods
+            "app_client_id" => @context.app_client&.id,
+            "interaction_id" => @context.interaction&.id,
+            "mfa_methods" => challenge.mfa_methods.presence
           }.compact
         )
-        return SignInResult.challenged(challenge, session, recovery_codes: recovery_codes, mfa_methods: mfa_methods)
+        return SignInResult.challenged(challenge, session, recovery_codes: recovery_codes)
       end
 
       user.record_sign_in!
-      recorder.record(action: "#{@realm.event_prefix}.signed_in", actor: user, target: user, metadata: { amr: amr })
-      if @interaction
+      @context.recorder.record(action: "#{@context.realm.event_prefix}.signed_in", actor: user, target: user, metadata: { amr: amr })
+      if @context.interaction
         return SignInResult.completed(SignInCompletion.new(user: user, amr: amr, authenticated_at: authenticated_at), recovery_codes: recovery_codes)
       end
 
-      device_session = DeviceSession.start!(subject: user, amr: amr, authenticated_at: authenticated_at, **DeviceDetails.for(@app_client, ip: @ip, user_agent: @user_agent))
-      tokens = TokenIssuer.new(realm: @realm, app_client: @app_client).issue(user: user, authenticated_at: authenticated_at, amr: amr, device_session: device_session)
+      device_session = DeviceSession.start!(
+        subject: user, amr: amr, authenticated_at: authenticated_at, **DeviceDetails.for(@context.app_client, **@context.client_info)
+      )
+      tokens = TokenIssuer.new(realm: @context.realm, app_client: @context.app_client).issue(user: user, authenticated_at: authenticated_at, amr: amr, device_session: device_session)
       SignInResult.authenticated(tokens, recovery_codes: recovery_codes)
-    end
-
-    private
-
-    def recorder
-      @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
-    end
-
-    # @return [Array(String, Array<String>), Array(String, nil), nil] the challenge, and for a second
-    #   factor the methods that can answer it
-    def next_challenge(user, amr)
-      relying_party = Passkeys::RelyingParties.for_sign_in(user, interaction: @interaction, app_client: @app_client)
-      passkey = relying_party.present? && user.webauthn_credentials.exists?(rp_id: relying_party.id)
-
-      # Recovering after a password reset: add a new passkey before going on.
-      if user.recovering_passkey? && @configuration.passwordless_after_passkey && relying_party && !Factors.passkey?(amr)
-        return [ Challenges::PASSKEY_SETUP, nil ]
-      end
-
-      # Required passkeys must be used wherever they work: set one up here if there's none yet.
-      if @configuration.passkeys_required? && relying_party && !Factors.passkey?(amr)
-        return passkey ? [ Challenges::PASSKEY, [ Challenges::PASSKEY ] ] : [ Challenges::PASSKEY_SETUP, nil ]
-      end
-
-      # Where passkeys are required but can't be used, MFA is required instead.
-      mfa_required = @configuration.mfa_required? || (@configuration.passkeys_required? && relying_party.nil?)
-      mfa = Factors.mfa?(amr)
-      unless @configuration.mfa_off? || mfa
-        return [ Challenges::OTP, passkey ? Challenges::MFA_METHODS : [ Challenges::OTP ] ] if user.mfa_enabled?
-        # Users with only a passkey need it as a second factor where MFA is required, and where it works.
-        return [ Challenges::PASSKEY, [ Challenges::PASSKEY ] ] if passkey && mfa_required
-      end
-      return [ Challenges::NEW_PASSWORD, nil ] if amr.include?(Amr::PASSWORD) && user.password_expired?(@configuration)
-      return [ Challenges::MFA_SETUP, nil ] if mfa_required && !user.mfa_enabled? && !mfa
-
-      nil
     end
   end
 end

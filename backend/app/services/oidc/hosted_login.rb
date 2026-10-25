@@ -50,7 +50,7 @@ module Oidc
     # @raise [ApiError] `passkeys_unavailable`, `invalid_passkey` or `too_many_attempts`
     def passkey_sign_in(authentication_id:, credential:)
       user, amr = passkey_authentication.verify(authentication_id: authentication_id, credential: credential)
-      result_body(Auth::SignInFlow.new(realm: realm, app_client: @app_client, interaction: @interaction, **client_info).continue(user: user, amr: amr, authenticated_at: Time.current))
+      result_body(Auth::SignInFlow.new(context: sign_in_context).continue(user: user, amr: amr, authenticated_at: Time.current))
     end
 
     # Options for answering a second-factor challenge with a passkey.
@@ -81,7 +81,7 @@ module Oidc
 
     # @return [Hash] a challenge, or where to go once signed in
     def sign_in(email:, password:)
-      result_body(Auth::SignIn.new(realm: realm, app_client: @app_client, interaction: @interaction, **client_info).call(email: email, password: password))
+      result_body(Auth::SignIn.new(context: sign_in_context).call(email: email, password: password))
     end
 
     # @return [Hash] a challenge, or where to go once signed in
@@ -128,7 +128,7 @@ module Oidc
 
     def result_body(result)
       body = if result.challenged?
-        { challenge: result.challenge, session: result.session, mfa_methods: result.mfa_methods }.compact
+        SignInResultSerializer.challenge_body(result)
       else
         { redirect_to: Authorization.new(project: @project, **client_info).complete(@interaction, result.completion) }
       end
@@ -154,7 +154,11 @@ module Oidc
     end
 
     def challenge_response
-      Auth::ChallengeResponse.new(realm: realm, app_client: @app_client, interaction: @interaction, **client_info)
+      Auth::ChallengeResponse.new(context: sign_in_context)
+    end
+
+    def sign_in_context
+      @sign_in_context ||= Auth::SignInContext.new(realm: realm, app_client: @app_client, interaction: @interaction, **client_info)
     end
 
     def confirmation

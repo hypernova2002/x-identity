@@ -5,7 +5,7 @@ module V1
         class ChallengesController < BaseController
           def create
             app_client, input = parse_client_request(::EndUserAuth::ChallengeResponseRequest)
-            result = ::Auth::ChallengeResponse.new(realm: realm, app_client: app_client, **client_info).call(**input)
+            result = ::Auth::ChallengeResponse.new(context: sign_in_context(app_client)).call(**input)
             render json: SignInResultSerializer.new(result).serializable_hash
           end
         end

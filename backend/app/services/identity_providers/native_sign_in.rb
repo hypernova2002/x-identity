@@ -27,7 +27,7 @@ module IdentityProviders
       end_user = UserResolver.new(provider: @provider, app_client: @app_client, ip: @ip, user_agent: @user_agent)
         .resolve(claims, name: name).end_user
 
-      Auth::SignInFlow.new(realm: @provider.project.realm(issuer: @issuer), app_client: @app_client, ip: @ip, user_agent: @user_agent)
+      Auth::SignInFlow.new(context: Auth::SignInContext.new(realm: @provider.project.realm(issuer: @issuer), app_client: @app_client, ip: @ip, user_agent: @user_agent))
         .continue(user: end_user, amr: [ Auth::Amr::FEDERATED ], authenticated_at: Time.current)
     end
   end
