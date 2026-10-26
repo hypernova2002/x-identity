@@ -13,7 +13,7 @@ Each app is a public client using the authorization code flow with PKCE
 (`openid email profile groups offline_access`). It shows the ID token claims and the userinfo
 response, and can refresh its tokens, sign in again (`prompt=login`) and log out.
 
-SAML apps can't be tried this way: SAML posts the sign-in to a server that checks an XML signature.
+For SAML apps there's a test service provider, below.
 
 ## Setting up
 
@@ -28,6 +28,26 @@ For each app, in a project:
    saved in the browser; **Settings** changes them.
 
 Use port `5191` for Wiki.
+
+## A SAML app
+
+The `saml-sp` Compose service (`examples/saml-sp/config.ru`) is a tiny SAML service provider at
+http://localhost:5192. It runs on the backend image with ruby-saml, and shows what the identity
+provider sent: whether the response is valid (signed by the project, for this app, in date), the
+NameID, the attributes and the response XML. It reads the project's SAML metadata on every request.
+
+1. Set `IDP_METADATA_URL` on the `saml-sp` service in your `docker-compose.yml` to the project's
+   metadata as the container reaches the backend:
+   `http://backend:3000/v1/accounts/<account_uid>/projects/<project_uid>/saml/metadata`, then
+   `docker compose up -d saml-sp`.
+2. In the project, add a SAML application with:
+   - entity ID: `http://localhost:5192/metadata` (or import that metadata URL)
+   - ACS URL: `http://localhost:5192/acs`
+   - NameID format: email, and any attribute mappings, e.g. `email`, `name`, `groups`
+   - **Domain**: the standard URLs, since the service provider reads the standard metadata
+3. Give end users access (e.g. the **All end users** group).
+4. Open http://localhost:5192 and **Sign in with x-identity** (SP-initiated), or launch the app
+   from the app portal (IdP-initiated).
 
 ## The app portal
 

@@ -89,6 +89,22 @@ services:
       - "5190:5190"
       - "5191:5191"
 
+  # A SAML service provider for trying SAML apps (examples/saml-sp), on the backend image.
+  saml-sp:
+    image: x-identity-backend:development
+    command: ["bundle", "exec", "puma", "-b", "tcp://0.0.0.0:5192", "/examples/saml-sp/config.ru"]
+    volumes:
+      - ./backend:/rails
+      - ./examples/saml-sp:/examples/saml-sp:ro
+    environment:
+      SP_BASE_URL: http://localhost:5192
+      # The project's SAML metadata, as this container reaches the backend; see docs/examples.md.
+      IDP_METADATA_URL: ""
+    depends_on:
+      - backend
+    ports:
+      - "5192:5192"
+
   db:
     image: postgres:18
     environment:

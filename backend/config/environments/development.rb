@@ -7,6 +7,8 @@ Rails.application.configure do
   # Custom domains are *.localhost in development, served through the edge proxy. The default
   # ".localhost" entry allows only one subdomain level, e.g. not login.acme.localhost.
   config.hosts << /(?:[a-z0-9-]+\.)+localhost/
+  # Other Compose services, such as the example SAML service provider, reach the backend by its service name.
+  config.hosts << "backend"
 
   # Settings specified here will take precedence over those in config/application.rb.
 
