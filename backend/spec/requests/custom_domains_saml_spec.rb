@@ -73,6 +73,28 @@ RSpec.describe "SAML on a custom domain", type: :request do
     end
   end
 
+  describe "a challenge after signing in with the provider" do
+    it "resumes on the hosted page with the methods that can answer it, including the user's passkey" do
+      project.auth_configuration!.update!(passkeys: "optional")
+      end_user = create(:end_user, :with_mfa, project: project, email: "jane@acme.com")
+      add_passkey(end_user, relying_party: Passkeys::RelyingParties.for(end_user, endpoints: ProjectEndpoints.new(project, domain: domain)), origin: custom)
+
+      on_custom_domain
+      get "/oauth2/authorize", params: {
+        response_type: "code", client_id: app_client.uid, redirect_uri: redirect_uri, scope: "openid",
+        code_challenge: verifier_and_challenge.last, code_challenge_method: "S256"
+      }
+      get "/oauth2/interactions/#{query_of(response.location)['interaction']}/providers/#{provider.uid}"
+      authn_request = query_of(response.location)
+      document, = SamlIdp::Messages.decode(authn_request["SAMLRequest"], deflated: true)
+
+      login = post_to_acs(idp_response(in_response_to: document.root["ID"]), authn_request["RelayState"])
+
+      expect(login).to start_with("#{custom}/login?")
+      expect(query_of(login)).to include("challenge" => "otp", "mfa_methods" => "otp,passkey", "session" => be_present)
+    end
+  end
+
   describe "a provider switched to the custom domain" do
     before { provider.update!(on_custom_domain: true, allow_idp_initiated: true) }
 

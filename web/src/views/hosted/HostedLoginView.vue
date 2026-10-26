@@ -11,10 +11,8 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import HostedChallengeForm from '@/components/hosted/HostedChallengeForm.vue'
 import { useHostedProject } from '@/composables/useHostedProject'
 import { useHostedLogin } from '@/composables/useHostedLogin'
-import type { SignInChallengeName } from '@/types/api'
+import { resumedChallenge } from '@/utils/resumedChallenge'
 import { passkeysSupported } from '@/utils/webauthn'
-
-const CHALLENGES: SignInChallengeName[] = ['otp', 'new_password', 'mfa_setup']
 
 const route = useRoute()
 const { account, projectUid, loading: accountLoading, error: accountError } = useHostedProject()
@@ -64,8 +62,7 @@ watch(
   account,
   (loaded) => {
     if (!loaded) return
-    const resumeChallenge = query('challenge') as SignInChallengeName
-    const resume = CHALLENGES.includes(resumeChallenge) && query('session') ? { challenge: resumeChallenge, session: query('session') } : undefined
+    const resume = resumedChallenge(query('challenge'), query('session'), query('mfa_methods'))
     login.load.run({ accountUid: loaded.uid, projectUid: projectUid.value, interaction: query('interaction') }, resume)
   },
   { immediate: true },

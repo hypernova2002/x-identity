@@ -191,7 +191,11 @@ module IdentityProviders
           .continue(user: end_user, amr: [ Auth::Amr::FEDERATED ], authenticated_at: Time.current)
         return Oidc::Authorization.new(project: @project, ip: @ip, user_agent: @user_agent).complete(interaction, result.completion) if result.completed?
 
-        endpoints.hosted_page("login", interaction: data["interaction_token"], challenge: result.challenge.name, session: result.session)
+        endpoints.hosted_page(
+          "login",
+          interaction: data["interaction_token"], challenge: result.challenge.name, session: result.session,
+          mfa_methods: result.challenge.mfa_methods.join(",").presence
+        )
       rescue ApiError => failure
         endpoints.hosted_page("login", interaction: data["interaction_token"], error: failure.code, error_description: failure.message)
       end
