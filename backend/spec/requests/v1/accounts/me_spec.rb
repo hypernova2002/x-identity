@@ -89,6 +89,19 @@ RSpec.describe "Me", type: :openapi do
       end
     end
 
+    it "saves the user's language, and clears it with null" do
+      assert_api_response(:patch, 200, headers: auth_headers_for(user), body: { locale: "ja" }, path_params: path_params) do
+        expect(parsed_body["locale"]).to eq("ja")
+      end
+      assert_api_response(:patch, 200, headers: auth_headers_for(user), body: { locale: nil }, path_params: path_params) do
+        expect(parsed_body["locale"]).to be_nil
+      end
+    end
+
+    it "refuses languages the console doesn't have" do
+      assert_api_response :patch, 422, headers: auth_headers_for(user), body: { locale: "fr" }, path_params: path_params
+    end
+
     it "rejects a blank name" do
       assert_api_response :patch, 422, headers: auth_headers_for(user), body: { name: "" }, path_params: path_params
     end

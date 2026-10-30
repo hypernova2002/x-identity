@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_30_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -293,6 +293,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_000001) do
     t.integer "failed_mfa_attempts", default: 0, null: false
     t.string "webauthn_id"
     t.datetime "passkey_recovery_until"
+    t.string "locale"
     t.index ["email"], name: "index_end_users_on_email_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["name"], name: "index_end_users_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["project_id", "created_at", "id"], name: "index_end_users_on_project_id_and_created_at_and_id"
@@ -714,6 +715,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_000001) do
     t.integer "failed_mfa_attempts", default: 0, null: false
     t.string "webauthn_id"
     t.datetime "passkey_recovery_until"
+    t.string "locale"
     t.index ["account_id", "email"], name: "index_users_on_account_id_and_email", unique: true
     t.index ["uid"], name: "index_users_on_uid", unique: true
     t.index ["webauthn_id"], name: "index_users_on_webauthn_id", unique: true

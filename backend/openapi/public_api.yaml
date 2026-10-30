@@ -1636,6 +1636,14 @@ paths:
           application/json:
             schema:
               properties:
+                locale:
+                  anyOf:
+                  - type: 'null'
+                  - enum:
+                    - en
+                    - ja
+                  description: 'The language for the console and hosted pages: en,
+                    ja. null follows the browser''s language.'
                 name:
                   type: string
                   minLength: 1
@@ -7441,6 +7449,14 @@ paths:
                   maxProperties: 200
                   description: Values for the project's user-editable custom attributes,
                     keyed by attribute key.
+                locale:
+                  anyOf:
+                  - type: 'null'
+                  - enum:
+                    - en
+                    - ja
+                  description: 'The language for the console and hosted pages: en,
+                    ja. null follows the browser''s language.'
                 name:
                   anyOf:
                   - type: 'null'
@@ -11044,6 +11060,7 @@ components:
       - invitation_pending
       - groups
       - custom_attributes
+      - locale
       - created_at
       - updated_at
       properties:
@@ -11082,6 +11099,16 @@ components:
         invitation_pending:
           type: boolean
           description: Created by an admin and hasn't set a password yet.
+        locale:
+          type:
+          - string
+          - 'null'
+          enum:
+          - en
+          - ja
+          -
+          description: The language the user chose for the console and hosted pages;
+            null follows the browser.
         custom_attributes:
           type: object
           description: Values for the project's custom attributes, keyed by attribute
@@ -11748,6 +11775,7 @@ components:
       - created_at
       - updated_at
       - password_changed_at
+      - locale
       - otp_method
       - passkeys_available
       - account
@@ -11789,6 +11817,16 @@ components:
         password_changed_at:
           type: string
           format: date-time
+        locale:
+          type:
+          - string
+          - 'null'
+          enum:
+          - en
+          - ja
+          -
+          description: The language the user chose for the console and hosted pages;
+            null follows the browser.
         otp_method:
           type: string
           enum:

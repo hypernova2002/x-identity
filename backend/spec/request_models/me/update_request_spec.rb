@@ -5,4 +5,7 @@ RSpec.describe Me::UpdateRequest do
 
   it_behaves_like "an optional field", :name
   it_behaves_like "a name field", :name
+
+  it_behaves_like "an optional field", :locale
+  it_behaves_like "an enum field", :locale, values: HasLocale::LOCALES, nullable: true
 end

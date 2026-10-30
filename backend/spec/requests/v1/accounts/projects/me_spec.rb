@@ -71,6 +71,13 @@ RSpec.describe "End-user profile", type: :openapi do
       assert_api_response :get, 401, headers: headers, path_params: path_params
     end
 
+    it "saves the end user's language" do
+      assert_api_response(:patch, 200, headers: headers, body: { locale: "ja" }, path_params: path_params) do
+        expect(parsed_body["locale"]).to eq("ja")
+      end
+      expect(end_user.reload.locale).to eq("ja")
+    end
+
     context "with attributes" do
       before do
         create(:end_user_attribute_definition, project: project, key: "nickname")

@@ -3,6 +3,7 @@
 class EndUser < ApplicationRecord
   include HasUid
   include Authenticatable
+  include HasLocale
 
   self.uid_prefix = "eu"
 

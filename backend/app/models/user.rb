@@ -2,6 +2,7 @@
 class User < ApplicationRecord
   include HasUid
   include Authenticatable
+  include HasLocale
 
   self.uid_prefix = "usr"
 

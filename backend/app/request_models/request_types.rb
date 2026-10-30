@@ -21,6 +21,8 @@ module RequestTypes
   OtpCode = T::String.constrained(min_size: 1, max_size: 32).meta(description: "A TOTP code or an unused recovery code.")
   EmailCode = T::String.constrained(min_size: 6, max_size: 6, format: /^\d{6}$/).meta(description: "The 6-digit code from the email.")
   Jwt = T::String.constrained(min_size: 1, max_size: 16_384)
+  Locale = T::String.enum(*HasLocale::LOCALES).optional
+    .meta(description: "The language for the console and hosted pages: #{HasLocale::LOCALES.join(', ')}. null follows the browser's language.")
   AccountRole = T::String.enum(*User.roles.keys).meta(description: "The user's role in the account.")
   ProjectRole = T::String.enum(*ProjectMembership.roles.keys).meta(description: "The user's role in the project.")
 

@@ -135,8 +135,11 @@ changes.
 - The frontend reaches the API through `web/src/services/`; design tokens are in
   `web/src/assets/tokens.css`, and feature code uses the wrappers in `web/src/components/base/`.
 - Frontend text is in `web/src/locales/<locale>/`, through vue-i18n (`$t` in templates, `<i18n-t>`
-  for sentences with links or markup, `i18n.global.t` outside components). The locale comes from
-  the browser's languages, falling back to English; to add one, add its messages and list it in
-  `SUPPORTED_LOCALES` (`web/src/i18n/index.ts`). `ApiError` builds its message from the error's
+  for sentences with links or markup, `i18n.global.t` outside components). Signed-in users'
+  language is their `locale` (console users and end users), saved when they pick one in the
+  language switcher; signed out, the choice is kept in `localStorage`. A user with no `locale` sees
+  the browser's language, falling back to English. To add a language, add its messages and flag
+  (`LanguageFlag.vue`), list it in `SUPPORTED_LOCALES` (`web/src/i18n/index.ts`) and in
+  `HasLocale::LOCALES` on the backend. `ApiError` builds its message from the error's
   code, reason and details (`errors` messages), never from the API's English. ESLint's
   `vue/no-bare-strings-in-template` rejects untranslated text in templates.

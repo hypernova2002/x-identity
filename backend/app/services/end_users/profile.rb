@@ -12,6 +12,7 @@ module EndUsers
     end
 
     # @param name [String, nil]
+    # @param locale [String, nil] see {HasLocale}
     # @param custom_attributes [Hash, nil]
     # @return [EndUser]
     # @raise [ApiError] `validation_failed`
@@ -25,6 +26,7 @@ module EndUsers
           @end_user.custom_attributes = result.values
         end
         @end_user.name = changes[:name] if changes.key?(:name)
+        @end_user.locale = changes[:locale] if changes.key?(:locale)
         raise ApiError.from_record(@end_user) unless @end_user.save
 
         @project.realm.recorder(ip: @ip, user_agent: @user_agent)
