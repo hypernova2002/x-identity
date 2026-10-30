@@ -7,7 +7,6 @@ module IdentityProviders
       saml_idp_entity_id saml_sso_url saml_slo_url saml_idp_certificates saml_name_id_format saml_email_attribute saml_name_attribute
       saml_groups_attribute domains create_users allow_idp_initiated on_custom_domain
     ].freeze
-    BLANK_TO_NIL = %i[saml_slo_url saml_email_attribute saml_name_attribute saml_groups_attribute].freeze
     SECRET_FIELDS = %w[client_secret apple_private_key].freeze
 
     # @param actor [User]
@@ -32,7 +31,7 @@ module IdentityProviders
     def create(kind:, group_mappings: nil, **attributes)
       authorize!
       on_custom_domain = kind == "saml" && @project.domains.status_verified.exists?
-      provider = @project.identity_providers.new(kind: kind, on_custom_domain: on_custom_domain, **normalize(attributes))
+      provider = @project.identity_providers.new(kind: kind, on_custom_domain: on_custom_domain, **attributes.slice(*EDITABLE))
       load_metadata(provider)
       mappings = mappings_for(group_mappings) if group_mappings
       IdentityProvider.transaction do
@@ -51,7 +50,7 @@ module IdentityProviders
     # @raise [ApiError] `forbidden` or `validation_failed`
     def update(provider, group_mappings: nil, **changes)
       authorize!
-      changes = normalize(changes).reject { |field, value| SECRET_FIELDS.include?(field.to_s) && value.blank? }
+      changes = changes.slice(*EDITABLE).reject { |field, value| SECRET_FIELDS.include?(field.to_s) && value.blank? }
       provider.assign_attributes(changes)
       load_metadata(provider) if provider.discovery_url_changed?
       mappings = mappings_for(group_mappings) if group_mappings
@@ -98,10 +97,6 @@ module IdentityProviders
     end
 
     private
-
-    def normalize(attributes)
-      attributes.slice(*EDITABLE).to_h { |field, value| [ field, BLANK_TO_NIL.include?(field) ? value.presence : value ] }
-    end
 
     # @return [Array<Hash>] value and group pairs, checked to be in the project
     # @raise [ApiError] `validation_failed` for unknown groups
