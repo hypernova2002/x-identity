@@ -51,11 +51,11 @@ module Mfa
 
       codes = OtpCredential.transaction do
         credential.confirm!
+        record("mfa_enabled")
         RecoveryCode.regenerate_for!(@user)
       end
       @user.association(:otp_credential).reset
 
-      record("mfa_enabled")
       codes
     end
 
@@ -69,8 +69,10 @@ module Mfa
       verify_password!(current_password)
       Verifier.new(user: @user, ip: @ip, user_agent: @user_agent).verify!(code)
 
-      @user.remove_mfa!
-      record("mfa_disabled")
+      OtpCredential.transaction do
+        @user.remove_mfa!
+        record("mfa_disabled")
+      end
     end
 
     # @param code [String] a one-time or recovery code
@@ -79,9 +81,9 @@ module Mfa
       raise ApiError.new(:not_found) unless @user.mfa_enabled?
       Verifier.new(user: @user, ip: @ip, user_agent: @user_agent).verify!(code)
 
-      codes = RecoveryCode.regenerate_for!(@user)
-      record("recovery_codes_regenerated")
-      codes
+      RecoveryCode.transaction do
+        RecoveryCode.regenerate_for!(@user).tap { record("recovery_codes_regenerated") }
+      end
     end
 
     private

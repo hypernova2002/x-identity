@@ -159,10 +159,12 @@ module Oidc
     end
 
     def record_sso_sign_in(session, app_client)
-      session.end_user.record_sign_in!
-      @project.realm.recorder(ip: @ip, user_agent: @user_agent, app_client: app_client).record(
-        action: "end_user.signed_in", actor: session.end_user, target: session.end_user, metadata: { amr: session.amr, sso: true }
-      )
+      EndUser.transaction do
+        session.end_user.record_sign_in!
+        @project.realm.recorder(ip: @ip, user_agent: @user_agent, app_client: app_client).record(
+          action: "end_user.signed_in", actor: session.end_user, target: session.end_user, metadata: { amr: session.amr, sso: true }
+        )
+      end
     end
   end
 end

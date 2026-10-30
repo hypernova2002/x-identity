@@ -19,11 +19,13 @@ module EndUsers
     # @raise [ApiError] `invalid_code` or `validation_failed`
     def confirm(email: nil, code: nil, token: nil)
       record = CodeRedemption.new(project: @project, ip: @ip, user_agent: @user_agent).find!(purpose: :email_verification, email: email, code: code, token: token)
-      raise ApiError.new(:invalid_code) unless record.consume!
-
       end_user = record.subject
-      end_user.verify_email!
-      recorder.record(action: "end_user.email_verified", actor: end_user, target: end_user)
+      EndUser.transaction do
+        raise ApiError.new(:invalid_code) unless record.consume!
+
+        end_user.verify_email!
+        recorder.record(action: "end_user.email_verified", actor: end_user, target: end_user)
+      end
       end_user
     end
 

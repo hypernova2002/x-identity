@@ -14,16 +14,20 @@ module DeviceSessions
 
     # @param device_session [DeviceSession]
     def sign_out(device_session)
-      device_session.revoke!
-      record("device_signed_out", device_session.subject, device: device_session.uid, device_name: device_session.device_name)
+      DeviceSession.transaction do
+        device_session.revoke!
+        record("device_signed_out", device_session.subject, device: device_session.uid, device_name: device_session.device_name)
+      end
     end
 
     # Signs out every device of `user` except the one the current access token belongs to.
     # @param user [User, EndUser]
     # @param keep_session_id [String] the current access token's `sid`
     def sign_out_others(user, keep_session_id:)
-      user.revoke_other_sessions!(keep_session_id: keep_session_id)
-      record("other_devices_signed_out", user)
+      DeviceSession.transaction do
+        user.revoke_other_sessions!(keep_session_id: keep_session_id)
+        record("other_devices_signed_out", user)
+      end
     end
 
     private

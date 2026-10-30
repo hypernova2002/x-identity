@@ -36,8 +36,10 @@ module Auth
         return SignInResult.challenged(challenge, session, recovery_codes: recovery_codes)
       end
 
-      user.record_sign_in!
-      @context.recorder.record(action: "#{@context.realm.event_prefix}.signed_in", actor: user, target: user, metadata: { amr: amr })
+      ApplicationRecord.transaction do
+        user.record_sign_in!
+        @context.recorder.record(action: "#{@context.realm.event_prefix}.signed_in", actor: user, target: user, metadata: { amr: amr })
+      end
       if @context.interaction
         return SignInResult.completed(SignInCompletion.new(user: user, amr: amr, authenticated_at: authenticated_at), recovery_codes: recovery_codes)
       end

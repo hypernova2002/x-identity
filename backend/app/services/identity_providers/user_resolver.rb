@@ -64,9 +64,8 @@ module IdentityProviders
 
       identity = EndUser.transaction do
         end_user.verify_email!
-        create_identity(end_user, claims)
+        create_identity(end_user, claims).tap { |created| record("end_user.identity_linked", end_user, created) }
       end
-      record("end_user.identity_linked", end_user, identity)
       Resolved.new(end_user: end_user, identity: identity)
     end
 
@@ -75,9 +74,10 @@ module IdentityProviders
 
       end_user, identity = EndUser.transaction do
         created = @project.end_users.create!(email: email, name: display_name(claims, name), email_verified_at: Time.current)
-        [ created, create_identity(created, claims) ]
+        linked = create_identity(created, claims)
+        record("end_user.signed_up", created, linked)
+        [ created, linked ]
       end
-      record("end_user.signed_up", end_user, identity)
       Resolved.new(end_user: end_user, identity: identity)
     end
 
@@ -90,10 +90,12 @@ module IdentityProviders
       mapped = mappings.map(&:group).uniq
       current = end_user.groups.where(id: mapped.map(&:id)).to_a
 
-      (wanted - current).each { |group| group.group_memberships.create!(end_user: end_user) }
-      (current - wanted).each { |group| group.group_memberships.where(end_user: end_user).delete_all }
       changes = { added: (wanted - current).map(&:name), removed: (current - wanted).map(&:name) }
-      record_groups(end_user, changes) if changes.values.any?(&:present?)
+      GroupMembership.transaction do
+        (wanted - current).each { |group| group.group_memberships.create!(end_user: end_user) }
+        (current - wanted).each { |group| group.group_memberships.where(end_user: end_user).delete_all }
+        record_groups(end_user, changes) if changes.values.any?(&:present?)
+      end
     end
 
     def record_groups(end_user, changes)

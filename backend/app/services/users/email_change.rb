@@ -65,9 +65,9 @@ module Users
 
         user.update!(email: new_email, email_verified_at: Time.current)
         user.revoke_all_sessions!
+        recorder.record(action: "user.email_changed", actor: user, target: user, metadata: { old_email: old_email, new_email: new_email })
       end
 
-      recorder.record(action: "user.email_changed", actor: user, target: user, metadata: { old_email: old_email, new_email: new_email })
       user
     rescue ActiveRecord::RecordNotUnique
       raise ApiError.new(:email_taken)

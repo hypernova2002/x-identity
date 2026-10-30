@@ -31,10 +31,10 @@ module AppClients
       secret = AppClient.transaction do
         raise ApiError.from_record(app_client) unless app_client.save
 
+        recorder.record(action: "app_client.created", actor: @actor, target: app_client, metadata: { client_type: client_type, machine: machine })
         AppClientSecret.issue!(app_client).last if app_client.client_type_confidential?
       end
 
-      recorder.record(action: "app_client.created", actor: @actor, target: app_client, metadata: { client_type: client_type, machine: machine })
       Created.new(app_client: app_client, client_secret: secret)
     end
 
@@ -51,9 +51,9 @@ module AppClients
         raise ApiError.from_record(app_client) unless app_client.save
 
         revoke_sessions(app_client) if changed.key?("enabled") && !app_client.enabled
+        recorder.record(action: "app_client.updated", actor: @actor, target: app_client, metadata: { changes: changed }) if changed.any?
       end
 
-      recorder.record(action: "app_client.updated", actor: @actor, target: app_client, metadata: { changes: changed }) if changed.any?
       app_client
     end
 
@@ -66,8 +66,9 @@ module AppClients
       authorize!
       raise ApiError.new(:conflict, message: "Public clients don't have a secret.") unless app_client.client_type_confidential?
 
-      secret = app_client.rotate_secret!
-      recorder.record(action: "app_client.secret_rotated", actor: @actor, target: app_client)
+      secret = AppClient.transaction do
+        app_client.rotate_secret!.tap { recorder.record(action: "app_client.secret_rotated", actor: @actor, target: app_client) }
+      end
       Created.new(app_client: app_client, client_secret: secret)
     end
 
@@ -81,8 +82,10 @@ module AppClients
         raise ApiError.new(:conflict, message: "This is the client's only working secret. Rotate the secret first.")
       end
 
-      secret.revoke!
-      recorder.record(action: "app_client.secret_revoked", actor: @actor, target: app_client, metadata: { secret: secret.uid })
+      AppClient.transaction do
+        secret.revoke!
+        recorder.record(action: "app_client.secret_revoked", actor: @actor, target: app_client, metadata: { secret: secret.uid })
+      end
     end
 
     # Deletes the client and signs out every session that was started through it.
@@ -92,8 +95,8 @@ module AppClients
       AppClient.transaction do
         revoke_sessions(app_client)
         app_client.destroy!
+        recorder.record(action: "app_client.deleted", actor: @actor, target: app_client)
       end
-      recorder.record(action: "app_client.deleted", actor: @actor, target: app_client)
     end
 
     private

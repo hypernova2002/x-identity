@@ -25,9 +25,9 @@ module Projects
         raise ApiError.from_record(project) unless project.save
 
         project.auth_configuration!
+        @account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "project.created", actor: @actor, target: project)
       end
 
-      @account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "project.created", actor: @actor, target: project)
       project
     end
 
@@ -40,11 +40,13 @@ module Projects
 
       project.assign_attributes(attributes.slice(*SETTINGS))
       changes = project.changes.transform_values { |from, to| { from: from, to: to } }
-      raise ApiError.from_record(project) unless project.save
+      Project.transaction do
+        raise ApiError.from_record(project) unless project.save
 
-      if changes.any?
-        project.realm.recorder(ip: @ip, user_agent: @user_agent)
-          .record(action: "project.updated", actor: @actor, target: project, metadata: { changes: changes })
+        if changes.any?
+          project.realm.recorder(ip: @ip, user_agent: @user_agent)
+            .record(action: "project.updated", actor: @actor, target: project, metadata: { changes: changes })
+        end
       end
       project
     end
@@ -56,9 +58,11 @@ module Projects
     def destroy(project)
       raise ApiError.new(:forbidden) unless ProjectPolicy.new(@actor, project).destroy?
 
-      project.update!(deleted_at: Time.current)
+      Project.transaction do
+        project.update!(deleted_at: Time.current)
+        record("project.deleted", project, purge_at: project.purge_at.iso8601)
+      end
       ProjectPurgeJob.set(wait_until: project.purge_at).perform_later(project_id: project.id)
-      record("project.deleted", project, purge_at: project.purge_at.iso8601)
     end
 
     # Brings back a deleted project that hasn't been purged yet.
@@ -67,8 +71,10 @@ module Projects
     def restore(project)
       raise ApiError.new(:forbidden) unless AccountPolicy.new(@actor).manage?
 
-      project.update!(deleted_at: nil)
-      record("project.restored", project)
+      Project.transaction do
+        project.update!(deleted_at: nil)
+        record("project.restored", project)
+      end
     end
 
     private

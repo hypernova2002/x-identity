@@ -23,9 +23,9 @@ module Accounts
         account.save!
         account.create_auth_configuration!
         user.save!
+        account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "account.created", actor: user, target: account)
       end
 
-      account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "account.created", actor: user, target: account)
       Auth::EmailVerification.new(account: account, ip: @ip, user_agent: @user_agent).request(email: user.email)
       Result.new(account: account, user: user)
     rescue ActiveRecord::RecordNotUnique

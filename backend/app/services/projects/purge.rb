@@ -12,9 +12,11 @@ module Projects
 
     def call
       steps.each { |scope| delete_in_batches(scope) }
-      @project.auth_configuration&.delete
-      @project.delete
-      @project.account.realm.recorder.record(action: "project.purged", target: @project, metadata: { name: @project.name })
+      Project.transaction do
+        @project.auth_configuration&.delete
+        @project.delete
+        @project.account.realm.recorder.record(action: "project.purged", target: @project, metadata: { name: @project.name })
+      end
     end
 
     private

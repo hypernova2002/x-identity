@@ -21,8 +21,10 @@ module Domains
       elsif problem.nil?
         verify!
       elsif @domain.status_pending? && @domain.verify_until.past?
-        @domain.update!(status: "failed")
-        record("domain.failed", @domain, error: problem)
+        ProjectDomain.transaction do
+          @domain.update!(status: "failed")
+          record("domain.failed", @domain, error: problem)
+        end
       else
         @domain.save!
       end
@@ -49,9 +51,9 @@ module Domains
       ProjectDomain.transaction do
         replaced.each(&:destroy!)
         @domain.update!(status: "verified", verified_at: Time.current, dns_missing_since: nil, certificate_status: Certificates.status_for(@domain))
+        replaced.each { |old| record("domain.removed", old, replaced_by: @domain.hostname) }
+        record("domain.verified", @domain)
       end
-      replaced.each { |old| record("domain.removed", old, replaced_by: @domain.hostname) }
-      record("domain.verified", @domain)
     end
 
     def record(action, domain, **metadata)

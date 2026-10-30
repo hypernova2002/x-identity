@@ -23,9 +23,11 @@ module Domains
       raise ApiError.new(:conflict, message: "Finish setting up #{unverified.hostname}, or remove it, first.") if unverified
 
       domain = @project.domains.new(hostname: hostname)
-      raise ApiError.from_record(domain) unless domain.save
+      ProjectDomain.transaction do
+        raise ApiError.from_record(domain) unless domain.save
 
-      record("domain.added", domain)
+        record("domain.added", domain)
+      end
       DomainVerificationJob.perform_later(domain_id: domain.id)
       domain
     rescue ActiveRecord::RecordNotUnique
@@ -43,8 +45,10 @@ module Domains
     # @param domain [ProjectDomain]
     def remove(domain)
       authorize!
-      domain.destroy!
-      record("domain.removed", domain)
+      ProjectDomain.transaction do
+        domain.destroy!
+        record("domain.removed", domain)
+      end
     end
 
     private

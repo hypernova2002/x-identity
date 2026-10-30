@@ -19,18 +19,16 @@ module AuthConfigurations
       raise ApiError.new(:forbidden) unless allowed?
 
       configuration = @owner.auth_configuration!
-      changes = configuration.with_lock do
+      configuration.with_lock do
         configuration.assign_attributes(attributes)
-        changed = configuration.changes.transform_values { |from, to| { from: from, to: to } }
+        changes = configuration.changes.transform_values { |from, to| { from: from, to: to } }
         raise ApiError.from_record(configuration) unless configuration.save
 
-        changed
-      end
-
-      if changes.any?
-        @owner.realm.recorder(ip: @ip, user_agent: @user_agent).record(
-          action: "#{@owner.model_name.element}.auth_configuration_updated", actor: @actor, target: @owner, metadata: { changes: changes }
-        )
+        if changes.any?
+          @owner.realm.recorder(ip: @ip, user_agent: @user_agent).record(
+            action: "#{@owner.model_name.element}.auth_configuration_updated", actor: @actor, target: @owner, metadata: { changes: changes }
+          )
+        end
       end
       configuration
     end

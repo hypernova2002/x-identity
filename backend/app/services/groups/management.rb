@@ -19,9 +19,11 @@ module Groups
     def create(**attributes)
       authorize!
       group = @project.groups.new(attributes.slice(*EDITABLE))
-      raise ApiError.from_record(group) unless group.save
+      Group.transaction do
+        raise ApiError.from_record(group) unless group.save
 
-      recorder.record(action: "group.created", actor: @actor, target: group)
+        recorder.record(action: "group.created", actor: @actor, target: group)
+      end
       group
     end
 
@@ -32,9 +34,11 @@ module Groups
       authorize!
       group.assign_attributes(changes.slice(*EDITABLE))
       changed = group.changes.transform_values { |from, to| { from: from, to: to } }
-      raise ApiError.from_record(group) unless group.save
+      Group.transaction do
+        raise ApiError.from_record(group) unless group.save
 
-      recorder.record(action: "group.updated", actor: @actor, target: group, metadata: { changes: changed }) if changed.any?
+        recorder.record(action: "group.updated", actor: @actor, target: group, metadata: { changes: changed }) if changed.any?
+      end
       group
     end
 
@@ -42,8 +46,10 @@ module Groups
     # @param group [Group]
     def destroy(group)
       authorize!
-      group.destroy!
-      recorder.record(action: "group.deleted", actor: @actor, target: group)
+      Group.transaction do
+        group.destroy!
+        recorder.record(action: "group.deleted", actor: @actor, target: group)
+      end
     end
 
     # @param group [Group]
@@ -53,16 +59,20 @@ module Groups
       authorize!
       raise ApiError.new(:conflict, message: "#{end_user.email} is already in #{group.name}.") if group.group_memberships.exists?(end_user: end_user)
 
-      group.group_memberships.create!(end_user: end_user)
-      recorder.record(action: "group.member_added", actor: @actor, target: group, metadata: { end_user: end_user.uid, email: end_user.email })
+      GroupMembership.transaction do
+        group.group_memberships.create!(end_user: end_user)
+        recorder.record(action: "group.member_added", actor: @actor, target: group, metadata: { end_user: end_user.uid, email: end_user.email })
+      end
     end
 
     # @param group [Group]
     # @param end_user [EndUser]
     def remove_member(group, end_user)
       authorize!
-      group.group_memberships.find_by!(end_user: end_user).destroy!
-      recorder.record(action: "group.member_removed", actor: @actor, target: group, metadata: { end_user: end_user.uid, email: end_user.email })
+      GroupMembership.transaction do
+        group.group_memberships.find_by!(end_user: end_user).destroy!
+        recorder.record(action: "group.member_removed", actor: @actor, target: group, metadata: { end_user: end_user.uid, email: end_user.email })
+      end
     end
 
     private

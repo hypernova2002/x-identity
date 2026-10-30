@@ -50,10 +50,10 @@ module Auth
         user.verify_email!
         user.revoke_all_sessions!
         user.start_passkey_recovery! if user.webauthn_credentials.exists?
+        recorder.record(action: "user.password_reset", actor: user, target: user)
       end
 
       Lockout.new(owner: @account, configuration: @account.auth_configuration!).reset(user.email)
-      recorder.record(action: "user.password_reset", actor: user, target: user)
       user
     end
 

@@ -53,10 +53,10 @@ module EndUsers
         end_user.verify_email!
         end_user.revoke_all_sessions!
         end_user.start_passkey_recovery! if end_user.webauthn_credentials.exists?
+        recorder.record(action: "end_user.password_reset", actor: end_user, target: end_user)
       end
 
       Auth::Lockout.new(owner: @project, configuration: @project.auth_configuration!).reset(end_user.email)
-      recorder.record(action: "end_user.password_reset", actor: end_user, target: end_user)
       end_user
     end
 

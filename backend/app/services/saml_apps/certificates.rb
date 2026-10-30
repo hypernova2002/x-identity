@@ -19,10 +19,10 @@ module SamlApps
       authorize!
       raise ApiError.new(:conflict, message: "A new certificate is already waiting to be activated.") if @project.saml_certificates.status_next.exists?
 
-      SamlCertificate.active_for!(@project)
-      certificate = SamlCertificate.generate!(project: @project, status: "next")
-      record("saml_certificate.created", certificate)
-      certificate
+      SamlCertificate.transaction do
+        SamlCertificate.active_for!(@project)
+        SamlCertificate.generate!(project: @project, status: "next").tap { |certificate| record("saml_certificate.created", certificate) }
+      end
     end
 
     # The current active certificate is retired but stays published until it's removed.
@@ -34,8 +34,8 @@ module SamlApps
       SamlCertificate.transaction do
         @project.saml_certificates.status_active.update_all(status: "retired")
         certificate.update!(status: "active", activated_at: Time.current)
+        record("saml_certificate.activated", certificate)
       end
-      record("saml_certificate.activated", certificate)
     end
 
     # @param certificate [SamlCertificate]
@@ -43,8 +43,10 @@ module SamlApps
       authorize!
       raise ApiError.new(:conflict, message: "The active certificate can't be removed. Activate another one first.") if certificate.status_active?
 
-      certificate.destroy!
-      record("saml_certificate.deleted", certificate)
+      SamlCertificate.transaction do
+        certificate.destroy!
+        record("saml_certificate.deleted", certificate)
+      end
     end
 
     private

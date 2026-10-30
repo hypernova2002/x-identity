@@ -21,9 +21,11 @@ module ApiResources
     def create(name:, identifier:, scopes: [], access_token_ttl_seconds: nil)
       authorize!
       api = @project.api_resources.new(name: name, identifier: identifier, scopes: normalized(scopes), access_token_ttl_seconds: access_token_ttl_seconds)
-      raise ApiError.from_record(api) unless api.save
+      ApiResource.transaction do
+        raise ApiError.from_record(api) unless api.save
 
-      record("api.created", api, identifier: identifier)
+        record("api.created", api, identifier: identifier)
+      end
       api
     end
 
@@ -40,8 +42,8 @@ module ApiResources
         raise ApiError.from_record(api) unless api.save
 
         api.api_grants.find_each { |grant| grant.update_columns(scopes: grant.scopes & api.scope_names) } if changed.key?("scopes")
+        record("api.updated", api, changes: changed) if changed.any?
       end
-      record("api.updated", api, changes: changed) if changed.any?
       api
     end
 
@@ -49,8 +51,10 @@ module ApiResources
     # @param api [ApiResource]
     def destroy(api)
       authorize!
-      api.destroy!
-      record("api.deleted", api, identifier: api.identifier)
+      ApiResource.transaction do
+        api.destroy!
+        record("api.deleted", api, identifier: api.identifier)
+      end
     end
 
     # @param app_client [AppClient] a machine-to-machine app
@@ -60,9 +64,11 @@ module ApiResources
     def grant(app_client, api, scopes:)
       authorize!
       grant = app_client.api_grants.new(api_resource: api, scopes: scopes.uniq)
-      raise ApiError.from_record(grant, field_names: { api_resource_id: :api_uid, api_resource: :api_uid }) unless grant.save
+      ApiGrant.transaction do
+        raise ApiError.from_record(grant, field_names: { api_resource_id: :api_uid, api_resource: :api_uid }) unless grant.save
 
-      record("api.access_granted", api, app_client: app_client.uid, scopes: grant.scopes)
+        record("api.access_granted", api, app_client: app_client.uid, scopes: grant.scopes)
+      end
       grant
     end
 
@@ -72,17 +78,21 @@ module ApiResources
     def update_grant(grant, scopes:)
       authorize!
       previous = grant.scopes
-      raise ApiError.from_record(grant) unless grant.update(scopes: scopes.uniq)
+      ApiGrant.transaction do
+        raise ApiError.from_record(grant) unless grant.update(scopes: scopes.uniq)
 
-      record("api.access_changed", grant.api_resource, app_client: grant.app_client.uid, scopes: { from: previous, to: grant.scopes })
+        record("api.access_changed", grant.api_resource, app_client: grant.app_client.uid, scopes: { from: previous, to: grant.scopes })
+      end
       grant
     end
 
     # @param grant [ApiGrant]
     def revoke_grant(grant)
       authorize!
-      grant.destroy!
-      record("api.access_revoked", grant.api_resource, app_client: grant.app_client.uid)
+      ApiGrant.transaction do
+        grant.destroy!
+        record("api.access_revoked", grant.api_resource, app_client: grant.app_client.uid)
+      end
     end
 
     private

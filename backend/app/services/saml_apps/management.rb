@@ -26,9 +26,11 @@ module SamlApps
     def create(**attributes)
       authorize!
       app = @project.saml_apps.new(on_custom_domain: @project.domains.status_verified.exists?, **normalize(attributes))
-      raise ApiError.from_record(app) unless app.save
+      SamlApp.transaction do
+        raise ApiError.from_record(app) unless app.save
 
-      recorder.record(action: "saml_app.created", actor: @actor, target: app)
+        recorder.record(action: "saml_app.created", actor: @actor, target: app)
+      end
       app
     end
 
@@ -39,9 +41,11 @@ module SamlApps
       authorize!
       app.assign_attributes(normalize(changes))
       changed = app.changes.transform_values { |from, to| { from: from, to: to } }
-      raise ApiError.from_record(app) unless app.save
+      SamlApp.transaction do
+        raise ApiError.from_record(app) unless app.save
 
-      recorder.record(action: "saml_app.updated", actor: @actor, target: app, metadata: { changes: changed.except("sp_certificate").merge(changed.key?("sp_certificate") ? { "sp_certificate" => "changed" } : {}) }) if changed.any?
+        recorder.record(action: "saml_app.updated", actor: @actor, target: app, metadata: { changes: changed.except("sp_certificate").merge(changed.key?("sp_certificate") ? { "sp_certificate" => "changed" } : {}) }) if changed.any?
+      end
       app
     end
 
@@ -51,8 +55,8 @@ module SamlApps
       SamlApp.transaction do
         OneTimeToken.where(subject: app).delete_all
         app.destroy!
+        recorder.record(action: "saml_app.deleted", actor: @actor, target: app)
       end
-      recorder.record(action: "saml_app.deleted", actor: @actor, target: app)
     end
 
     # Reads an app's SAML metadata, for filling in the form; nothing is saved.

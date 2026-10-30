@@ -35,9 +35,11 @@ module Auth
       user = record&.subject
       raise ApiError.new(:invalid_token) unless user.is_a?(User) && user.account_id == @account.id && record.consume!
 
-      user.verify_email!
-      AuditEvents::Recorder.new(account: @account, ip: @ip, user_agent: @user_agent)
-        .record(action: "user.email_verified", actor: user, target: user)
+      User.transaction do
+        user.verify_email!
+        AuditEvents::Recorder.new(account: @account, ip: @ip, user_agent: @user_agent)
+          .record(action: "user.email_verified", actor: user, target: user)
+      end
       user
     end
   end

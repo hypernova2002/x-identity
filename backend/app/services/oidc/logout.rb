@@ -43,8 +43,10 @@ module Oidc
       session = BrowserSession.find_by(project: @project, token_digest: BrowserSession.digest(session_token), revoked_at: nil)
       return nil unless session
 
-      session.revoke!
-      @project.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "end_user.signed_out", actor: session.end_user, target: session.end_user, metadata: { sso: true })
+      BrowserSession.transaction do
+        session.revoke!
+        @project.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "end_user.signed_out", actor: session.end_user, target: session.end_user, metadata: { sso: true })
+      end
       session
     end
 

@@ -28,16 +28,20 @@ module Passkeys
     # @raise [ApiError] `validation_failed`
     def rename(passkey, name:)
       previous = passkey.name
-      raise ApiError.from_record(passkey) unless passkey.update(name: name)
+      WebauthnCredential.transaction do
+        raise ApiError.from_record(passkey) unless passkey.update(name: name)
 
-      record("passkey_renamed", passkey, from: previous)
+        record("passkey_renamed", passkey, from: previous)
+      end
       passkey
     end
 
     # @param passkey [WebauthnCredential]
     def remove(passkey)
-      passkey.destroy!
-      record("passkey_removed", passkey)
+      WebauthnCredential.transaction do
+        passkey.destroy!
+        record("passkey_removed", passkey)
+      end
     end
 
     private

@@ -69,16 +69,17 @@ module SamlIdp
       builder = ResponseBuilder.new(app)
       participation = session.browser_session_apps.find_or_initialize_by(saml_app: app)
       participation.session_index ||= Messages.new_id
-      participation.update!(name_id: builder.name_id_for(end_user))
-
-      saml_response = builder.success(
-        end_user: end_user, acs_url: data["acs_url"], in_response_to: data["request_id"],
-        session_index: participation.session_index, authenticated_at: session.authenticated_at, amr: session.amr
-      )
-      recorder.record(
-        action: "end_user.signed_in_to_app", actor: end_user, target: end_user, metadata: { saml_app: app.uid, app_name: app.name, amr: session.amr },
-        saml_app: app
-      )
+      saml_response = BrowserSessionApp.transaction do
+        participation.update!(name_id: builder.name_id_for(end_user))
+        recorder.record(
+          action: "end_user.signed_in_to_app", actor: end_user, target: end_user, metadata: { saml_app: app.uid, app_name: app.name, amr: session.amr },
+          saml_app: app
+        )
+        builder.success(
+          end_user: end_user, acs_url: data["acs_url"], in_response_to: data["request_id"],
+          session_index: participation.session_index, authenticated_at: session.authenticated_at, amr: session.amr
+        )
+      end
       Outcome.new(html: PostForm.html(data["acs_url"], "SAMLResponse" => saml_response, "RelayState" => data["relay_state"]))
     rescue ApiError => error
       error_page(error.message, code: error.code.to_s)

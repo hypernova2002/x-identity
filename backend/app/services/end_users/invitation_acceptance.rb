@@ -28,10 +28,10 @@ module EndUsers
         raise ApiError.new(:invalid_code) unless record.consume!
 
         end_user.verify_email!
+        @project.realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
+          .record(action: "end_user.invitation_accepted", actor: end_user, target: end_user)
       end
 
-      @project.realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
-        .record(action: "end_user.invitation_accepted", actor: end_user, target: end_user)
       end_user
     end
   end

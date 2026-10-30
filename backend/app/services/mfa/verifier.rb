@@ -48,11 +48,13 @@ module Mfa
     end
 
     def disable!
-      @user.disable!
-      @user.reset_mfa_failures!
+      ApplicationRecord.transaction do
+        @user.disable!
+        @user.reset_mfa_failures!
+        record("disabled_after_mfa_failures")
+      end
       mailer = @user.is_a?(EndUser) ? EndUserMailer : UserMailer
       mailer.disabled_after_mfa_failures(@user).deliver_later
-      record("disabled_after_mfa_failures")
       raise ApiError.new(:user_disabled)
     end
 

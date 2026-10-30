@@ -33,9 +33,9 @@ module Users
         target.update!(role: role) if role
         target.disable! if status.to_s == "disabled" && target.active?
         target.enable! if status.to_s == "active" && target.disabled?
+        record_changes(target, previous_role, previous_status)
       end
 
-      record_changes(target, previous_role, previous_status)
       target
     end
 
@@ -48,9 +48,8 @@ module Users
         @account.lock!
         ensure_another_owner!(target) if target.owner?
         target.destroy!
+        recorder.record(action: "user.deleted", actor: @actor, target: target)
       end
-
-      recorder.record(action: "user.deleted", actor: @actor, target: target)
     end
 
     private

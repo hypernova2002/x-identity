@@ -183,9 +183,11 @@ module SamlIdp
     end
 
     def end_session(session)
-      session.revoke!
-      @project.realm.recorder(ip: @ip, user_agent: @user_agent)
-        .record(action: "end_user.signed_out", actor: session.end_user, target: session.end_user, metadata: { sso: true, protocol: "saml" })
+      BrowserSession.transaction do
+        session.revoke!
+        @project.realm.recorder(ip: @ip, user_agent: @user_agent)
+          .record(action: "end_user.signed_out", actor: session.end_user, target: session.end_user, metadata: { sso: true, protocol: "saml" })
+      end
     end
 
     def signature_valid?(app, binding, raw_query, xml)

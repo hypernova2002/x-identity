@@ -26,10 +26,11 @@ module EndUsers
         end
         @end_user.name = changes[:name] if changes.key?(:name)
         raise ApiError.from_record(@end_user) unless @end_user.save
+
+        @project.realm.recorder(ip: @ip, user_agent: @user_agent)
+          .record(action: "end_user.profile_updated", actor: @end_user, target: @end_user, metadata: { fields: changes.keys.map(&:to_s) })
       end
 
-      @project.realm.recorder(ip: @ip, user_agent: @user_agent)
-        .record(action: "end_user.profile_updated", actor: @end_user, target: @end_user, metadata: { fields: changes.keys.map(&:to_s) })
       @end_user
     end
   end

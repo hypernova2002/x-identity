@@ -21,11 +21,12 @@ module Invitations
 
       invitation, token = Invitation.transaction do
         @account.invitations.pending.where(email: email).find_each(&:revoke!)
-        Invitation.issue!(account: @account, invited_by: @inviter, email: email, role: role)
+        issued = Invitation.issue!(account: @account, invited_by: @inviter, email: email, role: role)
+        @account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "invitation.created", actor: @inviter, target: issued.first, metadata: { role: role })
+        issued
       end
 
       InvitationMailer.invitation(invitation, token).deliver_later
-      @account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "invitation.created", actor: @inviter, target: invitation, metadata: { role: role })
       invitation
     rescue ActiveRecord::RecordInvalid => error
       raise ApiError.from_record(error.record)

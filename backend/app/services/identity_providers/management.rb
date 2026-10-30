@@ -39,9 +39,9 @@ module IdentityProviders
         raise ApiError.from_record(provider) unless provider.save
 
         replace_mappings(provider, mappings) if mappings
+        recorder.record(action: "identity_provider.created", actor: @actor, target: provider, metadata: { kind: kind })
       end
 
-      recorder.record(action: "identity_provider.created", actor: @actor, target: provider, metadata: { kind: kind })
       provider
     end
 
@@ -63,9 +63,9 @@ module IdentityProviders
         raise ApiError.from_record(provider) unless provider.save
 
         replace_mappings(provider, mappings) if mappings
+        recorder.record(action: "identity_provider.updated", actor: @actor, target: provider, metadata: { changes: changed }) if changed.any?
       end
 
-      recorder.record(action: "identity_provider.updated", actor: @actor, target: provider, metadata: { changes: changed }) if changed.any?
       provider
     end
 
@@ -74,12 +74,13 @@ module IdentityProviders
     # @param provider [IdentityProvider]
     def destroy(provider)
       authorize!
-      unlinked = IdentityProvider.transaction do
+      IdentityProvider.transaction do
         OneTimeToken.where(subject: provider).delete_all
         BrowserSession.where(identity_provider: provider).update_all(identity_provider_id: nil)
-        provider.identities.delete_all.tap { provider.destroy! }
+        unlinked = provider.identities.delete_all
+        provider.destroy!
+        recorder.record(action: "identity_provider.deleted", actor: @actor, target: provider, metadata: { unlinked_identities: unlinked })
       end
-      recorder.record(action: "identity_provider.deleted", actor: @actor, target: provider, metadata: { unlinked_identities: unlinked })
     end
 
     # Reads an upstream SAML provider's metadata, for filling in the form; nothing is saved.

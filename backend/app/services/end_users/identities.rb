@@ -20,12 +20,11 @@ module EndUsers
         raise ApiError.new(:last_sign_in_method) if !@end_user.password_set? && @end_user.identities.where.not(id: identity.id).none?
 
         identity.destroy!
+        @end_user.project.realm.recorder(ip: @ip, user_agent: @user_agent).record(
+          action: "end_user.identity_unlinked", actor: @actor, target: @end_user,
+          metadata: { identity: identity.uid, identity_provider: identity.identity_provider.uid }
+        )
       end
-
-      @end_user.project.realm.recorder(ip: @ip, user_agent: @user_agent).record(
-        action: "end_user.identity_unlinked", actor: @actor, target: @end_user,
-        metadata: { identity: identity.uid, identity_provider: identity.identity_provider.uid }
-      )
     end
   end
 end

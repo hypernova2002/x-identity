@@ -22,9 +22,11 @@ module Projects
       raise ApiError.new(:conflict, message: "This user is already a member of the project.") if @project.project_memberships.exists?(user: user)
 
       membership = @project.project_memberships.new(user: user, role: role)
-      raise ApiError.from_record(membership) unless membership.save
+      ProjectMembership.transaction do
+        raise ApiError.from_record(membership) unless membership.save
 
-      recorder.record(action: "project.member_added", actor: @actor, target: user, metadata: { role: role })
+        recorder.record(action: "project.member_added", actor: @actor, target: user, metadata: { role: role })
+      end
       membership
     end
 
@@ -34,17 +36,21 @@ module Projects
     def update(membership, role:)
       authorize!
       previous_role = membership.role
-      raise ApiError.from_record(membership) unless membership.update(role: role)
+      ProjectMembership.transaction do
+        raise ApiError.from_record(membership) unless membership.update(role: role)
 
-      recorder.record(action: "project.member_role_changed", actor: @actor, target: membership.user, metadata: { from: previous_role, to: membership.role })
+        recorder.record(action: "project.member_role_changed", actor: @actor, target: membership.user, metadata: { from: previous_role, to: membership.role })
+      end
       membership
     end
 
     # @param membership [ProjectMembership]
     def remove(membership)
       authorize!
-      membership.destroy!
-      recorder.record(action: "project.member_removed", actor: @actor, target: membership.user)
+      ProjectMembership.transaction do
+        membership.destroy!
+        recorder.record(action: "project.member_removed", actor: @actor, target: membership.user)
+      end
     end
 
     private

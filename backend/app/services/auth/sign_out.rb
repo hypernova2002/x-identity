@@ -18,9 +18,11 @@ module Auth
       user = record&.subject
       return unless @realm.owns?(user) && record.app_client_id == @app_client&.id
 
-      RefreshToken.revoke_family!(record.family_id)
-      @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
-        .record(action: "#{@realm.event_prefix}.signed_out", actor: user, target: user)
+      RefreshToken.transaction do
+        RefreshToken.revoke_family!(record.family_id)
+        @realm.recorder(ip: @ip, user_agent: @user_agent, app_client: @app_client)
+          .record(action: "#{@realm.event_prefix}.signed_out", actor: user, target: user)
+      end
     end
   end
 end

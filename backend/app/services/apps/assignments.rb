@@ -20,17 +20,19 @@ module Apps
       authorize!
       raise ApiError.new(:conflict, message: "#{label(principal)} already has access to #{app.name}.") if AppAssignment.exists?(app: app, principal: principal)
 
-      assignment = AppAssignment.create!(project: @project, app: app, principal: principal)
-      record("app.assigned", app, assignment)
-      assignment
+      AppAssignment.transaction do
+        AppAssignment.create!(project: @project, app: app, principal: principal).tap { |assignment| record("app.assigned", app, assignment) }
+      end
     end
 
     # People who lose access are refused at their next sign-in or token refresh.
     # @param assignment [AppAssignment]
     def unassign(assignment)
       authorize!
-      assignment.destroy!
-      record("app.unassigned", assignment.app, assignment)
+      AppAssignment.transaction do
+        assignment.destroy!
+        record("app.unassigned", assignment.app, assignment)
+      end
     end
 
     private

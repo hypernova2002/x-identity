@@ -64,9 +64,9 @@ module EndUsers
 
         @end_user.update!(email: new_email, email_verified_at: Time.current)
         @end_user.revoke_other_sessions!(keep_session_id: keep_session_id)
+        recorder.record(action: "end_user.email_changed", actor: @end_user, target: @end_user, metadata: { old_email: old_email, new_email: new_email })
       end
 
-      recorder.record(action: "end_user.email_changed", actor: @end_user, target: @end_user, metadata: { old_email: old_email, new_email: new_email })
       @end_user
     rescue ActiveRecord::RecordNotUnique
       raise ApiError.new(:email_taken)

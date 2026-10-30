@@ -35,9 +35,8 @@ module Invitations
       User.transaction do
         user.save!
         invitation.accept!
+        @account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "invitation.accepted", actor: user, target: user, metadata: { invitation_uid: invitation.uid })
       end
-
-      @account.realm.recorder(ip: @ip, user_agent: @user_agent).record(action: "invitation.accepted", actor: user, target: user, metadata: { invitation_uid: invitation.uid })
       user
     rescue ActiveRecord::RecordNotUnique
       raise ApiError.new(:email_taken)

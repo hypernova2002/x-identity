@@ -51,13 +51,15 @@ module Passkeys
         backup_eligible: verified.backup_eligible? || false, backed_up: verified.backed_up? || false,
         rp_id: @relying_party.id, name: name.presence || default_name
       )
-      raise ApiError.from_record(passkey) unless passkey.save
+      WebauthnCredential.transaction do
+        raise ApiError.from_record(passkey) unless passkey.save
 
-      @user.update!(passkey_recovery_until: nil) if @user.passkey_recovery_until
+        @user.update!(passkey_recovery_until: nil) if @user.passkey_recovery_until
 
-      @user.realm.recorder(ip: @ip, user_agent: @user_agent).record(
-        action: "#{@user.realm.event_prefix}.passkey_added", actor: @user, target: @user, metadata: { passkey: passkey.uid, name: passkey.name }
-      )
+        @user.realm.recorder(ip: @ip, user_agent: @user_agent).record(
+          action: "#{@user.realm.event_prefix}.passkey_added", actor: @user, target: @user, metadata: { passkey: passkey.uid, name: passkey.name }
+        )
+      end
       passkey
     rescue WebAuthn::Error
       raise ApiError.new(:invalid_passkey)

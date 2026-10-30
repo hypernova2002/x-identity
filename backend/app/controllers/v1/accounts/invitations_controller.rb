@@ -25,9 +25,11 @@ module V1
 
       def destroy
         invitation = current_account.invitations.pending.find_by_uid!(params[:uid])
-        invitation.revoke!
-        current_account.realm.recorder(**client_info)
-          .record(action: "invitation.revoked", actor: current_user, target: invitation)
+        Invitation.transaction do
+          invitation.revoke!
+          current_account.realm.recorder(**client_info)
+            .record(action: "invitation.revoked", actor: current_user, target: invitation)
+        end
         head :no_content
       end
     end

@@ -116,5 +116,9 @@ changes.
   reads, validates and saves. Locking reloads the row, so the write never builds on a copy loaded
   before another request's change. Use a transaction-scoped advisory lock only when there's no row
   to lock yet.
+- A change's audit event is recorded inside the transaction that makes the change, so they commit
+  together. Events about failures and refusals (a wrong code, a blocked request) are recorded
+  outside any transaction that will roll back, because the request is about to fail. Jobs and
+  emails are enqueued after the transaction commits.
 - The frontend reaches the API through `web/src/services/`; design tokens are in
   `web/src/assets/tokens.css`, and feature code uses the wrappers in `web/src/components/base/`.

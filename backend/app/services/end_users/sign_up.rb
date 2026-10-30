@@ -49,14 +49,15 @@ module EndUsers
       end_user = @project.end_users.find_by(email: email)
       return notify_existing(end_user) if end_user
 
-      end_user = @project.end_users.create!(
-        email: email,
-        name: name,
-        password_digest: password_digest,
-        password_changed_at: Time.current,
-        custom_attributes: custom_attributes
-      )
-      recorder.record(action: "end_user.signed_up", actor: end_user, target: end_user)
+      end_user = EndUser.transaction do
+        @project.end_users.create!(
+          email: email,
+          name: name,
+          password_digest: password_digest,
+          password_changed_at: Time.current,
+          custom_attributes: custom_attributes
+        ).tap { |created| recorder.record(action: "end_user.signed_up", actor: created, target: created) }
+      end
       Emails.new(project: @project).send_confirmation(end_user)
     rescue ActiveRecord::RecordNotUnique
       notify_existing(@project.end_users.find_by!(email: email))

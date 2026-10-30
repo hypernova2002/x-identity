@@ -32,10 +32,12 @@ module Users
     def change!(current_password:, new_password:, keep_session_id:)
       raise ApiError.validation(current_password: "is incorrect") unless @hasher.matches?(current_password, @user.password_digest)
 
-      set_password!(new_password)
-      @user.revoke_other_sessions!(keep_session_id: keep_session_id)
-      @realm.recorder(ip: @ip, user_agent: @user_agent)
-        .record(action: "#{@realm.event_prefix}.password_changed", actor: @user, target: @user)
+      ApplicationRecord.transaction do
+        set_password!(new_password)
+        @user.revoke_other_sessions!(keep_session_id: keep_session_id)
+        @realm.recorder(ip: @ip, user_agent: @user_agent)
+          .record(action: "#{@realm.event_prefix}.password_changed", actor: @user, target: @user)
+      end
     end
   end
 end

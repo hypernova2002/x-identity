@@ -27,10 +27,13 @@ module EndUsers
       raise ApiError.new(:validation_failed, details: result.details) if result.details.any?
 
       end_user = @project.end_users.new(email: email, name: name, custom_attributes: result.values)
-      raise ApiError.from_record(end_user) unless end_user.save
+      EndUser.transaction do
+        raise ApiError.from_record(end_user) unless end_user.save
+
+        recorder.record(action: "end_user.created", actor: @actor, target: end_user, metadata: { invited: send_invitation })
+      end
 
       EndUserEmailJob.perform_later(kind: "invitation", end_user_id: end_user.id) if send_invitation
-      recorder.record(action: "end_user.created", actor: @actor, target: end_user, metadata: { invited: send_invitation })
       end_user
     rescue ActiveRecord::RecordNotUnique
       raise ApiError.new(:email_taken, message: "An end user with this email address already exists in this project.")
@@ -60,33 +63,39 @@ module EndUsers
 
         end_user.disable! if changes[:status] == "disabled" && end_user.active?
         end_user.enable! if changes[:status] == "active" && end_user.disabled?
+        record_update(end_user, changes, previous_status)
       end
 
-      record_update(end_user, changes, previous_status)
       end_user
     end
 
     # @param end_user [EndUser]
     def destroy(end_user)
       authorize!
-      end_user.destroy!
-      recorder.record(action: "end_user.deleted", actor: @actor, target: end_user)
+      EndUser.transaction do
+        end_user.destroy!
+        recorder.record(action: "end_user.deleted", actor: @actor, target: end_user)
+      end
     end
 
     # Turns off the end user's MFA, e.g. after they lose their phone.
     # @param end_user [EndUser]
     def reset_mfa(end_user)
       authorize!
-      end_user.remove_mfa!
-      recorder.record(action: "end_user.mfa_reset", actor: @actor, target: end_user)
+      EndUser.transaction do
+        end_user.remove_mfa!
+        recorder.record(action: "end_user.mfa_reset", actor: @actor, target: end_user)
+      end
     end
 
     # @param end_user [EndUser]
     # @param passkey [WebauthnCredential] one of the end user's
     def remove_passkey(end_user, passkey)
       authorize!
-      passkey.destroy!
-      recorder.record(action: "end_user.passkey_removed", actor: @actor, target: end_user, metadata: { passkey: passkey.uid, name: passkey.name })
+      WebauthnCredential.transaction do
+        passkey.destroy!
+        recorder.record(action: "end_user.passkey_removed", actor: @actor, target: end_user, metadata: { passkey: passkey.uid, name: passkey.name })
+      end
     end
 
     # @param end_user [EndUser]
@@ -107,8 +116,10 @@ module EndUsers
     # @param end_user [EndUser]
     def sign_out_everywhere(end_user)
       authorize!
-      end_user.revoke_all_sessions!
-      recorder.record(action: "end_user.signed_out_everywhere", actor: @actor, target: end_user)
+      EndUser.transaction do
+        end_user.revoke_all_sessions!
+        recorder.record(action: "end_user.signed_out_everywhere", actor: @actor, target: end_user)
+      end
     end
 
     # @param end_user [EndUser]

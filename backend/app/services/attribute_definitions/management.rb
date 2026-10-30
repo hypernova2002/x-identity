@@ -20,9 +20,11 @@ module AttributeDefinitions
     def create(key:, label:, data_type:, **options)
       authorize!
       definition = @project.end_user_attribute_definitions.new(key: key, label: label, data_type: data_type, **options.slice(*EDITABLE))
-      raise ApiError.from_record(definition) unless definition.save
+      EndUserAttributeDefinition.transaction do
+        raise ApiError.from_record(definition) unless definition.save
 
-      recorder.record(action: "attribute.created", actor: @actor, target: definition, metadata: { key: key, data_type: data_type })
+        recorder.record(action: "attribute.created", actor: @actor, target: definition, metadata: { key: key, data_type: data_type })
+      end
       definition
     end
 
@@ -32,9 +34,11 @@ module AttributeDefinitions
       authorize!
       definition.assign_attributes(changes.slice(*EDITABLE))
       changed = definition.changes.transform_values { |from, to| { from: from, to: to } }
-      raise ApiError.from_record(definition) unless definition.save
+      EndUserAttributeDefinition.transaction do
+        raise ApiError.from_record(definition) unless definition.save
 
-      recorder.record(action: "attribute.updated", actor: @actor, target: definition, metadata: { key: definition.key, changes: changed }) if changed.any?
+        recorder.record(action: "attribute.updated", actor: @actor, target: definition, metadata: { key: definition.key, changes: changed }) if changed.any?
+      end
       definition
     end
 
@@ -46,8 +50,8 @@ module AttributeDefinitions
         @project.end_users.where("custom_attributes ? :key", key: definition.key)
           .update_all([ "custom_attributes = custom_attributes - ?", definition.key ])
         definition.destroy!
+        recorder.record(action: "attribute.deleted", actor: @actor, target: definition, metadata: { key: definition.key })
       end
-      recorder.record(action: "attribute.deleted", actor: @actor, target: definition, metadata: { key: definition.key })
     end
 
     private
