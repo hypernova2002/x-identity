@@ -4,7 +4,7 @@ RSpec.describe ApplicationRequestModel do
   let(:request_class) do
     Class.new(described_class) do
       attribute :email, JsonModel::Types::String.constrained(max_size: 20)
-      attribute :role, JsonModel::Types::String.enum("admin", "member")
+      attribute :role, JsonModel::Types::String.enum("admin", "member").meta(description: "The member's role.")
       attribute? :age, JsonModel::Types::Integer.optional
 
       def self.name
@@ -47,6 +47,11 @@ RSpec.describe ApplicationRequestModel do
   describe ".as_schema" do
     it "only lists keys that must be sent as required" do
       expect(request_class.as_schema[:required]).to eq(%i[email role])
+    end
+
+    it "includes each field's description" do
+      expect(request_class.as_schema[:properties]).to include(role: include(description: "The member's role."))
+      expect(request_class.as_schema[:properties][:email]).not_to have_key(:description)
     end
 
     it "documents that unknown keys are rejected" do
