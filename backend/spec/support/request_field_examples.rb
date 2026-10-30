@@ -159,3 +159,51 @@ RSpec.shared_examples "an email field" do |field, nullable: false|
     expect(described_class.new(body_with(field, " Dana@ACME.test ")).public_send(field)).to eq("dana@acme.test")
   end
 end
+
+RSpec.shared_examples "an email lookup field" do |field, nullable: false|
+  it_behaves_like "a string field", field, min: 1, max: 254, nullable: nullable
+
+  it "normalises #{field}" do
+    expect(described_class.new(body_with(field, " Dana@ACME.test ")).public_send(field)).to eq("dana@acme.test")
+  end
+end
+
+RSpec.shared_examples "an email code field" do |field, nullable: false|
+  it_behaves_like "a string field", field, min: 6, max: 6, nullable: nullable, value: ->(length) { "1" * length }
+  it_behaves_like "a field rejecting", field, [ "abcdef", "12345a" ]
+end
+
+{
+  "a uid field" => 1..64,
+  "a token field" => 1..256,
+  "a password field" => 1..AuthConfiguration::PASSWORD_MAX_LENGTH,
+  "a name field" => 1..100,
+  "an otp code field" => 1..32,
+  "a jwt field" => 1..16_384,
+  "a url field" => 1..WebUrl::MAX_LENGTH,
+  "a hostname field" => 1..253,
+  "a saml entity id field" => 1..1024,
+  "a certificate field" => 1..10_000,
+  "a scope name field" => 1..64
+}.each do |name, length|
+  RSpec.shared_examples name do |field, nullable: false|
+    it_behaves_like "a string field", field, min: length.min, max: length.max, nullable: nullable
+  end
+end
+
+RSpec.shared_examples "an account role field" do |field|
+  it_behaves_like "an enum field", field, values: User.roles.keys
+end
+
+RSpec.shared_examples "a project role field" do |field|
+  it_behaves_like "an enum field", field, values: ProjectMembership.roles.keys
+end
+
+RSpec.shared_examples "a saml name id format field" do |field|
+  it_behaves_like "an enum field", field, values: SamlApp::NAME_ID_FORMATS.keys
+end
+
+RSpec.shared_examples "a token requests per minute field" do |field, nullable: false|
+  it_behaves_like "an integer field", field,
+    min: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.min, max: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.max, nullable: nullable
+end
