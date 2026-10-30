@@ -46,13 +46,17 @@ export const EMAIL_CODE_FIELDS: readonly AuthSettingsField[] = [
   'email_code_failure_window_seconds',
 ]
 
-// Labels are read when this module loads: the locale is chosen once, at startup.
-export const authSettingsSections: { section: AuthSettingsSection; label: string; description: string }[] = (
+// Labels are read when they're shown, so they follow the current language.
+export const authSettingsSections: { section: AuthSettingsSection; readonly label: string; readonly description: string }[] = (
   ['sign-in', 'mfa', 'policies', 'tokens', 'signing'] as const
 ).map((section) => ({
   section,
-  label: i18n.global.t(`settings.sections.${section}.label`),
-  description: i18n.global.t(`settings.sections.${section}.description`),
+  get label() {
+    return i18n.global.t(`settings.sections.${section}.label`)
+  },
+  get description() {
+    return i18n.global.t(`settings.sections.${section}.description`)
+  },
 }))
 
 /** Only the given fields of a configuration, for saving one section without touching the rest. */

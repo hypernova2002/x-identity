@@ -28,13 +28,20 @@ export interface SamlAppDraft {
   enabled: boolean
 }
 
-// Labels are read when this module loads: the locale is chosen once, at startup.
+// Labels are read when they're shown, so they follow the current language.
 export const attributeSourceOptions: SelectOption<AttributeSourceChoice>[] = (
   ['email', 'email_verified', 'name', 'uid', 'groups', 'custom'] as const
-).map((value) => ({ label: i18n.global.t(`project.samlOptions.attributeSource.${value}`), value }))
+).map((value) => ({
+  get label() {
+    return i18n.global.t(`project.samlOptions.attributeSource.${value}`)
+  },
+  value,
+}))
 
 export const nameIdFormatOptions: SelectOption<SamlNameIdFormat>[] = (['email', 'persistent', 'unspecified'] as const).map((value) => ({
-  label: i18n.global.t(`project.samlOptions.nameIdFormat.${value}`),
+  get label() {
+    return i18n.global.t(`project.samlOptions.nameIdFormat.${value}`)
+  },
   value,
 }))
 

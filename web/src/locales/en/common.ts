@@ -11,6 +11,10 @@ export default {
     tryAgain: 'Try again',
   },
   loading: 'Loading…',
+  language: {
+    choose: 'Choose a language',
+    current: 'Language: {name}. Choose a language',
+  },
   duration: {
     days: '{n} day | {n} days',
     hours: '{n} hour | {n} hours',

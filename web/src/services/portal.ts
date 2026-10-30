@@ -1,7 +1,7 @@
 import { ApiError, apiPage, apiRequest } from './http'
 import { listQuery, type ListParams } from './list'
 import { deviceSessionSchema } from './schemas'
-import type { Passkey, PasskeyRegistrationOptions, PortalApp, PortalConfig } from '@/types/api'
+import type { EndUser, Passkey, PasskeyRegistrationOptions, PortalApp, PortalConfig } from '@/types/api'
 import { apiBaseUrl, projectPath } from '@/utils/customDomain'
 import type { PasskeyRegistrationJSON } from '@/utils/webauthn'
 
@@ -26,6 +26,12 @@ export const portalService = {
     if (!response.ok) throw new ApiError('internal_error', response.status, { reason: 'apps_unavailable' })
     return (await response.json()) as PortalApp[]
   },
+
+  /** The signed-in end user, with the portal's access token. */
+  me: (accountUid: string, projectUid: string, accessToken: string) => apiRequest<EndUser>(mePath(accountUid, projectUid), { accessToken }),
+
+  updateLocale: (accountUid: string, projectUid: string, accessToken: string, locale: string | null) =>
+    apiRequest<EndUser>(mePath(accountUid, projectUid), { accessToken, method: 'PATCH', body: { locale } }),
 
   /** The end user's signed-in devices, with the portal's access token. */
   sessions: (accountUid: string, projectUid: string, accessToken: string, params: ListParams) =>

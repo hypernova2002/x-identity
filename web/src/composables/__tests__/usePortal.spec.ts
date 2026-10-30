@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 
 import { usePortal } from '../usePortal'
 import { ApiError } from '@/services/http'
@@ -9,7 +10,7 @@ import type { PortalConfig } from '@/types/api'
 type Portal = typeof portalService
 
 vi.mock('@/services/portal', () => ({
-  portalService: { config: vi.fn<Portal['config']>(), apps: vi.fn<Portal['apps']>() },
+  portalService: { config: vi.fn<Portal['config']>(), apps: vi.fn<Portal['apps']>(), me: vi.fn<Portal['me']>(), updateLocale: vi.fn<Portal['updateLocale']>() },
 }))
 vi.mock('@/services/oidc', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/services/oidc')>()
@@ -29,6 +30,7 @@ describe('usePortal', () => {
 
   beforeEach(() => {
     vi.resetAllMocks()
+    setActivePinia(createPinia())
     sessionStorage.clear()
     vi.mocked(portalService.config).mockResolvedValue(config)
   })

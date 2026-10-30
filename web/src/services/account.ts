@@ -18,8 +18,8 @@ export const meService = {
 
   get: (accountUid: string) => apiRequest<Me>(`${base(accountUid)}/me`, authenticated),
 
-  update: (accountUid: string, name: string) =>
-    apiRequest<Me>(`${base(accountUid)}/me`, { ...authenticated, method: 'PATCH', body: { name } }),
+  update: (accountUid: string, changes: { name?: string; locale?: string | null }) =>
+    apiRequest<Me>(`${base(accountUid)}/me`, { ...authenticated, method: 'PATCH', body: changes }),
 
   changePassword: (accountUid: string, currentPassword: string, newPassword: string) =>
     apiRequest<null>(`${base(accountUid)}/me/password`, {

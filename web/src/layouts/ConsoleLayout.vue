@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 
 import BaseDrawer from '@/components/base/BaseDrawer.vue'
 import ConsoleSidebar from '@/components/console/ConsoleSidebar.vue'
+import LanguageSwitcher from '@/components/locale/LanguageSwitcher.vue'
 import UserMenu from '@/components/console/UserMenu.vue'
 import { useProjectStore } from '@/stores/project'
 import { useSessionStore } from '@/stores/session'
@@ -77,6 +78,7 @@ onMounted(() => {
         >
           {{ $t('shell.accountSettings') }}
         </RouterLink>
+        <LanguageSwitcher />
         <UserMenu />
       </div>
     </header>

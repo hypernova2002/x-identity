@@ -4,6 +4,7 @@ import { defineStore } from 'pinia'
 import { configureAuth } from '@/services/http'
 import { authService } from '@/services/auth'
 import { meService } from '@/services/account'
+import { useLocaleStore } from '@/stores/locale'
 import type { AccountSummary, Me, TokenSet } from '@/types/api'
 
 const SESSION_KEY = 'x-identity.session'
@@ -54,6 +55,7 @@ export const useSessionStore = defineStore('session', () => {
     refreshToken.value = null
     me.value = null
     persist()
+    useLocaleStore().signedOut()
   }
 
   function start(signedInAccount: AccountSummary, tokens: TokenSet) {
@@ -108,7 +110,11 @@ export const useSessionStore = defineStore('session', () => {
   async function loadMe(): Promise<Me | null> {
     if (!account.value) return null
 
-    me.value = await meService.get(account.value.uid)
+    const accountUid = account.value.uid
+    me.value = await meService.get(accountUid)
+    useLocaleStore().signedIn(me.value.locale, async (locale) => {
+      me.value = await meService.update(accountUid, { locale })
+    })
     return me.value
   }
 

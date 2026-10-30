@@ -53,6 +53,8 @@ export interface User {
 
 export interface Me extends User {
   password_changed_at: string
+  /** The language the user chose; null follows the browser. */
+  locale: string | null
   otp_method: OtpType
   /** Whether the account lets console users add passkeys. */
   passkeys_available: boolean
@@ -440,6 +442,8 @@ export interface EndUser {
   invitation_pending: boolean
   groups: GroupSummary[]
   custom_attributes: CustomAttributes
+  /** The language the end user chose; null follows the browser. */
+  locale: string | null
   last_sign_in_at: string | null
   created_at: string
   updated_at: string

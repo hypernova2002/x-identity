@@ -84,10 +84,9 @@ onMounted(() => load.run())
   </BaseCard>
 
   <BaseCard :title="$t('project.appClientTokens.lifetimes')">
-    <p class="text-sm">
-      {{ $t('project.appClientTokens.tokenAndSessionLifetimesAre') }}
-      <RouterLink :to="{ name: 'project-auth-tokens', params: { projectUid: project?.uid } }" class="font-medium text-primary underline">
-        {{ $t('project.appClientTokens.authenticationTokensAndSessions') }}</RouterLink>.
-    </p>
+    <i18n-t keypath="project.appClientTokens.lifetimesNote" tag="p" class="text-sm">
+      <template #link><RouterLink :to="{ name: 'project-auth-tokens', params: { projectUid: project?.uid } }" class="font-medium text-primary underline">
+        {{ $t('project.appClientTokens.authenticationTokensAndSessions') }}</RouterLink></template>
+    </i18n-t>
   </BaseCard>
 </template>

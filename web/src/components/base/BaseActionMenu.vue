@@ -14,6 +14,8 @@ export interface ActionMenuItem {
   /** Marks the selected entry in a menu used for switching, e.g. the open project. */
   current?: boolean
   separatorBefore?: boolean
+  /** Passed to the `icon` slot, to draw something before the label, such as a flag. */
+  key?: string
 }
 
 const props = defineProps<{
@@ -31,6 +33,8 @@ defineSlots<{
   trigger?(scope: { toggle: (event: Event) => void }): unknown
   /** Non-interactive content above the items, such as who is signed in. */
   start?(): unknown
+  /** Drawn before an item's label; decorative, since the label names the item. */
+  icon?(scope: { key: string | undefined }): unknown
 }>()
 
 const menu = ref<InstanceType<typeof Menu> | null>(null)
@@ -41,6 +45,7 @@ const model = computed(() => {
   const regular = props.items.filter((item) => !item.danger)
   const dangerous = props.items.filter((item) => item.danger)
   const entry = (item: ActionMenuItem) => ({
+    key: item.key,
     label: item.label,
     disabled: item.disabled,
     current: item.current ?? false,
@@ -77,6 +82,7 @@ const passThrough = {
     <template #item="{ item, props: itemProps }">
       <a v-bind="itemProps.action" class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm no-underline" :class="item.class">
         <span v-if="showsCurrent" aria-hidden="true" class="w-4 shrink-0">{{ item.current ? '✓' : '' }}</span>
+        <span v-if="$slots.icon" aria-hidden="true" class="flex shrink-0"><slot name="icon" :key="item.key" /></span>
         <span class="truncate">{{ item.label }}</span>
         <span v-if="item.current" class="sr-only">{{ t('base.actionMenu.current') }}</span>
       </a>

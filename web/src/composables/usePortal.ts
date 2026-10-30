@@ -6,6 +6,7 @@ import { ApiError } from '@/services/http'
 import type { ListParams } from '@/services/list'
 import { oidcService } from '@/services/oidc'
 import { portalService } from '@/services/portal'
+import { useLocaleStore } from '@/stores/locale'
 import type { DeviceSession, PortalApp, PortalConfig } from '@/types/api'
 import { decodeJwt } from '@/utils/jwt'
 import type { PasskeyRegistrationJSON } from '@/utils/webauthn'
@@ -22,6 +23,7 @@ interface StoredSession {
  */
 export function usePortal(projectUid: string, navigate: (url: string) => void = (url) => window.location.assign(url)) {
   const storageKey = `x-identity:portal:${projectUid}`
+  const localeStore = useLocaleStore()
   const codeFlow = useOidcCodeFlow({ storageKey: `${storageKey}:pending`, scope: 'openid email profile', navigate })
 
   const config = ref<PortalConfig | null>(null)
@@ -59,6 +61,7 @@ export function usePortal(projectUid: string, navigate: (url: string) => void = 
     accessToken.value = session.accessToken
     try {
       apps.value = await portalService.apps(accountUid, projectUid, session.accessToken)
+      await showEndUserLocale(session.accessToken)
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'invalid_token') {
         storeSession(null)
@@ -67,6 +70,13 @@ export function usePortal(projectUid: string, navigate: (url: string) => void = 
       }
       throw caught
     }
+  }
+
+  /** Shows the end user's chosen language, and saves their choices to them. Without it, the portal still works. */
+  async function showEndUserLocale(token: string) {
+    const profile = await portalService.me(accountUid, projectUid, token).catch(() => null)
+    if (!profile) return
+    localeStore.signedIn(profile.locale, (locale) => portalService.updateLocale(accountUid, projectUid, token, locale))
   }
 
   /** Opens the portal; `returned` carries the code (or error) when the browser comes back from signing in. */
@@ -102,6 +112,7 @@ export function usePortal(projectUid: string, navigate: (url: string) => void = 
     if (!config.value) return
     storeSession(null)
     accessToken.value = null
+    localeStore.signedOut()
     navigate(oidcService.logoutUrl(config.value.issuer, { clientId: config.value.client_id, postLogoutRedirectUri: config.value.post_logout_redirect_uri }))
   }
 

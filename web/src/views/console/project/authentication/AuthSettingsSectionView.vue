@@ -37,12 +37,11 @@ function save(changes: Partial<AuthConfiguration>) {
   <BaseCard v-if="section === 'sign-in' && project" :title="$t('project.authSettingsSection.howEndUsersSignIn')">
     <ul class="flex list-disc flex-col gap-1 pl-5 text-sm">
       <li>{{ $t('project.authSettingsSection.emailAndPasswordAlwaysAvailable') }}</li>
-      <li>
-        {{ $t('project.authSettingsSection.socialOpenidConnectAndCompany') }}
-        <RouterLink :to="{ name: 'project-identity-providers', params: { projectUid: project.uid } }" class="font-medium text-primary underline">
+      <i18n-t keypath="project.authSettingsSection.providersNote" tag="li">
+        <template #link><RouterLink :to="{ name: 'project-identity-providers', params: { projectUid: project.uid } }" class="font-medium text-primary underline">
           {{ $t('project.authSettingsSection.identityProviders') }}
-        </RouterLink>.
-      </li>
+        </RouterLink></template>
+      </i18n-t>
       <i18n-t keypath="project.authSettingsSection.selfSignUpNote" tag="li">
         <template #state><strong>{{ project.allow_self_sign_up ? $t('project.authSettingsSection.on') : $t('project.authSettingsSection.off') }}</strong></template>
         <template #link><RouterLink :to="{ name: 'project-settings', params: { projectUid: project.uid } }" class="font-medium text-primary underline">
@@ -52,10 +51,9 @@ function save(changes: Partial<AuthConfiguration>) {
   </BaseCard>
 
   <BaseCard v-if="section === 'mfa' && project" :title="$t('project.authSettingsSection.individualUsers')">
-    <p class="text-sm">
-      {{ $t('project.authSettingsSection.whetherAUserHasSet') }}
-      <RouterLink :to="{ name: 'project-end-users', params: { projectUid: project.uid } }" class="font-medium text-primary underline">{{ $t('project.authSettingsSection.endUsers') }}</RouterLink>.
-    </p>
+    <i18n-t keypath="project.authSettingsSection.mfaPerUserNote" tag="p" class="text-sm">
+      <template #link><RouterLink :to="{ name: 'project-end-users', params: { projectUid: project.uid } }" class="font-medium text-primary underline">{{ $t('project.authSettingsSection.endUsers') }}</RouterLink></template>
+    </i18n-t>
   </BaseCard>
 
   <AuthConfigurationForm

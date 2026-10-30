@@ -82,6 +82,7 @@ export const endUserSchema = z.object({
   invitation_pending: z.boolean(),
   groups: z.array(z.object({ uid: z.string(), name: z.string() })),
   custom_attributes: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+  locale: nullableString,
   last_sign_in_at: nullableString,
   created_at: timestamp,
   updated_at: timestamp,

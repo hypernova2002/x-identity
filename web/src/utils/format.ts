@@ -1,17 +1,26 @@
 import { currentLocale, i18n } from '@/i18n'
 
-const dateTimeFormat = new Intl.DateTimeFormat(currentLocale(), { dateStyle: 'medium', timeStyle: 'short' })
+const formats = new Map<string, Intl.DateTimeFormat>()
 
-export function formatDateTime(value: string | null): string {
-  return value ? dateTimeFormat.format(new Date(value)) : '—'
+/** A date format for the current language, made once per language. */
+function dateFormat(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${currentLocale()} ${JSON.stringify(options)}`
+  let format = formats.get(key)
+  if (!format) {
+    format = new Intl.DateTimeFormat(currentLocale(), options)
+    formats.set(key, format)
+  }
+  return format
 }
 
-const dateFormat = new Intl.DateTimeFormat(currentLocale(), { dateStyle: 'medium' })
+export function formatDateTime(value: string | null): string {
+  return value ? dateFormat({ dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
+}
 
 /** A calendar date such as 2026-10-25, in the viewer's format, without shifting it across time zones. */
 export function formatDate(value: string): string {
   const [year, month, day] = value.split('-').map(Number)
-  return year && month && day ? dateFormat.format(new Date(year, month - 1, day)) : value
+  return year && month && day ? dateFormat({ dateStyle: 'medium' }).format(new Date(year, month - 1, day)) : value
 }
 
 /** Splits a comma- or newline-separated list, dropping blanks. */

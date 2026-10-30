@@ -63,7 +63,7 @@ const signOutOtherSessions = () => meService.signOutOtherSessions(account.value!
 const saveProfile = useAsyncAction(async () => {
   if (!account.value) return
   profileSaved.value = false
-  me.value = await meService.update(account.value.uid, name.value)
+  me.value = await meService.update(account.value.uid, { name: name.value })
   profileSaved.value = true
 })
 

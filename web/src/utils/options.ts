@@ -14,9 +14,14 @@ import type {
   UserStatus,
 } from '@/types/api'
 
-// Labels are read when this module loads: the locale is chosen once, at startup.
+// Each label is read when it's shown, so the lists follow the current language.
 function options<T extends string>(group: keyof (typeof en)['options'], values: readonly T[]): SelectOption<T>[] {
-  return values.map((value) => ({ label: i18n.global.t(`options.${group}.${value}`), value }))
+  return values.map((value) => ({
+    get label() {
+      return i18n.global.t(`options.${group}.${value}`)
+    },
+    value,
+  }))
 }
 
 export const identityProviderKindOptions = options<IdentityProviderKind>('identityProviderKind', ['google', 'apple', 'oidc', 'saml'])
