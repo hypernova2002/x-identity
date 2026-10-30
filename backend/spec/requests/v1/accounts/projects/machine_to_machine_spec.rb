@@ -344,6 +344,39 @@ RSpec.describe "Machine-to-machine apps", type: :openapi do
       end
     end
 
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/api-grants/{uid}" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :app_client_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      patch "Change the scopes a machine-to-machine app may get for an API" do
+        tags "APIs"
+        security [ { BearerAuth: [] } ]
+        consumes "application/json"
+        request_body required: true, content: { "application/json" => { schema: ApiGrants::UpdateRequest.as_schema } }
+
+        response 200, "updated" do
+          schema Schemas::ApiGrant
+        end
+
+        response 422, "scopes the API doesn't define" do
+          schema Schemas::Error
+        end
+      end
+
+      delete "Stop a machine-to-machine app getting tokens for an API" do
+        tags "APIs"
+        security [ { BearerAuth: [] } ]
+
+        response 204, "revoked"
+
+        response 403, "only project admins and developers can manage API access" do
+          schema Schemas::Error
+        end
+      end
+    end
+
     let(:path_params) { project_path_params(project, app_client_uid: billing.uid) }
 
     it "grants an API's scopes to a machine app" do
@@ -353,6 +386,22 @@ RSpec.describe "Machine-to-machine apps", type: :openapi do
       assert_api_response(:get, 200, headers: auth_headers_for(developer), path_params: path_params) do
         expect(parsed_body.sole["api_uid"]).to eq(orders.uid)
       end
+    end
+
+    it "changes and revokes a grant" do
+      grant = billing.api_grants.create!(api_resource: orders, scopes: [ "orders:read" ])
+      grant_path = "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/api-grants/{uid}"
+      grant_params = path_params.merge(uid: grant.uid)
+
+      assert_api_response(:patch, 200, headers: auth_headers_for(developer), body: { scopes: [ "orders:read", "orders:write" ] },
+        path_params: grant_params, api_path: grant_path) do
+        expect(parsed_body["scopes"]).to eq([ "orders:read", "orders:write" ])
+      end
+      assert_api_response :patch, 422, headers: auth_headers_for(developer), body: { scopes: [ "admin" ] }, path_params: grant_params, api_path: grant_path
+      assert_api_response :delete, 403, headers: auth_headers_for(viewer), path_params: grant_params, api_path: grant_path
+      assert_api_response :delete, 204, headers: auth_headers_for(developer), path_params: grant_params, api_path: grant_path
+
+      expect(billing.api_grants.reload).to be_empty
     end
 
     it "refuses scopes the API doesn't define, and apps that aren't machine apps" do

@@ -100,6 +100,31 @@ RSpec.describe "SAML upstream identity providers", type: :openapi do
   end
 
   describe "signing in on the hosted page" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml/sp/{provider_uid}/acs" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :provider_uid, in: :path, required: true, schema: { type: :string }
+
+      post "Assertion consumer service for an upstream SAML identity provider" do
+        tags "SAML"
+        description "The provider posts the user's browser here with its SAML response (HTTP-POST binding)."
+        request_body required: true, content: {
+          "application/x-www-form-urlencoded" => {
+            schema: {
+              type: :object,
+              required: %w[SAMLResponse],
+              properties: {
+                SAMLResponse: { type: :string, description: "The provider's base64-encoded response." },
+                RelayState: { type: :string, description: "From the AuthnRequest; absent for IdP-initiated sign-in." }
+              }
+            }
+          }
+        }
+
+        response 303, "on to finish the sign-in, or to the hosted error page"
+      end
+    end
+
     it "sends a signed AuthnRequest, then signs in and creates the user from the response" do
       request = start_hosted_sign_in
       expect(request[:url]).to start_with(provider.saml_sso_url)
@@ -129,10 +154,11 @@ RSpec.describe "SAML upstream identity providers", type: :openapi do
 
     it "refuses responses to another request" do
       request = start_hosted_sign_in
+      body = { SAMLResponse: idp_response(in_response_to: "_someone-elses-request"), RelayState: request[:relay_state] }
 
-      location = post_to_acs(idp_response(in_response_to: "_someone-elses-request"), request[:relay_state])
+      assert_api_response :post, 303, body: body, path_params: project_path_params(project, provider_uid: provider.uid)
 
-      expect(query_of(location)).to include("error" => "invalid_saml_response")
+      expect(query_of(response.location)).to include("error" => "invalid_saml_response")
     end
 
     it "refuses responses signed by another key" do
@@ -224,6 +250,38 @@ RSpec.describe "SAML upstream identity providers", type: :openapi do
   end
 
   describe "single logout with the provider" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml/sp/{provider_uid}/slo" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :provider_uid, in: :path, required: true, schema: { type: :string }
+
+      get "Single logout with an upstream SAML identity provider (HTTP-Redirect binding)" do
+        tags "SAML"
+        description "The provider sends its LogoutRequests here, and its LogoutResponses to ours. Messages must be signed by the provider."
+        %w[SAMLRequest SAMLResponse RelayState SigAlg Signature].each { |name| parameter name: name.to_sym, in: :query, schema: { type: :string } }
+
+        response 303, "back to the provider with a LogoutResponse, or on to the hosted signed-out page"
+      end
+
+      post "Single logout with an upstream SAML identity provider (HTTP-POST binding)" do
+        tags "SAML"
+        request_body required: true, content: {
+          "application/x-www-form-urlencoded" => {
+            schema: {
+              type: :object,
+              properties: {
+                SAMLRequest: { type: :string, description: "Base64-encoded, not deflated." },
+                SAMLResponse: { type: :string, description: "Base64-encoded, not deflated." },
+                RelayState: { type: :string }
+              }
+            }
+          }
+        }
+
+        response 303, "back to the provider with a LogoutResponse, or on to the hosted signed-out page"
+      end
+    end
+
     before do
       request = start_hosted_sign_in
       follow(post_to_acs(idp_response(in_response_to: request[:id]), request[:relay_state]))
@@ -264,7 +322,8 @@ RSpec.describe "SAML upstream identity providers", type: :openapi do
         %(Version="2.0"><saml:Issuer>#{provider.saml_idp_entity_id}</saml:Issuer><saml:NameID>jane@acme.com</saml:NameID></samlp:LogoutRequest>)
       url = SamlIdp::Messages.redirect_url(provider.sp_slo_url, type: "SAMLRequest", xml: xml, relay_state: nil, certificate: SamlCertificate.active_for!(project))
 
-      get URI.parse(url).request_uri
+      assert_api_response :get, 303, params: query_of(url).symbolize_keys, path_params: project_path_params(project, provider_uid: provider.uid)
+      assert_api_response :post, 303, body: { SAMLRequest: Base64.strict_encode64(xml) }, path_params: project_path_params(project, provider_uid: provider.uid)
 
       expect(BrowserSession.sole.revoked_at).to be_nil
     end

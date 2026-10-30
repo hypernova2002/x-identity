@@ -172,6 +172,19 @@ RSpec.describe "End users (admin)", type: :openapi do
       parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
       parameter name: :uid, in: :path, required: true, schema: { type: :string }
 
+      get "Get an end user" do
+        tags "End users"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "the end user" do
+          schema Schemas::EndUser
+        end
+
+        response 404, "no such end user in the project" do
+          schema Schemas::Error
+        end
+      end
+
       patch "Update an end user's name, attributes or status" do
         tags "End users"
         security [ { BearerAuth: [] } ]
@@ -193,6 +206,12 @@ RSpec.describe "End users (admin)", type: :openapi do
 
     let(:end_user) { create(:end_user, project: project) }
 
+    it "shows the end user to viewers" do
+      assert_api_response(:get, 200, headers: auth_headers_for(viewer), path_params: project_path_params(project, uid: end_user.uid)) do
+        expect(parsed_body).to include("uid" => end_user.uid, "email" => end_user.email)
+      end
+    end
+
     it "disables the end user and signs them out" do
       tokens = tokens_for(end_user, app_client: create(:app_client, project: project))
 
@@ -210,17 +229,133 @@ RSpec.describe "End users (admin)", type: :openapi do
     it "returns not_found for an end user of another project" do
       other = create(:end_user)
 
+      assert_api_response :get, 404, headers: auth_headers_for(admin), path_params: project_path_params(project, uid: other.uid)
       delete "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/end-users/#{other.uid}", headers: auth_headers_for(admin)
 
       expect([ response.status, EndUser.exists?(other.id) ]).to eq([ 404, true ])
     end
   end
 
-  it "resets an end user's MFA" do
-    end_user = create(:end_user, :with_mfa, project: project)
+  describe "an end user's sign-in" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/mfa" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
 
-    delete "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/end-users/#{end_user.uid}/mfa", headers: auth_headers_for(admin)
+      delete "Turn off an end user's authenticator app, e.g. when they've lost it" do
+        tags "End users"
+        security [ { BearerAuth: [] } ]
 
-    expect([ response.status, end_user.reload.mfa_enabled? ]).to eq([ 204, false ])
+        response 204, "turned off; they set it up again if the project requires MFA"
+
+        response 403, "viewers can't manage end users" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/sign-out" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      post "Sign an end user out everywhere" do
+        tags "End users"
+        security [ { BearerAuth: [] } ]
+
+        response 204, "every session and refresh token is revoked"
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/invitation" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      post "Send an invited end user a new invitation" do
+        tags "End users"
+        security [ { BearerAuth: [] } ]
+
+        response 202, "a new invitation email is queued; earlier links stop working"
+
+        response 409, "the end user has already accepted their invitation" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/passkeys" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      get "List an end user's passkeys" do
+        tags "End users"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "passkeys, oldest first" do
+          schema type: :array, items: Schemas::Passkey
+        end
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/passkeys/{passkey_uid}" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :passkey_uid, in: :path, required: true, schema: { type: :string }
+
+      delete "Remove one of an end user's passkeys" do
+        tags "End users"
+        security [ { BearerAuth: [] } ]
+
+        response 204, "removed"
+
+        response 404, "no such passkey for the end user" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    let(:base) { "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}" }
+
+    it "resets an end user's MFA, for admins but not viewers" do
+      end_user = create(:end_user, :with_mfa, project: project)
+      path_params = project_path_params(project, uid: end_user.uid)
+
+      assert_api_response :delete, 403, headers: auth_headers_for(viewer), path_params: path_params, api_path: "#{base}/mfa"
+      assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: path_params, api_path: "#{base}/mfa"
+
+      expect(end_user.reload.mfa_enabled?).to be(false)
+    end
+
+    it "signs an end user out everywhere" do
+      end_user = create(:end_user, project: project)
+      tokens = tokens_for(end_user, app_client: create(:app_client, project: project))
+
+      assert_api_response :post, 204, headers: auth_headers_for(admin), path_params: project_path_params(project, uid: end_user.uid), api_path: "#{base}/sign-out"
+
+      expect(RefreshToken.find_by_token(tokens.refresh_token)).to be_revoked
+    end
+
+    it "resends invitations until they're accepted" do
+      invited = create(:end_user, :invited, project: project)
+
+      assert_api_response :post, 202, headers: auth_headers_for(admin), path_params: project_path_params(project, uid: invited.uid), api_path: "#{base}/invitation"
+      assert_api_response :post, 409, headers: auth_headers_for(admin), path_params: project_path_params(project, uid: create(:end_user, project: project).uid),
+        api_path: "#{base}/invitation"
+    end
+
+    it "lists and removes an end user's passkeys" do
+      end_user = create(:end_user, project: project)
+      passkey = end_user.webauthn_credentials.create!(external_id: "credential-id", public_key: "public-key", rp_id: "shop.test", name: "Phone")
+      path_params = project_path_params(project, uid: end_user.uid)
+
+      assert_api_response(:get, 200, headers: auth_headers_for(viewer), path_params: path_params, api_path: "#{base}/passkeys") do
+        expect(parsed_body.sole).to include("uid" => passkey.uid, "name" => "Phone")
+      end
+      assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: path_params.merge(passkey_uid: passkey.uid), api_path: "#{base}/passkeys/{passkey_uid}"
+      assert_api_response :delete, 404, headers: auth_headers_for(admin), path_params: path_params.merge(passkey_uid: passkey.uid), api_path: "#{base}/passkeys/{passkey_uid}"
+    end
   end
 end

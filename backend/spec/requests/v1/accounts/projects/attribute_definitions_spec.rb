@@ -57,13 +57,74 @@ RSpec.describe "End-user attributes", type: :openapi do
     assert_api_response :post, 403, headers: auth_headers_for(developer), body: { key: "tier", label: "Tier", data_type: "string" }, path_params: path_params
   end
 
-  it "removes the value from every end user when deleted" do
-    definition = create(:end_user_attribute_definition, project: project, key: "tier")
-    end_user = create(:end_user, project: project, custom_attributes: { "tier" => "gold", "other" => "kept" })
+  describe "one attribute" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/attributes/{uid}" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
 
-    delete "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/attributes/#{definition.uid}", headers: auth_headers_for(admin)
+      patch "Change a custom end-user attribute" do
+        tags "End-user attributes"
+        security [ { BearerAuth: [] } ]
+        consumes "application/json"
+        request_body required: true, content: { "application/json" => { schema: AttributeDefinitions::UpdateRequest.as_schema } }
 
-    expect(end_user.reload.custom_attributes).to eq("other" => "kept")
+        response 200, "updated" do
+          schema Schemas::AttributeDefinition
+        end
+
+        response 403, "only project admins can change attributes" do
+          schema Schemas::Error
+        end
+
+        response 422, "invalid settings, e.g. a maximum length for an attribute that isn't a string" do
+          schema Schemas::Error
+        end
+      end
+
+      delete "Delete a custom end-user attribute and every end user's value for it" do
+        tags "End-user attributes"
+        security [ { BearerAuth: [] } ]
+
+        response 204, "deleted"
+
+        response 403, "only project admins can delete attributes" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    let(:item_path) { "/v1/accounts/{account_uid}/projects/{project_uid}/attributes/{uid}" }
+    let(:definition) { create(:end_user_attribute_definition, project: project, key: "tier", label: "Tier") }
+
+    it "lets admins change an attribute" do
+      assert_api_response(:patch, 200, headers: auth_headers_for(admin), body: { label: "Loyalty tier", user_editable: false },
+        path_params: project_path_params(project, uid: definition.uid), api_path: item_path) do
+        expect(parsed_body).to include("label" => "Loyalty tier", "user_editable" => false)
+      end
+    end
+
+    it "doesn't let developers change or delete attributes" do
+      path_params = project_path_params(project, uid: definition.uid)
+
+      assert_api_response :patch, 403, headers: auth_headers_for(developer), body: { label: "Loyalty tier" }, path_params: path_params, api_path: item_path
+      assert_api_response :delete, 403, headers: auth_headers_for(developer), path_params: path_params, api_path: item_path
+    end
+
+    it "refuses a maximum length for attributes that aren't strings" do
+      number = create(:end_user_attribute_definition, project: project, key: "seats", data_type: "number")
+
+      assert_api_response :patch, 422, headers: auth_headers_for(admin), body: { max_length: 10 },
+        path_params: project_path_params(project, uid: number.uid), api_path: item_path
+    end
+
+    it "removes the value from every end user when deleted" do
+      end_user = create(:end_user, project: project, custom_attributes: { "tier" => "gold", "other" => "kept" })
+
+      assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: project_path_params(project, uid: definition.uid), api_path: item_path
+
+      expect(end_user.reload.custom_attributes).to eq("other" => "kept")
+    end
   end
 
   describe "searching, filtering and sorting" do

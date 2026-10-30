@@ -45,6 +45,69 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Get the account
+      tags:
+      - Accounts
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the account
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Account"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    patch:
+      summary: Rename the account
+      tags:
+      - Accounts
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: The account's name.
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Account"
+        '403':
+          description: only admins and owners can rename the account
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: the name is invalid
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/.well-known/jwks.json":
     parameters:
     - name: account_uid
@@ -1504,6 +1567,35 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/invitations/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Revoke a pending invitation
+      tags:
+      - Invitations
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: revoked
+        '404':
+          description: no pending invitation with this uid
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/me":
     parameters:
     - name: account_uid
@@ -1640,6 +1732,14 @@ paths:
       - Me
       security:
       - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
       responses:
         '201':
           description: secret and QR code
@@ -2028,6 +2128,56 @@ paths:
           description: password changed; other sessions signed out
         '422':
           description: wrong current password or invalid new password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/me/recovery-codes":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Replace your recovery codes
+      tags:
+      - Me
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                  description: A TOTP code or an unused recovery code.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - code
+              additionalProperties: false
+      responses:
+        '201':
+          description: new recovery codes; the old ones stop working
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RecoveryCodes"
+        '401':
+          description: wrong code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '404':
+          description: MFA isn't turned on
           content:
             application/json:
               schema:
@@ -2743,6 +2893,85 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/api-grants/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: app_client_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Change the scopes a machine-to-machine app may get for an API
+      tags:
+      - APIs
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                  maxItems: 50
+                  description: Scopes of the API the app may request.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - scopes
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ApiGrant"
+        '422':
+          description: scopes the API doesn't define
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Stop a machine-to-machine app getting tokens for an API
+      tags:
+      - APIs
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: revoked
+        '403':
+          description: only project admins and developers can manage API access
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/assignments":
     parameters:
     - name: account_uid
@@ -2826,6 +3055,45 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/assignments/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: app_client_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Take away an end user's or group's access to an app client
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed
+        '404':
+          description: no such assignment
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{app_client_uid}/secrets":
     parameters:
     - name: account_uid
@@ -2894,6 +3162,150 @@ paths:
           description: revoked
         '409':
           description: the client's only working secret
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Get an app client
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the app client
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AppClient"
+        '404':
+          description: no such app client in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    patch:
+      summary: Change an app client
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                allowed_origins:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 255
+                  maxItems: 20
+                  description: Browser origins allowed to call the API, e.g. https://shop.example.com.
+                enabled:
+                  anyOf:
+                  - type: boolean
+                  description: Disabling a client signs out every session started
+                    through it.
+                launch_url:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 2048
+                  description: Where the app portal opens the app. Apps without one
+                    aren't listed in the portal.
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: The app's name.
+                post_logout_redirect_uris:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 2048
+                  maxItems: 20
+                  description: Where apps may send users after logging out of hosted
+                    login, compared exactly.
+                redirect_uris:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 2048
+                  maxItems: 20
+                  description: 'Where users may be sent back after signing in with
+                    an identity provider, compared exactly: https URLs, http://localhost
+                    URLs, or app schemes like com.example.app:/callback.'
+                token_requests_per_minute:
+                  anyOf:
+                  - type: 'null'
+                  - type: integer
+                    minimum: 10
+                    maximum: 10000
+                  description: Token endpoint requests allowed per minute for this
+                    client; null uses the project's limit.
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AppClient"
+        '403':
+          description: only project admins and developers can manage app clients
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid name, origins or redirect URIs
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Delete an app client; its sessions end
+      tags:
+      - App clients
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: deleted
+        '403':
+          description: only project admins and developers can manage app clients
           content:
             application/json:
               schema:
@@ -3219,6 +3631,103 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/attributes/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Change a custom end-user attribute
+      tags:
+      - End-user attributes
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                include_in_token:
+                  anyOf:
+                  - type: boolean
+                  description: The value is included in the end user's tokens.
+                label:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: The attribute's name, shown in the console and to end
+                    users.
+                max_length:
+                  anyOf:
+                  - type: 'null'
+                  - type: integer
+                    minimum: 1
+                    maximum: 2048
+                  description: 'String attributes only: the longest value allowed.
+                    null allows up to 2048 characters.'
+                required:
+                  anyOf:
+                  - type: boolean
+                  description: Every end user must have a value.
+                user_editable:
+                  anyOf:
+                  - type: boolean
+                  description: End users can set and change the value themselves.
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AttributeDefinition"
+        '403':
+          description: only project admins can change attributes
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid settings, e.g. a maximum length for an attribute that
+            isn't a string
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Delete a custom end-user attribute and every end user's value for it
+      tags:
+      - End-user attributes
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: deleted
+        '403':
+          description: only project admins can delete attributes
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/audit-events":
     parameters:
     - name: account_uid
@@ -3306,6 +3815,255 @@ paths:
                   "$ref": "#/components/schemas/AuditEvent"
         '403':
           description: only project admins and developers can read the log
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth-configuration":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: The project's end-user authentication settings
+      tags:
+      - Auth configuration
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: current settings
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AuthConfiguration"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    put:
+      summary: Update the project's end-user authentication settings
+      tags:
+      - Auth configuration
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                access_token_ttl_seconds:
+                  type: integer
+                  minimum: 300
+                  maximum: 3600
+                  description: Access token lifetime. In seconds, 300–3600.
+                client_secret_rotation_overlap_seconds:
+                  type: integer
+                  minimum: 0
+                  maximum: 2592000
+                  description: 'Projects only: how long a confidential client''s previous
+                    secrets keep working after it''s rotated; 0 stops them at once.
+                    In seconds, 0–2592000.'
+                email_code_failure_window_seconds:
+                  type: integer
+                  minimum: 300
+                  maximum: 86400
+                  description: Period in which wrong email codes are counted. In seconds,
+                    300–86400.
+                email_code_max_attempts:
+                  type: integer
+                  minimum: 3
+                  maximum: 10
+                  description: Wrong guesses before a single email code stops working.
+                email_code_max_failures_per_code:
+                  type: integer
+                  minimum: 2
+                  maximum: 100
+                  description: Wrong attempts with the same code value, across all
+                    addresses, within the failure window.
+                email_code_max_failures_per_email:
+                  type: integer
+                  minimum: 3
+                  maximum: 100
+                  description: Wrong email codes per address, across all codes, within
+                    the failure window.
+                lockout_duration_seconds:
+                  type: integer
+                  minimum: 60
+                  maximum: 86400
+                  description: How long an email stays locked. In seconds, 60–86400.
+                lockout_threshold:
+                  type: integer
+                  minimum: 3
+                  maximum: 100
+                  description: Failed sign-ins for an email, within the lockout window,
+                    before it's locked. 3–100.
+                lockout_window_seconds:
+                  type: integer
+                  minimum: 60
+                  maximum: 86400
+                  description: Period in which failed sign-ins are counted. In seconds,
+                    60–86400.
+                mfa_max_failed_attempts:
+                  type: integer
+                  minimum: 3
+                  maximum: 20
+                  description: Consecutive wrong one-time or recovery codes before
+                    the user is disabled.
+                mfa_requirement:
+                  enum:
+                  - 'off'
+                  - optional
+                  - required
+                  description: off, optional (users can turn MFA on) or required (users
+                    must set up MFA when they next sign in).
+                notify_new_devices:
+                  anyOf:
+                  - type: boolean
+                  description: Email users when they sign in from a device and country
+                    they haven't used in 90 days.
+                otp_digits:
+                  type: integer
+                  minimum: 6
+                  maximum: 10
+                  description: Code length for new credentials. Most authenticator
+                    apps only support 6.
+                otp_drift_steps:
+                  type: integer
+                  minimum: 0
+                  maximum: 2
+                  description: TOTP steps accepted either side of the current one,
+                    for clock differences.
+                otp_hotp_look_ahead:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                  description: HOTP counter values searched ahead, for tokens pressed
+                    without signing in.
+                otp_method:
+                  enum:
+                  - totp
+                  - hotp
+                  description: totp for authenticator apps or hotp for hardware tokens,
+                    for everyone. Existing credentials keep working.
+                otp_step_seconds:
+                  type: integer
+                  minimum: 30
+                  maximum: 900
+                  description: TOTP step length for new credentials, in seconds. Most
+                    authenticator apps only support 30.
+                passkeys:
+                  enum:
+                  - 'off'
+                  - optional
+                  - required
+                  description: off, optional (users can add passkeys and sign in with
+                    them) or required (sign-ins must use a passkey wherever passkeys
+                    work, and require MFA elsewhere). Projects need a verified custom
+                    domain; required needs MFA not off.
+                password_max_age_seconds:
+                  anyOf:
+                  - type: 'null'
+                  - type: integer
+                    minimum: 86400
+                    maximum: 31536000
+                  description: How long a password lasts; null means forever. In seconds,
+                    86400–31536000.
+                password_min_length:
+                  type: integer
+                  minimum: 8
+                  maximum: 128
+                  description: The shortest password allowed, 8–128 characters.
+                password_require_lowercase:
+                  anyOf:
+                  - type: boolean
+                  description: Passwords must contain a lowercase letter.
+                password_require_number:
+                  anyOf:
+                  - type: boolean
+                  description: Passwords must contain a number.
+                password_require_symbol:
+                  anyOf:
+                  - type: boolean
+                  description: Passwords must contain a symbol.
+                password_require_uppercase:
+                  anyOf:
+                  - type: boolean
+                  description: Passwords must contain an uppercase letter.
+                passwordless_after_passkey:
+                  anyOf:
+                  - type: boolean
+                  description: Users who have a passkey that works where they sign
+                    in can't sign in with a password there. Resetting the password
+                    by email lets them in to add a new passkey. Needs passkeys on.
+                refresh_token_ttl_seconds:
+                  type: integer
+                  minimum: 86400
+                  maximum: 31536000
+                  description: Session lifetime from sign-in. In seconds, 86400–31536000.
+                require_email_verification:
+                  anyOf:
+                  - type: boolean
+                  description: Users must confirm their email address before they
+                    can sign in.
+                session_idle_timeout_seconds:
+                  anyOf:
+                  - type: 'null'
+                  - type: integer
+                    minimum: 300
+                    maximum: 2592000
+                  description: Unused sessions end after this; null means never. In
+                    seconds, 300–2592000.
+                signing_algorithm:
+                  enum:
+                  - ES256
+                  - RS256
+                  - PS256
+                  description: 'The algorithm new signing keys use: ES256, RS256,
+                    PS256.'
+                signing_key_rotation_seconds:
+                  type: integer
+                  minimum: 2592000
+                  maximum: 31536000
+                  description: How often signing keys are replaced. In seconds, 2592000–31536000.
+                sso_session_ttl_seconds:
+                  type: integer
+                  minimum: 300
+                  maximum: 2592000
+                  description: 'Projects only: how long a hosted login session signs
+                    users in to other apps. In seconds, 300–2592000.'
+                token_requests_per_minute:
+                  type: integer
+                  minimum: 10
+                  maximum: 10000
+                  description: 'Projects only: token endpoint requests allowed per
+                    app client per minute, unless the app sets its own limit.'
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AuthConfiguration"
+        '403':
+          description: only project admins can change settings
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: a setting is out of range
           content:
             application/json:
               schema:
@@ -3577,6 +4335,65 @@ paths:
           description: accepted, whether or not the email exists
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/mfa-setup":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Get a TOTP secret while answering an mfa_setup challenge
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: The app client's uid.
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: Confidential clients only.
+                session:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: The session of the mfa_setup challenge.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - session
+              additionalProperties: false
+      responses:
+        '200':
+          description: 'secret and QR code; answer with respond-to-challenge, challenge:
+            mfa_setup'
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MfaEnrollment"
+        '401':
+          description: invalid session or app client
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/auth/passkey":
     parameters:
     - name: account_uid
@@ -3715,6 +4532,65 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/passkey-setup":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Options for creating the passkey a passkey_setup challenge asks for
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: The app client's uid.
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: Confidential clients only.
+                session:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: The session of the passkey_setup challenge.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - client_id
+              - session
+              additionalProperties: false
+      responses:
+        '200':
+          description: 'options for navigator.credentials.create; answer with respond-to-challenge,
+            challenge: passkey_setup'
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PasskeyRegistrationOptions"
+        '401':
+          description: invalid session or app client
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/auth/passkey/options":
     parameters:
     - name: account_uid
@@ -3842,6 +4718,32 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+    post:
+      summary: Return from Apple (form POST)
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                state:
+                  type: string
+                code:
+                  type: string
+                error:
+                  type: string
+                user:
+                  type: string
+                  description: JSON with the user's name, which Apple only sends on
+                    their first sign-in.
+      responses:
+        '303':
+          description: redirect to the app with a code, or with an error
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers/token":
     parameters:
     - name: account_uid
@@ -4165,6 +5067,278 @@ paths:
       responses:
         '202':
           description: accepted, whether or not the email exists
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/auth/respond-to-challenge":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Answer a sign-in challenge
+      tags:
+      - End-user auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                authentication_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: 'For passkey: from the passkey options for this challenge.'
+                challenge:
+                  enum:
+                  - otp
+                  - passkey
+                  - new_password
+                  - mfa_setup
+                  - passkey_setup
+                  description: The challenge being answered, from the sign-in response.
+                client_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: The app client's uid.
+                client_secret:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: Confidential clients only.
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                  description: For otp and mfa_setup.
+                credential:
+                  anyOf:
+                  - properties:
+                      authenticatorAttachment:
+                        anyOf:
+                        - type: 'null'
+                        - enum:
+                          - platform
+                          - cross-platform
+                        description: 'Where the passkey is: platform (this device)
+                          or cross-platform (a security key or phone).'
+                      clientExtensionResults:
+                        anyOf:
+                        - type: 'null'
+                        - type: object
+                          maxProperties: 16
+                        description: The results of WebAuthn extensions, keyed by
+                          extension.
+                      id:
+                        type: string
+                        minLength: 1
+                        maxLength: 1364
+                        description: The credential ID, base64url-encoded.
+                      rawId:
+                        type: string
+                        minLength: 1
+                        maxLength: 1364
+                        description: The credential ID, base64url-encoded (the same
+                          as id).
+                      response:
+                        properties:
+                          attestationObject:
+                            anyOf:
+                            - type: 'null'
+                            - type: string
+                              minLength: 1
+                              maxLength: 65536
+                            description: The attestation object.
+                          authenticatorData:
+                            type: string
+                            minLength: 1
+                            maxLength: 8192
+                            description: The authenticator data.
+                          clientDataJSON:
+                            type: string
+                            minLength: 1
+                            maxLength: 8192
+                            description: The client data the browser passed to the
+                              authenticator.
+                          signature:
+                            type: string
+                            minLength: 1
+                            maxLength: 2048
+                            description: The authenticator's signature.
+                          userHandle:
+                            anyOf:
+                            - type: 'null'
+                            - type: string
+                              minLength: 1
+                              maxLength: 86
+                            description: The user handle the passkey was created with.
+                        type: object
+                        unevaluatedProperties: false
+                        required:
+                        - authenticatorData
+                        - clientDataJSON
+                        - signature
+                        additionalProperties: false
+                        description: The authenticator's signed answer.
+                      type:
+                        enum:
+                        - public-key
+                        description: Always public-key.
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - id
+                    - rawId
+                    - response
+                    - type
+                    additionalProperties: false
+                  - properties:
+                      authenticatorAttachment:
+                        anyOf:
+                        - type: 'null'
+                        - enum:
+                          - platform
+                          - cross-platform
+                        description: 'Where the passkey is: platform (this device)
+                          or cross-platform (a security key or phone).'
+                      clientExtensionResults:
+                        anyOf:
+                        - type: 'null'
+                        - type: object
+                          maxProperties: 16
+                        description: The results of WebAuthn extensions, keyed by
+                          extension.
+                      id:
+                        type: string
+                        minLength: 1
+                        maxLength: 1364
+                        description: The credential ID, base64url-encoded.
+                      rawId:
+                        type: string
+                        minLength: 1
+                        maxLength: 1364
+                        description: The credential ID, base64url-encoded (the same
+                          as id).
+                      response:
+                        properties:
+                          attestationObject:
+                            type: string
+                            minLength: 1
+                            maxLength: 65536
+                            description: The attestation object.
+                          authenticatorData:
+                            type: string
+                            minLength: 1
+                            maxLength: 8192
+                            description: The authenticator data.
+                          clientDataJSON:
+                            type: string
+                            minLength: 1
+                            maxLength: 8192
+                            description: The client data the browser passed to the
+                              authenticator.
+                          publicKey:
+                            anyOf:
+                            - type: 'null'
+                            - type: string
+                              minLength: 1
+                              maxLength: 8192
+                            description: The new credential's public key (SubjectPublicKeyInfo).
+                          publicKeyAlgorithm:
+                            type: integer
+                            description: The public key's COSE algorithm, e.g. -7
+                              for ES256.
+                          transports:
+                            type: array
+                            items:
+                              type: string
+                              minLength: 1
+                              maxLength: 32
+                            maxItems: 10
+                            description: How the authenticator can be reached, e.g.
+                              internal, hybrid or usb.
+                        type: object
+                        unevaluatedProperties: false
+                        required:
+                        - attestationObject
+                        - clientDataJSON
+                        additionalProperties: false
+                        description: The authenticator's attestation of the new passkey.
+                      type:
+                        enum:
+                        - public-key
+                        description: Always public-key.
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - id
+                    - rawId
+                    - response
+                    - type
+                    additionalProperties: false
+                  description: 'For passkey: the browser''s answer; for passkey_setup:
+                    the new passkey (a PublicKeyCredential), as JSON.'
+                new_password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                  description: For new_password.
+                registration_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: 'For passkey_setup: from the passkey setup options.'
+                session:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: The session from the challenge.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - challenge
+              - client_id
+              - session
+              additionalProperties: false
+      responses:
+        '200':
+          description: tokens, or the next challenge
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignInResult"
+        '401':
+          description: wrong code, invalid session or invalid app client
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '403':
+          description: end user disabled after too many wrong codes in a row
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid new password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '429':
+          description: locked out after too many failures
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/auth/respond-to-challenge/passkey-options":
@@ -4910,6 +6084,27 @@ paths:
       required: true
       schema:
         type: string
+    get:
+      summary: Get an end user
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the end user
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/EndUser"
+        '404':
+          description: no such end user in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
     patch:
       summary: Update an end user's name, attributes or status
       tags:
@@ -5085,6 +6280,175 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/invitation":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Send an invited end user a new invitation
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '202':
+          description: a new invitation email is queued; earlier links stop working
+        '409':
+          description: the end user has already accepted their invitation
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/mfa":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Turn off an end user's authenticator app, e.g. when they've lost it
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: turned off; they set it up again if the project requires MFA
+        '403':
+          description: viewers can't manage end users
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/passkeys":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List an end user's passkeys
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: passkeys, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Passkey"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/passkeys/{passkey_uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: passkey_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Remove one of an end user's passkeys
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed
+        '404':
+          description: no such passkey for the end user
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/end-users/{uid}/sign-out":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Sign an end user out everywhere
+      tags:
+      - End users
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: every session and refresh token is revoked
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/groups":
@@ -5298,6 +6662,152 @@ paths:
           description: added
         '409':
           description: already a member
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/groups/{group_uid}/members/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: group_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Remove an end user from a group
+      tags:
+      - Groups
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed
+        '404':
+          description: no such group or end user in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/groups/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Get a group
+      tags:
+      - Groups
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the group
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Group"
+        '404':
+          description: no such group in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    patch:
+      summary: Change a group
+      tags:
+      - Groups
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                default_for_new_users:
+                  anyOf:
+                  - type: boolean
+                  description: New end users join the group automatically.
+                description:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 500
+                  description: What the group is for; null removes it.
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: The group's name, unique in the project.
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Group"
+        '403':
+          description: viewers can't manage groups
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: the name is invalid or already used
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Delete a group
+      tags:
+      - Groups
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: deleted
+        '403':
+          description: viewers can't manage groups
           content:
             application/json:
               schema:
@@ -5646,6 +7156,27 @@ paths:
       required: true
       schema:
         type: string
+    get:
+      summary: Get an identity provider
+      tags:
+      - Identity providers
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the identity provider; secrets are never returned
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/IdentityProvider"
+        '404':
+          description: no such identity provider in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
     patch:
       summary: Change an identity provider
       tags:
@@ -5935,6 +7466,64 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/email":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Request an email change
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                current_password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                  description: The user's current password.
+                new_email:
+                  type: string
+                  format: email
+                  minLength: 3
+                  maxLength: 254
+                  description: The new email address. A confirmation link is sent
+                    to it.
+                otp_code:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                  description: Required when MFA is turned on.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - current_password
+              - new_email
+              additionalProperties: false
+      responses:
+        '202':
+          description: accepted; a code is sent to the new address if it is available
+        '422':
+          description: wrong password or invalid email
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/me/email/confirm":
     parameters:
     - name: account_uid
@@ -6046,6 +7635,507 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '409':
           description: it's my only way to sign in
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/otp":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Start setting up an authenticator app or hardware token
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '201':
+          description: secret and QR code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MfaEnrollment"
+        '409':
+          description: MFA is already turned on
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: unknown fields, such as choosing a method
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Turn off MFA
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                  description: A TOTP code or an unused recovery code.
+                current_password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                  description: The user's current password.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - code
+              - current_password
+              additionalProperties: false
+      responses:
+        '204':
+          description: MFA turned off
+        '403':
+          description: the project requires MFA
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/otp/confirm":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Confirm the authenticator app with a code
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                  description: A code from the authenticator, to confirm it's set
+                    up.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - code
+              additionalProperties: false
+      responses:
+        '200':
+          description: MFA turned on
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RecoveryCodes"
+        '401':
+          description: wrong code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/passkeys":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List your passkeys
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: passkeys, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Passkey"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Save the passkey the browser created
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                credential:
+                  properties:
+                    authenticatorAttachment:
+                      anyOf:
+                      - type: 'null'
+                      - enum:
+                        - platform
+                        - cross-platform
+                      description: 'Where the passkey is: platform (this device) or
+                        cross-platform (a security key or phone).'
+                    clientExtensionResults:
+                      anyOf:
+                      - type: 'null'
+                      - type: object
+                        maxProperties: 16
+                      description: The results of WebAuthn extensions, keyed by extension.
+                    id:
+                      type: string
+                      minLength: 1
+                      maxLength: 1364
+                      description: The credential ID, base64url-encoded.
+                    rawId:
+                      type: string
+                      minLength: 1
+                      maxLength: 1364
+                      description: The credential ID, base64url-encoded (the same
+                        as id).
+                    response:
+                      properties:
+                        attestationObject:
+                          type: string
+                          minLength: 1
+                          maxLength: 65536
+                          description: The attestation object.
+                        authenticatorData:
+                          type: string
+                          minLength: 1
+                          maxLength: 8192
+                          description: The authenticator data.
+                        clientDataJSON:
+                          type: string
+                          minLength: 1
+                          maxLength: 8192
+                          description: The client data the browser passed to the authenticator.
+                        publicKey:
+                          anyOf:
+                          - type: 'null'
+                          - type: string
+                            minLength: 1
+                            maxLength: 8192
+                          description: The new credential's public key (SubjectPublicKeyInfo).
+                        publicKeyAlgorithm:
+                          type: integer
+                          description: The public key's COSE algorithm, e.g. -7 for
+                            ES256.
+                        transports:
+                          type: array
+                          items:
+                            type: string
+                            minLength: 1
+                            maxLength: 32
+                          maxItems: 10
+                          description: How the authenticator can be reached, e.g.
+                            internal, hybrid or usb.
+                      type: object
+                      unevaluatedProperties: false
+                      required:
+                      - attestationObject
+                      - clientDataJSON
+                      additionalProperties: false
+                      description: The authenticator's attestation of the new passkey.
+                    type:
+                      enum:
+                      - public-key
+                      description: Always public-key.
+                  type: object
+                  unevaluatedProperties: false
+                  required:
+                  - id
+                  - rawId
+                  - response
+                  - type
+                  additionalProperties: false
+                  description: The PublicKeyCredential the browser created, as JSON
+                    (its toJSON()).
+                name:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 60
+                  description: Defaults to the browser and device, e.g. "Safari on
+                    iPhone".
+                registration_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                  description: From the passkey registration options.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - credential
+              - registration_id
+              additionalProperties: false
+      responses:
+        '201':
+          description: saved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Passkey"
+        '400':
+          description: the passkey couldn't be verified, e.g. the user didn't unlock
+            it, or the registration was used or expired
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/passkeys/options":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Start adding a passkey
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: options for navigator.credentials.create, and the registration
+            to send back
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PasskeyRegistrationOptions"
+        '403':
+          description: the last sign-in was more than 15 minutes ago
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: passkeys aren't turned on, or the request doesn't come from
+            the custom domain or the app's allowed origins
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/passkeys/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Rename a passkey
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                  description: The passkey's name, shown in the user's list of passkeys.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - name
+              additionalProperties: false
+      responses:
+        '200':
+          description: renamed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Passkey"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Remove a passkey
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/password":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    put:
+      summary: Change your password
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                current_password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                  description: The user's current password.
+                new_password:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                  description: The new password. It must meet the password policy.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - current_password
+              - new_password
+              additionalProperties: false
+      responses:
+        '204':
+          description: password changed; other sessions signed out
+        '422':
+          description: wrong current password or invalid new password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/me/recovery-codes":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Replace your recovery codes
+      tags:
+      - End-user profile
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                  description: A TOTP code or an unused recovery code.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - code
+              additionalProperties: false
+      responses:
+        '201':
+          description: new recovery codes; the old ones stop working
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RecoveryCodes"
+        '401':
+          description: wrong code
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '404':
+          description: MFA isn't turned on
           content:
             application/json:
               schema:
@@ -6343,6 +8433,346 @@ paths:
           description: removed
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/authorize":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Start an OpenID Connect sign-in (authorization code flow with PKCE)
+      tags:
+      - OpenID Connect
+      description: Send the user's browser here. Without a single sign-on session
+        they're sent to the hosted login page; afterwards they're redirected to `redirect_uri`
+        with `code`, `state` and `iss`, or with `error` and `error_description`.
+      parameters:
+      - name: response_type
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - code
+      - name: client_id
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: redirect_uri
+        in: query
+        required: true
+        schema:
+          type: string
+        description: One of the app client's redirect URIs, compared exactly.
+      - name: scope
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Space-separated; must include openid. Add email, profile, groups
+          or offline_access (for a refresh token).
+      - name: code_challenge
+        in: query
+        required: true
+        schema:
+          type: string
+        description: base64url SHA-256 of a random code verifier, without padding.
+      - name: code_challenge_method
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - S256
+      - name: state
+        in: query
+        schema:
+          type: string
+        description: Returned unchanged.
+      - name: nonce
+        in: query
+        schema:
+          type: string
+        description: Put in the ID token.
+      - name: prompt
+        in: query
+        schema:
+          type: string
+          enum:
+          - none
+          - login
+      - name: max_age
+        in: query
+        schema:
+          type: integer
+        description: Seconds since the last sign-in after which the user signs in
+          again.
+      - name: login_hint
+        in: query
+        schema:
+          type: string
+        description: An email address to fill in on the hosted page.
+      responses:
+        '302':
+          description: to the hosted login page, or back to the app
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/authorize/resume":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Finish a sign-in started on the hosted login page
+      tags:
+      - OpenID Connect
+      description: The hosted page sends the browser here once the user has signed
+        in; it isn't called by apps.
+      parameters:
+      - name: ticket
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '302':
+          description: back to the app with a code, or with an error
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/logout":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Sign out of single sign-on (RP-initiated logout)
+      tags:
+      - OpenID Connect
+      description: Send the user's browser here. The browser's session ends, and SAML
+        apps it signed in to are logged out too.
+      parameters:
+      - name: id_token_hint
+        in: query
+        schema:
+          type: string
+        description: An ID token the app was issued, to find the app without client_id.
+      - name: client_id
+        in: query
+        schema:
+          type: string
+      - name: post_logout_redirect_uri
+        in: query
+        schema:
+          type: string
+        description: One of the app client's post-logout redirect URIs.
+      - name: state
+        in: query
+        schema:
+          type: string
+        description: Returned unchanged.
+      responses:
+        '303':
+          description: to post_logout_redirect_uri when it's registered, otherwise
+            the hosted signed-out or error page
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Sign out of single sign-on (form POST)
+      tags:
+      - OpenID Connect
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                id_token_hint:
+                  type: string
+                client_id:
+                  type: string
+                post_logout_redirect_uri:
+                  type: string
+                state:
+                  type: string
+      responses:
+        '303':
+          description: to post_logout_redirect_uri when it's registered, otherwise
+            the hosted signed-out or error page
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/revoke":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Revoke a refresh token (RFC 7009)
+      tags:
+      - OpenID Connect
+      description: Unknown and already revoked tokens succeed too. Access tokens can't
+        be revoked; they expire.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+              - token
+              properties:
+                token:
+                  type: string
+                token_type_hint:
+                  type: string
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+      responses:
+        '200':
+          description: revoked
+        '401':
+          description: unknown or disabled client, or a wrong secret
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/OauthError"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/token":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Get tokens
+      tags:
+      - OpenID Connect
+      description: Confidential and machine-to-machine clients authenticate with HTTP
+        Basic or `client_id` and `client_secret` in the form; public clients send
+        `client_id`.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+              - grant_type
+              properties:
+                grant_type:
+                  type: string
+                  enum:
+                  - authorization_code
+                  - refresh_token
+                  - client_credentials
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                code:
+                  type: string
+                  description: 'authorization_code: the code from the redirect.'
+                code_verifier:
+                  type: string
+                  description: 'authorization_code: the PKCE code verifier.'
+                redirect_uri:
+                  type: string
+                  description: 'authorization_code: the redirect URI the code was
+                    sent to.'
+                refresh_token:
+                  type: string
+                  description: 'refresh_token: the refresh token.'
+                scope:
+                  type: string
+                  description: 'client_credentials: space-separated scopes; defaults
+                    to all the app was granted.'
+                audience:
+                  type: string
+                  description: 'client_credentials: the API''s identifier; needed
+                    when the app may use several APIs.'
+      responses:
+        '200':
+          description: tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - access_token
+                - token_type
+                - expires_in
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                    enum:
+                    - Bearer
+                  expires_in:
+                    type: integer
+                  scope:
+                    type: string
+                  id_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                    description: With offline_access, and when refreshing.
+        '400':
+          description: invalid, expired or reused code or refresh token, or an unsupported
+            grant
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/OauthError"
+        '401':
+          description: unknown or disabled client, or a wrong secret
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/OauthError"
+        '429':
+          description: too many token requests this minute; see Retry-After
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/OauthError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/userinfo":
     parameters:
     - name: account_uid
@@ -6370,6 +8800,67 @@ paths:
                 type: object
                 required:
                 - sub
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Claims about the signed-in end user (POST)
+      tags:
+      - OpenID Connect
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the user's claims
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - sub
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/portal":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: The app portal's sign-in settings
+      tags:
+      - App portal
+      responses:
+        '200':
+          description: the portal's OpenID Connect client, for its page to sign in
+            with
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - issuer
+                - client_id
+                - redirect_uri
+                - post_logout_redirect_uri
+                - passkeys_available
+                properties:
+                  issuer:
+                    type: string
+                  client_id:
+                    type: string
+                  redirect_uri:
+                    type: string
+                  post_logout_redirect_uri:
+                    type: string
+                  passkeys_available:
+                    type: boolean
+                    description: End users can sign in to the portal with a passkey.
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/portal/apps":
@@ -6418,6 +8909,23 @@ paths:
       required: true
       schema:
         type: string
+    get:
+      summary: List the project's SAML apps
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: SAML apps, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/SamlApp"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
     post:
       summary: Add a SAML app
       tags:
@@ -6595,6 +9103,309 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps/{saml_app_uid}/assignments":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: saml_app_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List who can use a SAML app
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/AppAssignment"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Give an end user or group access to a SAML app
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                principal_type:
+                  enum:
+                  - end_user
+                  - group
+                  description: Whether the app is assigned to an end user or a group.
+                principal_uid:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: The uid of the end user or group.
+              type: object
+              unevaluatedProperties: false
+              required:
+              - principal_type
+              - principal_uid
+              additionalProperties: false
+      responses:
+        '201':
+          description: assigned
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AppAssignment"
+        '404':
+          description: no such end user or group in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '409':
+          description: already assigned
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps/{saml_app_uid}/assignments/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: saml_app_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Take away an end user's or group's access to a SAML app
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed
+        '404':
+          description: no such assignment
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Get a SAML app
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the SAML app
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SamlApp"
+        '404':
+          description: no such SAML app in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    patch:
+      summary: Change a SAML app
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                acs_urls:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 2048
+                  minItems: 1
+                  maxItems: 10
+                  description: Assertion consumer service URLs, for the HTTP-POST
+                    binding. The first is used for IdP-initiated sign-in.
+                attribute_mappings:
+                  type: array
+                  items:
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                        description: The attribute name the app expects.
+                      source:
+                        type: string
+                        minLength: 1
+                        maxLength: 262
+                        description: email, email_verified, name, uid, groups, or
+                          custom:<attribute key>.
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - name
+                    - source
+                    additionalProperties: false
+                  maxItems: 20
+                  description: Attributes sent in the assertion, each taken from a
+                    field of the end user.
+                default_relay_state:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 1024
+                  description: Sent with IdP-initiated sign-ins, e.g. the page to
+                    open in the app; null sends none.
+                enabled:
+                  anyOf:
+                  - type: boolean
+                  description: Disabled apps can't be signed in to.
+                entity_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 1024
+                  description: The app's SAML entity ID (Issuer), unique in the project.
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  description: The app's name.
+                name_id_format:
+                  enum:
+                  - email
+                  - persistent
+                  - unspecified
+                  description: 'The format of the NameID: email, persistent, unspecified.'
+                on_custom_domain:
+                  anyOf:
+                  - type: boolean
+                  description: Use the project's verified custom domain for this app's
+                    entity ID and URLs. Re-import the metadata in the app after switching.
+                require_signed_requests:
+                  anyOf:
+                  - type: boolean
+                  description: Reject authentication requests that aren't signed with
+                    the app's certificate.
+                sign_assertion:
+                  anyOf:
+                  - type: boolean
+                  description: Sign the assertion.
+                sign_response:
+                  anyOf:
+                  - type: boolean
+                  description: Sign the whole response.
+                slo_url:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 2048
+                  description: The app's single logout URL, for the HTTP-Redirect
+                    binding; null if it has none.
+                sp_certificate:
+                  anyOf:
+                  - type: 'null'
+                  - type: string
+                    minLength: 1
+                    maxLength: 10000
+                  description: The app's signing certificate (PEM), to verify its
+                    signed requests; null if it has none.
+              type: object
+              unevaluatedProperties: false
+              additionalProperties: false
+      responses:
+        '200':
+          description: updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SamlApp"
+        '403':
+          description: only project admins and developers can manage SAML apps
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: invalid settings
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    delete:
+      summary: Delete a SAML app
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: deleted
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/saml-certificates":
     parameters:
     - name: account_uid
@@ -6639,6 +9450,110 @@ paths:
                 "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml-certificates/{uid}":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    delete:
+      summary: Remove a certificate that isn't active
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: removed and no longer published
+        '409':
+          description: the active certificate can't be removed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml-certificates/{uid}/activate":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Start signing with the next certificate
+      tags:
+      - SAML
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: active; the previous certificate is retired
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SamlCertificate"
+        '409':
+          description: only a new certificate can be activated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml/apps/{uid}/launch":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Open a SAML app from the identity provider (IdP-initiated sign-in)
+      tags:
+      - SAML
+      description: Send the user's browser here, e.g. from the app portal. With a
+        single sign-on session, the page posts a signed SAML response to the app;
+        otherwise the user signs in on the hosted login page first.
+      responses:
+        '200':
+          description: an HTML page that posts the SAML response and the app's default
+            RelayState to its ACS URL
+        '303':
+          description: to the hosted login page, or its error page
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/saml/metadata":
     parameters:
     - name: account_uid
@@ -6658,6 +9573,117 @@ paths:
       responses:
         '200':
           description: metadata XML
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml/slo":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Single logout for SAML apps (HTTP-Redirect binding)
+      tags:
+      - SAML
+      description: Apps send a LogoutRequest here to end the browser's session, which
+        logs out of its other apps too, and their LogoutResponses on the way back.
+      parameters:
+      - name: SAMLRequest
+        in: query
+        schema:
+          type: string
+      - name: SAMLResponse
+        in: query
+        schema:
+          type: string
+      - name: RelayState
+        in: query
+        schema:
+          type: string
+      - name: SigAlg
+        in: query
+        schema:
+          type: string
+      - name: Signature
+        in: query
+        schema:
+          type: string
+      responses:
+        '303':
+          description: to the next app to log out, then back to the app that asked
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Single logout for SAML apps (HTTP-POST binding)
+      tags:
+      - SAML
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                SAMLRequest:
+                  type: string
+                  description: Base64-encoded, not deflated.
+                SAMLResponse:
+                  type: string
+                  description: Base64-encoded, not deflated.
+                RelayState:
+                  type: string
+      responses:
+        '303':
+          description: to the next app to log out, then back to the app that asked
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml/sp/{provider_uid}/acs":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: provider_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Assertion consumer service for an upstream SAML identity provider
+      tags:
+      - SAML
+      description: The provider posts the user's browser here with its SAML response
+        (HTTP-POST binding).
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+              - SAMLResponse
+              properties:
+                SAMLResponse:
+                  type: string
+                  description: The provider's base64-encoded response.
+                RelayState:
+                  type: string
+                  description: From the AuthnRequest; absent for IdP-initiated sign-in.
+      responses:
+        '303':
+          description: on to finish the sign-in, or to the hosted error page
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{project_uid}/saml/sp/{provider_uid}/metadata":
@@ -6684,6 +9710,157 @@ paths:
       responses:
         '200':
           description: metadata XML to import into the customer's identity provider
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml/sp/{provider_uid}/slo":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: provider_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Single logout with an upstream SAML identity provider (HTTP-Redirect
+        binding)
+      tags:
+      - SAML
+      description: The provider sends its LogoutRequests here, and its LogoutResponses
+        to ours. Messages must be signed by the provider.
+      parameters:
+      - name: SAMLRequest
+        in: query
+        schema:
+          type: string
+      - name: SAMLResponse
+        in: query
+        schema:
+          type: string
+      - name: RelayState
+        in: query
+        schema:
+          type: string
+      - name: SigAlg
+        in: query
+        schema:
+          type: string
+      - name: Signature
+        in: query
+        schema:
+          type: string
+      responses:
+        '303':
+          description: back to the provider with a LogoutResponse, or on to the hosted
+            signed-out page
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Single logout with an upstream SAML identity provider (HTTP-POST binding)
+      tags:
+      - SAML
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                SAMLRequest:
+                  type: string
+                  description: Base64-encoded, not deflated.
+                SAMLResponse:
+                  type: string
+                  description: Base64-encoded, not deflated.
+                RelayState:
+                  type: string
+      responses:
+        '303':
+          description: back to the provider with a LogoutResponse, or on to the hosted
+            signed-out page
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+  "/v1/accounts/{account_uid}/projects/{project_uid}/saml/sso":
+    parameters:
+    - name: account_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: project_uid
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Single sign-on for SAML apps (HTTP-Redirect binding)
+      tags:
+      - SAML
+      description: Apps send the user's browser here with an AuthnRequest. With a
+        single sign-on session, the page posts a signed SAML response to the app;
+        otherwise the user signs in on the hosted login page first.
+      parameters:
+      - name: SAMLRequest
+        in: query
+        schema:
+          type: string
+      - name: SAMLResponse
+        in: query
+        schema:
+          type: string
+      - name: RelayState
+        in: query
+        schema:
+          type: string
+      - name: SigAlg
+        in: query
+        schema:
+          type: string
+      - name: Signature
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: an HTML page that posts the SAML response to the app's ACS
+            URL
+        '303':
+          description: to the hosted login page, or its error page
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
+    post:
+      summary: Single sign-on for SAML apps (HTTP-POST binding)
+      tags:
+      - SAML
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                SAMLRequest:
+                  type: string
+                  description: Base64-encoded, not deflated.
+                SAMLResponse:
+                  type: string
+                  description: Base64-encoded, not deflated.
+                RelayState:
+                  type: string
+      responses:
+        '200':
+          description: an HTML page that posts the SAML response to the app's ACS
+            URL
+        '303':
+          description: to the hosted login page, or its error page
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
   "/v1/accounts/{account_uid}/projects/{uid}":
@@ -6917,6 +10094,27 @@ paths:
       required: true
       schema:
         type: string
+    get:
+      summary: Get a user
+      tags:
+      - Users
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: the user
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/User"
+        '404':
+          description: no such user in this account
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '400':
+          "$ref": "#/components/responses/SchemaValidationError"
     patch:
       summary: Change a user's role or status
       tags:
@@ -8486,6 +11684,18 @@ components:
           type: string
           description: The provisioning URI as an SVG QR code.
       title: MfaEnrollment
+    OauthError:
+      type: object
+      required:
+      - error
+      - error_description
+      properties:
+        error:
+          type: string
+          description: The OAuth 2.0 error code, e.g. invalid_grant or invalid_client.
+        error_description:
+          type: string
+      title: OauthError
     Passkey:
       type: object
       required:
@@ -8814,6 +12024,42 @@ components:
           type: string
           format: date-time
       title: SamlApp
+    SamlCertificate:
+      type: object
+      required:
+      - uid
+      - status
+      - certificate
+      - fingerprint_sha256
+      - activated_at
+      - expires_at
+      - created_at
+      properties:
+        uid:
+          type: string
+        status:
+          type: string
+          enum:
+          - next
+          - active
+          - retired
+        certificate:
+          type: string
+          description: PEM.
+        fingerprint_sha256:
+          type: string
+        activated_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+      title: SamlCertificate
     SamlConnection:
       type: object
       required:
@@ -8848,40 +12094,7 @@ components:
         certificates:
           type: array
           items:
-            type: object
-            required:
-            - uid
-            - status
-            - certificate
-            - fingerprint_sha256
-            - activated_at
-            - expires_at
-            - created_at
-            properties:
-              uid:
-                type: string
-              status:
-                type: string
-                enum:
-                - next
-                - active
-                - retired
-              certificate:
-                type: string
-                description: PEM.
-              fingerprint_sha256:
-                type: string
-              activated_at:
-                type:
-                - string
-                - 'null'
-                format: date-time
-              expires_at:
-                type: string
-                format: date-time
-              created_at:
-                type: string
-                format: date-time
+            "$ref": "#/components/schemas/SamlCertificate"
       title: SamlIdentityProvider
     SignInChallenge:
       type: object

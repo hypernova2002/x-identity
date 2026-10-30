@@ -16,6 +16,7 @@ RSpec.describe "OTP enrolment", type: :openapi do
       post "Start setting up an authenticator app or hardware token" do
         tags "Me"
         security [ { BearerAuth: [] } ]
+        request_body required: false, content: { "application/json" => { schema: Me::StartOtpRequest.as_schema } }
 
         response 201, "secret and QR code" do
           schema Schemas::MfaEnrollment
@@ -125,6 +126,45 @@ RSpec.describe "OTP enrolment", type: :openapi do
 
     it "rejects a wrong code" do
       assert_api_response :post, 401, headers: headers, body: { code: "000000" }, path_params: path_params
+    end
+  end
+
+  describe "recovery codes" do
+    api_path "/v1/accounts/{account_uid}/me/recovery-codes" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+
+      post "Replace your recovery codes" do
+        tags "Me"
+        security [ { BearerAuth: [] } ]
+        consumes "application/json"
+        request_body required: true, content: { "application/json" => { schema: Me::RegenerateRecoveryCodesRequest.as_schema } }
+
+        response 201, "new recovery codes; the old ones stop working" do
+          schema Schemas::RecoveryCodes
+        end
+
+        response 401, "wrong code" do
+          schema Schemas::Error
+        end
+
+        response 404, "MFA isn't turned on" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    it "replaces the codes with a current code" do
+      user = create(:user, :with_mfa, account: account)
+      old_codes = RecoveryCode.regenerate_for!(user)
+
+      assert_api_response :post, 401, headers: auth_headers_for(user), body: { code: "000000" }, path_params: path_params
+      assert_api_response(:post, 201, headers: auth_headers_for(user), body: { code: current_totp_for(user) }, path_params: path_params) do
+        expect(parsed_body["recovery_codes"]).not_to include(*old_codes)
+      end
+    end
+
+    it "needs MFA to be on" do
+      assert_api_response :post, 404, headers: headers, body: { code: "123456" }, path_params: path_params
     end
   end
 end

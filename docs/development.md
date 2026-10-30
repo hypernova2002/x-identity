@@ -71,7 +71,9 @@ type check and tests.
 ## API reference
 
 The request specs describe every endpoint (with openapi-ruby) and generate
-`backend/openapi/public_api.yaml`. Regenerate it after changing endpoints. In development, Swagger
+`backend/openapi/public_api.yaml`. Regenerate it after changing endpoints; `api_reference_spec.rb`
+fails for any route missing from it. Hosted login's interaction endpoints
+(`oauth2/interactions/…`) are left out: they serve only the hosted pages. In development, Swagger
 UI is served at `/api-docs` on the backend.
 
 List endpoints share one request format, implemented by `ListQuery`: `page`, `per_page` (capped at

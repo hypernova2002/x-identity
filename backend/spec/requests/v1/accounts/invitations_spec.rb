@@ -76,6 +76,39 @@ RSpec.describe "Invitations", type: :openapi do
     end
   end
 
+  describe "revoking" do
+    api_path "/v1/accounts/{account_uid}/invitations/{uid}" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      delete "Revoke a pending invitation" do
+        tags "Invitations"
+        security [ { BearerAuth: [] } ]
+
+        response 204, "revoked"
+
+        response 404, "no pending invitation with this uid" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    let(:invitation) { Invitation.issue!(account: account, invited_by: admin, email: "new@acme.test", role: "member").first }
+
+    it "revokes the invitation, and records it" do
+      assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: path_params.merge(uid: invitation.uid)
+
+      expect(account.invitations.pending).to be_empty
+      expect(AuditEvent.last).to have_attributes(action: "invitation.revoked", actor_uid: admin.uid)
+    end
+
+    it "can only revoke a pending invitation once" do
+      invitation.revoke!
+
+      assert_api_response :delete, 404, headers: auth_headers_for(admin), path_params: path_params.merge(uid: invitation.uid)
+    end
+  end
+
   describe "accepting" do
     api_path "/v1/accounts/{account_uid}/auth/accept-invitation" do
       parameter name: :account_uid, in: :path, required: true, schema: { type: :string }

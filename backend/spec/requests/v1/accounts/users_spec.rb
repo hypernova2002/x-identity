@@ -62,6 +62,19 @@ RSpec.describe "Users", type: :openapi do
       parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
       parameter name: :uid, in: :path, required: true, schema: { type: :string }
 
+      get "Get a user" do
+        tags "Users"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "the user" do
+          schema Schemas::User
+        end
+
+        response 404, "no such user in this account" do
+          schema Schemas::Error
+        end
+      end
+
       patch "Change a user's role or status" do
         tags "Users"
         security [ { BearerAuth: [] } ]
@@ -99,6 +112,16 @@ RSpec.describe "Users", type: :openapi do
 
     def update_user(actor, target, status, body, account_uid: account.uid)
       assert_api_response :patch, status, headers: auth_headers_for(actor), body: body, path_params: { account_uid: account_uid, uid: target.uid }
+    end
+
+    it "shows a user to admins" do
+      assert_api_response :get, 200, headers: auth_headers_for(admin), path_params: { account_uid: account.uid, uid: member.uid } do
+        expect(parsed_body).to include("uid" => member.uid, "email" => member.email)
+      end
+    end
+
+    it "doesn't show users of other accounts" do
+      assert_api_response :get, 404, headers: auth_headers_for(admin), path_params: { account_uid: account.uid, uid: create(:user).uid }
     end
 
     it "lets an admin promote a member to admin" do

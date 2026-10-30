@@ -97,6 +97,171 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
     end
   end
 
+  describe "the protocol endpoints" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/authorize" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+
+      get "Start an OpenID Connect sign-in (authorization code flow with PKCE)" do
+        tags "OpenID Connect"
+        description "Send the user's browser here. Without a single sign-on session they're sent to the hosted login page; " \
+          "afterwards they're redirected to `redirect_uri` with `code`, `state` and `iss`, or with `error` and `error_description`."
+        parameter name: :response_type, in: :query, required: true, schema: { type: :string, enum: %w[code] }
+        parameter name: :client_id, in: :query, required: true, schema: { type: :string }
+        parameter name: :redirect_uri, in: :query, required: true, schema: { type: :string }, description: "One of the app client's redirect URIs, compared exactly."
+        parameter name: :scope, in: :query, required: true, schema: { type: :string },
+          description: "Space-separated; must include openid. Add email, profile, groups or offline_access (for a refresh token)."
+        parameter name: :code_challenge, in: :query, required: true, schema: { type: :string }, description: "base64url SHA-256 of a random code verifier, without padding."
+        parameter name: :code_challenge_method, in: :query, required: true, schema: { type: :string, enum: %w[S256] }
+        parameter name: :state, in: :query, schema: { type: :string }, description: "Returned unchanged."
+        parameter name: :nonce, in: :query, schema: { type: :string }, description: "Put in the ID token."
+        parameter name: :prompt, in: :query, schema: { type: :string, enum: %w[none login] }
+        parameter name: :max_age, in: :query, schema: { type: :integer }, description: "Seconds since the last sign-in after which the user signs in again."
+        parameter name: :login_hint, in: :query, schema: { type: :string }, description: "An email address to fill in on the hosted page."
+
+        response 302, "to the hosted login page, or back to the app"
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/authorize/resume" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+
+      get "Finish a sign-in started on the hosted login page" do
+        tags "OpenID Connect"
+        description "The hosted page sends the browser here once the user has signed in; it isn't called by apps."
+        parameter name: :ticket, in: :query, required: true, schema: { type: :string }
+
+        response 302, "back to the app with a code, or with an error"
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/token" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+
+      post "Get tokens" do
+        tags "OpenID Connect"
+        description "Confidential and machine-to-machine clients authenticate with HTTP Basic or `client_id` and `client_secret` in the form; " \
+          "public clients send `client_id`."
+        request_body required: true, content: {
+          "application/x-www-form-urlencoded" => {
+            schema: {
+              type: :object,
+              required: %w[grant_type],
+              properties: {
+                grant_type: { type: :string, enum: %w[authorization_code refresh_token client_credentials] },
+                client_id: { type: :string },
+                client_secret: { type: :string },
+                code: { type: :string, description: "authorization_code: the code from the redirect." },
+                code_verifier: { type: :string, description: "authorization_code: the PKCE code verifier." },
+                redirect_uri: { type: :string, description: "authorization_code: the redirect URI the code was sent to." },
+                refresh_token: { type: :string, description: "refresh_token: the refresh token." },
+                scope: { type: :string, description: "client_credentials: space-separated scopes; defaults to all the app was granted." },
+                audience: { type: :string, description: "client_credentials: the API's identifier; needed when the app may use several APIs." }
+              }
+            }
+          }
+        }
+
+        response 200, "tokens" do
+          schema type: :object, required: %w[access_token token_type expires_in], properties: {
+            access_token: { type: :string },
+            token_type: { type: :string, enum: %w[Bearer] },
+            expires_in: { type: :integer },
+            scope: { type: :string },
+            id_token: { type: :string },
+            refresh_token: { type: :string, description: "With offline_access, and when refreshing." }
+          }
+        end
+
+        response 400, "invalid, expired or reused code or refresh token, or an unsupported grant" do
+          schema Schemas::OauthError
+        end
+
+        response 401, "unknown or disabled client, or a wrong secret" do
+          schema Schemas::OauthError
+        end
+
+        response 429, "too many token requests this minute; see Retry-After" do
+          schema Schemas::OauthError
+        end
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/revoke" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+
+      post "Revoke a refresh token (RFC 7009)" do
+        tags "OpenID Connect"
+        description "Unknown and already revoked tokens succeed too. Access tokens can't be revoked; they expire."
+        request_body required: true, content: {
+          "application/x-www-form-urlencoded" => {
+            schema: {
+              type: :object,
+              required: %w[token],
+              properties: {
+                token: { type: :string },
+                token_type_hint: { type: :string },
+                client_id: { type: :string },
+                client_secret: { type: :string }
+              }
+            }
+          }
+        }
+
+        response 200, "revoked"
+
+        response 401, "unknown or disabled client, or a wrong secret" do
+          schema Schemas::OauthError
+        end
+      end
+    end
+
+    let(:authorize_path) { "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/authorize" }
+    let(:token_path) { "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/token" }
+
+    it "signs in through the hosted page and exchanges the code for tokens" do
+      assert_api_response(:get, 302, params: authorize_params, path_params: project_path_params(project), api_path: authorize_path) do
+        expect(response.location).to start_with("#{hosted_base}/login?interaction=")
+      end
+
+      ticket = query_of(sign_in_on_hosted_page["redirect_to"])["ticket"]
+      code = nil
+      assert_api_response(:get, 302, params: { ticket: ticket }, path_params: project_path_params(project), api_path: "#{authorize_path}/resume") do
+        code = query_of(response.location)["code"]
+      end
+
+      body = { grant_type: "authorization_code", client_id: app_client.uid, code: code, code_verifier: code_verifier, redirect_uri: redirect_uri }
+      assert_api_response(:post, 200, body: body, path_params: project_path_params(project), api_path: token_path) do
+        expect(parsed_body).to include("token_type" => "Bearer")
+      end
+      assert_api_response(:post, 400, body: body, path_params: project_path_params(project), api_path: token_path) do
+        expect(parsed_body["error"]).to eq("invalid_grant")
+      end
+    end
+
+    it "refuses unknown clients" do
+      assert_api_response :post, 401, body: { grant_type: "refresh_token", client_id: "app_unknown", refresh_token: "x" }, path_params: project_path_params(project),
+        api_path: token_path
+    end
+
+    it "revokes refresh tokens, and succeeds for unknown ones" do
+      exchange(code_for_app(scope: "openid offline_access"))
+      refresh_token = response.parsed_body["refresh_token"]
+      revoke_path = "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/revoke"
+
+      assert_api_response :post, 200, body: { client_id: app_client.uid, token: refresh_token }, path_params: project_path_params(project), api_path: revoke_path
+      assert_api_response :post, 200, body: { client_id: app_client.uid, token: "unknown" }, path_params: project_path_params(project), api_path: revoke_path
+      assert_api_response :post, 401, body: { client_id: "app_unknown", token: refresh_token }, path_params: project_path_params(project), api_path: revoke_path
+
+      exchange_refresh = { grant_type: "refresh_token", client_id: app_client.uid, refresh_token: refresh_token }
+      post oauth_path("token"), params: exchange_refresh
+      expect(response.parsed_body["error"]).to eq("invalid_grant")
+    end
+  end
+
   describe "the authorization code flow" do
     it "sends a browser without a session to the hosted login page" do
       expect(authorize).to start_with("#{hosted_base}/login?interaction=")
@@ -257,6 +422,38 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
   end
 
   describe "single sign-on" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/logout" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+
+      get "Sign out of single sign-on (RP-initiated logout)" do
+        tags "OpenID Connect"
+        description "Send the user's browser here. The browser's session ends, and SAML apps it signed in to are logged out too."
+        parameter name: :id_token_hint, in: :query, schema: { type: :string }, description: "An ID token the app was issued, to find the app without client_id."
+        parameter name: :client_id, in: :query, schema: { type: :string }
+        parameter name: :post_logout_redirect_uri, in: :query, schema: { type: :string }, description: "One of the app client's post-logout redirect URIs."
+        parameter name: :state, in: :query, schema: { type: :string }, description: "Returned unchanged."
+
+        response 303, "to post_logout_redirect_uri when it's registered, otherwise the hosted signed-out or error page"
+      end
+
+      post "Sign out of single sign-on (form POST)" do
+        tags "OpenID Connect"
+        request_body required: false, content: {
+          "application/x-www-form-urlencoded" => {
+            schema: {
+              type: :object,
+              properties: { id_token_hint: { type: :string }, client_id: { type: :string }, post_logout_redirect_uri: { type: :string }, state: { type: :string } }
+            }
+          }
+        }
+
+        response 303, "to post_logout_redirect_uri when it's registered, otherwise the hosted signed-out or error page"
+      end
+    end
+
+    let(:logout_path) { "/v1/accounts/{account_uid}/projects/{project_uid}/oauth2/logout" }
+
     before { follow(sign_in_on_hosted_page["redirect_to"]) }
 
     it "signs the browser in to another app without the hosted page" do
@@ -283,9 +480,9 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
     end
 
     it "ends at logout, returning to a registered post-logout address" do
-      get oauth_path("logout"), params: { client_id: app_client.uid, post_logout_redirect_uri: "https://shop.example.com/signed-out", state: "bye" }
+      assert_api_response :get, 303, params: { client_id: app_client.uid, post_logout_redirect_uri: "https://shop.example.com/signed-out", state: "bye" },
+        path_params: project_path_params(project), api_path: logout_path
 
-      expect(response).to have_http_status(:see_other)
       expect(response.location).to eq("https://shop.example.com/signed-out?state=bye")
       expect(BrowserSession.sole.revoked_at).to be_present
       expect(authorize).to start_with("#{hosted_base}/login?")
@@ -295,6 +492,14 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
       get oauth_path("logout"), params: { client_id: app_client.uid, post_logout_redirect_uri: "https://evil.example.com/" }
 
       expect(response.location).to start_with("#{hosted_base}/error?")
+    end
+
+    it "takes the logout as a form POST too" do
+      assert_api_response :post, 303, body: { client_id: app_client.uid, post_logout_redirect_uri: "https://shop.example.com/signed-out" },
+        path_params: project_path_params(project), api_path: logout_path
+
+      expect(response.location).to eq("https://shop.example.com/signed-out")
+      expect(BrowserSession.sole.revoked_at).to be_present
     end
   end
 
@@ -311,6 +516,15 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
           schema type: :object, required: %w[sub]
         end
       end
+
+      post "Claims about the signed-in end user (POST)" do
+        tags "OpenID Connect"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "the user's claims" do
+          schema type: :object, required: %w[sub]
+        end
+      end
     end
 
     it "returns the user's claims for an access token" do
@@ -319,6 +533,9 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
 
       assert_api_response(:get, 200, headers: headers, path_params: project_path_params(project)) do
         expect(parsed_body).to include("sub" => end_user.uid, "email" => "casey@shop.test", "email_verified" => true)
+      end
+      assert_api_response(:post, 200, headers: headers, path_params: project_path_params(project)) do
+        expect(parsed_body).to include("sub" => end_user.uid)
       end
     end
 

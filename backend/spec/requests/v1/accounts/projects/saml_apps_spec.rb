@@ -25,6 +25,15 @@ RSpec.describe "SAML apps", type: :openapi do
       parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
       parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
 
+      get "List the project's SAML apps" do
+        tags "SAML"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "SAML apps, by name" do
+          schema type: :array, items: Schemas::SamlApp
+        end
+      end
+
       post "Add a SAML app" do
         tags "SAML"
         security [ { BearerAuth: [] } ]
@@ -76,6 +85,15 @@ RSpec.describe "SAML apps", type: :openapi do
       end
     end
 
+    it "lists the project's apps" do
+      create(:saml_app, project: project, name: "Wiki")
+      create(:saml_app)
+
+      assert_api_response(:get, 200, headers: auth_headers_for(developer), path_params: project_path_params(project), api_path: collection) do
+        expect(parsed_body.pluck("name")).to eq([ "Wiki" ])
+      end
+    end
+
     it "rejects plain http ACS URLs and unknown attribute sources" do
       assert_api_response(:post, 422, headers: auth_headers_for(admin), body: body.merge(acs_urls: [ "http://wiki.example.com/acs" ]), path_params: project_path_params(project), api_path: collection)
       assert_api_response(:post, 422, headers: auth_headers_for(admin), body: body.merge(attribute_mappings: [ { name: "x", source: "password" } ]), path_params: project_path_params(project), api_path: collection)
@@ -105,6 +123,161 @@ RSpec.describe "SAML apps", type: :openapi do
     end
   end
 
+  describe "a SAML app" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps/{uid}" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      get "Get a SAML app" do
+        tags "SAML"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "the SAML app" do
+          schema Schemas::SamlApp
+        end
+
+        response 404, "no such SAML app in the project" do
+          schema Schemas::Error
+        end
+      end
+
+      patch "Change a SAML app" do
+        tags "SAML"
+        security [ { BearerAuth: [] } ]
+        consumes "application/json"
+        request_body required: true, content: { "application/json" => { schema: SamlApps::UpdateRequest.as_schema } }
+
+        response 200, "updated" do
+          schema Schemas::SamlApp
+        end
+
+        response 403, "only project admins and developers can manage SAML apps" do
+          schema Schemas::Error
+        end
+
+        response 422, "invalid settings" do
+          schema Schemas::Error
+        end
+      end
+
+      delete "Delete a SAML app" do
+        tags "SAML"
+        security [ { BearerAuth: [] } ]
+
+        response 204, "deleted"
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps/{saml_app_uid}/assignments" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :saml_app_uid, in: :path, required: true, schema: { type: :string }
+
+      get "List who can use a SAML app" do
+        tags "SAML"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "assignments" do
+          schema type: :array, items: Schemas::AppAssignment
+        end
+      end
+
+      post "Give an end user or group access to a SAML app" do
+        tags "SAML"
+        security [ { BearerAuth: [] } ]
+        consumes "application/json"
+        request_body required: true, content: { "application/json" => { schema: AppAssignments::CreateRequest.as_schema } }
+
+        response 201, "assigned" do
+          schema Schemas::AppAssignment
+        end
+
+        response 404, "no such end user or group in the project" do
+          schema Schemas::Error
+        end
+
+        response 409, "already assigned" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps/{saml_app_uid}/assignments/{uid}" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :saml_app_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      delete "Take away an end user's or group's access to a SAML app" do
+        tags "SAML"
+        security [ { BearerAuth: [] } ]
+
+        response 204, "removed"
+
+        response 404, "no such assignment" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    let(:saml_app) { create(:saml_app, project: project, name: "Wiki", assigned_to_everyone: false) }
+    let(:viewer) { create(:user, account: project.account).tap { |user| create(:project_membership, project: project, user: user, role: "viewer") } }
+    let(:item_path) { "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps/{uid}" }
+    let(:assignments_path) { "/v1/accounts/{account_uid}/projects/{project_uid}/saml-apps/{saml_app_uid}/assignments" }
+
+    it "shows, changes and deletes an app" do
+      path_params = project_path_params(project, uid: saml_app.uid)
+
+      assert_api_response(:get, 200, headers: auth_headers_for(viewer), path_params: path_params, api_path: item_path) do
+        expect(parsed_body).to include("uid" => saml_app.uid, "name" => "Wiki")
+      end
+      assert_api_response(:patch, 200, headers: auth_headers_for(developer), body: { name: "Team wiki", sign_response: true }, path_params: path_params,
+        api_path: item_path) do
+        expect(parsed_body).to include("name" => "Team wiki", "sign_response" => true)
+      end
+      assert_api_response :delete, 204, headers: auth_headers_for(developer), path_params: path_params, api_path: item_path
+
+      expect(SamlApp.exists?(saml_app.id)).to be(false)
+    end
+
+    it "doesn't let viewers change apps" do
+      assert_api_response :patch, 403, headers: auth_headers_for(viewer), body: { name: "Team wiki" }, path_params: project_path_params(project, uid: saml_app.uid),
+        api_path: item_path
+    end
+
+    it "rejects plain http ACS URLs" do
+      assert_api_response :patch, 422, headers: auth_headers_for(admin), body: { acs_urls: [ "http://wiki.example.com/acs" ] },
+        path_params: project_path_params(project, uid: saml_app.uid), api_path: item_path
+    end
+
+    it "doesn't show apps of other projects" do
+      assert_api_response :get, 404, headers: auth_headers_for(admin), path_params: project_path_params(project, uid: create(:saml_app).uid), api_path: item_path
+    end
+
+    it "assigns end users and groups, and removes assignments" do
+      group = create(:group, project: project, name: "Staff")
+      path_params = project_path_params(project, saml_app_uid: saml_app.uid)
+      body = { principal_type: "group", principal_uid: group.uid }
+      uid = nil
+
+      assert_api_response(:post, 201, headers: auth_headers_for(admin), body: body, path_params: path_params, api_path: assignments_path) do
+        uid = parsed_body["uid"]
+        expect(parsed_body).to include("principal_type" => "group", "principal_label" => "Staff")
+      end
+      assert_api_response :post, 409, headers: auth_headers_for(admin), body: body, path_params: path_params, api_path: assignments_path
+      assert_api_response :post, 404, headers: auth_headers_for(admin), body: { principal_type: "end_user", principal_uid: create(:end_user).uid },
+        path_params: path_params, api_path: assignments_path
+      assert_api_response(:get, 200, headers: auth_headers_for(viewer), path_params: path_params, api_path: assignments_path) do
+        expect(parsed_body.pluck("uid")).to eq([ uid ])
+      end
+
+      assignment_path = "#{assignments_path}/{uid}"
+      assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: path_params.merge(uid: uid), api_path: assignment_path
+      assert_api_response :delete, 404, headers: auth_headers_for(admin), path_params: path_params.merge(uid: uid), api_path: assignment_path
+    end
+  end
+
   describe "the identity provider and its certificates" do
     api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml-certificates" do
       parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
@@ -131,6 +304,42 @@ RSpec.describe "SAML apps", type: :openapi do
       end
     end
 
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml-certificates/{uid}" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      delete "Remove a certificate that isn't active" do
+        tags "SAML"
+        security [ { BearerAuth: [] } ]
+
+        response 204, "removed and no longer published"
+
+        response 409, "the active certificate can't be removed" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml-certificates/{uid}/activate" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      post "Start signing with the next certificate" do
+        tags "SAML"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "active; the previous certificate is retired" do
+          schema Schemas::SamlCertificate
+        end
+
+        response 409, "only a new certificate can be activated" do
+          schema Schemas::Error
+        end
+      end
+    end
+
     let(:path_params) { project_path_params(project) }
 
     it "creates the first certificate on demand" do
@@ -145,14 +354,15 @@ RSpec.describe "SAML apps", type: :openapi do
       assert_api_response(:post, 201, headers: auth_headers_for(admin), path_params: path_params)
       upcoming = project.saml_certificates.status_next.sole
 
-      post "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/saml-certificates/#{upcoming.uid}/activate", headers: auth_headers_for(admin)
-      expect(response).to have_http_status(:ok)
+      certificate_path = "/v1/accounts/{account_uid}/projects/{project_uid}/saml-certificates/{uid}"
+      assert_api_response(:post, 200, headers: auth_headers_for(admin), path_params: path_params.merge(uid: upcoming.uid), api_path: "#{certificate_path}/activate") do
+        expect(parsed_body).to include("uid" => upcoming.uid, "status" => "active")
+      end
       expect(SamlCertificate.active_for!(project)).to eq(upcoming)
+      assert_api_response :post, 409, headers: auth_headers_for(admin), path_params: path_params.merge(uid: old.uid), api_path: "#{certificate_path}/activate"
 
-      delete "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/saml-certificates/#{upcoming.uid}", headers: auth_headers_for(admin)
-      expect(response).to have_http_status(:conflict)
-      delete "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/saml-certificates/#{old.uid}", headers: auth_headers_for(admin)
-      expect(response).to have_http_status(:no_content)
+      assert_api_response :delete, 409, headers: auth_headers_for(admin), path_params: path_params.merge(uid: upcoming.uid), api_path: certificate_path
+      assert_api_response :delete, 204, headers: auth_headers_for(admin), path_params: path_params.merge(uid: old.uid), api_path: certificate_path
     end
 
     it "is only for admins to rotate" do

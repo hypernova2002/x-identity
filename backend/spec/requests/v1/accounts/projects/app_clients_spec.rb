@@ -91,6 +91,93 @@ RSpec.describe "App clients", type: :openapi do
     end
   end
 
+  describe "an app client" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{uid}" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      get "Get an app client" do
+        tags "App clients"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "the app client" do
+          schema Schemas::AppClient
+        end
+
+        response 404, "no such app client in the project" do
+          schema Schemas::Error
+        end
+      end
+
+      patch "Change an app client" do
+        tags "App clients"
+        security [ { BearerAuth: [] } ]
+        consumes "application/json"
+        request_body required: true, content: { "application/json" => { schema: AppClients::UpdateRequest.as_schema } }
+
+        response 200, "updated" do
+          schema Schemas::AppClient
+        end
+
+        response 403, "only project admins and developers can manage app clients" do
+          schema Schemas::Error
+        end
+
+        response 422, "invalid name, origins or redirect URIs" do
+          schema Schemas::Error
+        end
+      end
+
+      delete "Delete an app client; its sessions end" do
+        tags "App clients"
+        security [ { BearerAuth: [] } ]
+
+        response 204, "deleted"
+
+        response 403, "only project admins and developers can manage app clients" do
+          schema Schemas::Error
+        end
+      end
+    end
+
+    let(:app_client) { create(:app_client, project: project, name: "Web shop") }
+    let(:path_params) { project_path_params(project, uid: app_client.uid) }
+
+    it "shows the client to viewers" do
+      assert_api_response(:get, 200, headers: auth_headers_for(viewer), path_params: path_params) do
+        expect(parsed_body).to include("uid" => app_client.uid, "name" => "Web shop")
+      end
+    end
+
+    it "doesn't show clients of other projects" do
+      assert_api_response :get, 404, headers: auth_headers_for(admin), path_params: project_path_params(project, uid: create(:app_client).uid)
+    end
+
+    it "lets developers change the client" do
+      body = { name: "Shop", allowed_origins: [ "https://shop.example.com" ] }
+
+      assert_api_response(:patch, 200, headers: auth_headers_for(developer), body: body, path_params: path_params) do
+        expect(parsed_body).to include("name" => "Shop", "allowed_origins" => [ "https://shop.example.com" ])
+      end
+    end
+
+    it "doesn't let viewers change the client" do
+      assert_api_response :patch, 403, headers: auth_headers_for(viewer), body: { name: "Shop" }, path_params: path_params
+    end
+
+    it "rejects origins with a path" do
+      assert_api_response :patch, 422, headers: auth_headers_for(admin), body: { allowed_origins: [ "https://shop.example.com/app" ] }, path_params: path_params
+    end
+
+    it "lets developers delete the client, but not viewers" do
+      assert_api_response :delete, 403, headers: auth_headers_for(viewer), path_params: path_params
+      assert_api_response :delete, 204, headers: auth_headers_for(developer), path_params: path_params
+
+      expect(AppClient.exists?(app_client.id)).to be(false)
+    end
+  end
+
   describe "a single client" do
     api_path "/v1/accounts/{account_uid}/projects/{project_uid}/app-clients/{uid}/rotate-secret" do
       parameter name: :account_uid, in: :path, required: true, schema: { type: :string }

@@ -95,6 +95,19 @@ RSpec.describe "Identity providers", type: :openapi do
       parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
       parameter name: :uid, in: :path, required: true, schema: { type: :string }
 
+      get "Get an identity provider" do
+        tags "Identity providers"
+        security [ { BearerAuth: [] } ]
+
+        response 200, "the identity provider; secrets are never returned" do
+          schema Schemas::IdentityProvider
+        end
+
+        response 404, "no such identity provider in the project" do
+          schema Schemas::Error
+        end
+      end
+
       patch "Change an identity provider" do
         tags "Identity providers"
         security [ { BearerAuth: [] } ]
@@ -120,6 +133,17 @@ RSpec.describe "Identity providers", type: :openapi do
 
     let!(:provider) { create(:identity_provider, project: project, client_secret: "original-secret") }
     let(:path_params) { project_path_params(project, uid: provider.uid) }
+
+    it "shows the provider without its secret" do
+      assert_api_response(:get, 200, headers: auth_headers_for(admin), path_params: path_params) do
+        expect(parsed_body).to include("uid" => provider.uid)
+        expect(parsed_body.to_json).not_to include("original-secret")
+      end
+    end
+
+    it "doesn't show providers of other projects" do
+      assert_api_response :get, 404, headers: auth_headers_for(admin), path_params: project_path_params(project, uid: create(:identity_provider).uid)
+    end
 
     it "keeps the secret when it's left blank" do
       assert_api_response(:patch, 200, headers: auth_headers_for(admin), body: { name: "Google Workspace", client_secret: "" }, path_params: path_params)

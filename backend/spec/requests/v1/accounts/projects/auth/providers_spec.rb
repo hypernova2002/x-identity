@@ -84,6 +84,25 @@ RSpec.describe "End-user sign-in with identity providers", type: :openapi do
           schema Schemas::Error
         end
       end
+
+      post "Return from Apple (form POST)" do
+        tags "End-user auth"
+        request_body required: true, content: {
+          "application/x-www-form-urlencoded" => {
+            schema: {
+              type: :object,
+              properties: {
+                state: { type: :string },
+                code: { type: :string },
+                error: { type: :string },
+                user: { type: :string, description: "JSON with the user's name, which Apple only sends on their first sign-in." }
+              }
+            }
+          }
+        }
+
+        response 303, "redirect to the app with a code, or with an error"
+      end
     end
 
     api_path "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers/token" do
@@ -205,10 +224,9 @@ RSpec.describe "End-user sign-in with identity providers", type: :openapi do
       stub_provider_jwks(apple)
       token_stub = stub_provider_token(apple, provider_id_token(apple, nonce: provider_query["nonce"], name: nil))
 
-      post "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/auth/providers/callback",
-        params: { state: provider_query["state"], code: "apple-code", user: { name: { firstName: "Casey", lastName: "Apple" } }.to_json }
+      assert_api_response :post, 303, body: { state: provider_query["state"], code: "apple-code", user: { name: { firstName: "Casey", lastName: "Apple" } }.to_json },
+        path_params: project_path_params(project), api_path: "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers/callback"
 
-      expect(response).to have_http_status(:see_other)
       expect(query_of(response.location)).to have_key("code")
       expect(project.end_users.sole.name).to eq("Casey Apple")
       expect(token_stub.with { |request| claims(Rack::Utils.parse_query(request.body)["client_secret"])["iss"] == "TEAM123456" }).to have_been_requested

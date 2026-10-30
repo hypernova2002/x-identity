@@ -99,6 +99,54 @@ RSpec.describe "SAML identity provider", type: :openapi do
   end
 
   describe "SP-initiated sign-in" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml/sso" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+
+      get "Single sign-on for SAML apps (HTTP-Redirect binding)" do
+        tags "SAML"
+        description "Apps send the user's browser here with an AuthnRequest. With a single sign-on session, the page posts a signed " \
+          "SAML response to the app; otherwise the user signs in on the hosted login page first."
+        %w[SAMLRequest SAMLResponse RelayState SigAlg Signature].each { |name| parameter name: name.to_sym, in: :query, schema: { type: :string } }
+
+        response 200, "an HTML page that posts the SAML response to the app's ACS URL"
+
+        response 303, "to the hosted login page, or its error page"
+      end
+
+      post "Single sign-on for SAML apps (HTTP-POST binding)" do
+        tags "SAML"
+        request_body required: true, content: {
+          "application/x-www-form-urlencoded" => {
+            schema: {
+              type: :object,
+              properties: {
+                SAMLRequest: { type: :string, description: "Base64-encoded, not deflated." },
+                SAMLResponse: { type: :string, description: "Base64-encoded, not deflated." },
+                RelayState: { type: :string }
+              }
+            }
+          }
+        }
+
+        response 200, "an HTML page that posts the SAML response to the app's ACS URL"
+
+        response 303, "to the hosted login page, or its error page"
+      end
+    end
+
+    it "takes AuthnRequests with either binding" do
+      settings = sp_settings
+      redirect_query = query_of(OneLogin::RubySaml::Authrequest.new.create(settings))
+
+      assert_api_response :get, 303, params: redirect_query.symbolize_keys, path_params: project_path_params(project)
+      expect(response.location).to start_with("#{hosted_base}/login?interaction=")
+
+      settings.compress_request = false
+      assert_api_response :post, 303, body: OneLogin::RubySaml::Authrequest.new.create_params(settings), path_params: project_path_params(project)
+      expect(response.location).to start_with("#{hosted_base}/login?interaction=")
+    end
+
     it "sends the browser to hosted login, then posts a valid, signed response to the app" do
       request_id = start_sign_in
       expect(response.location).to start_with("#{hosted_base}/login?interaction=")
@@ -200,11 +248,27 @@ RSpec.describe "SAML identity provider", type: :openapi do
   end
 
   describe "IdP-initiated sign-in" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml/apps/{uid}/launch" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :uid, in: :path, required: true, schema: { type: :string }
+
+      get "Open a SAML app from the identity provider (IdP-initiated sign-in)" do
+        tags "SAML"
+        description "Send the user's browser here, e.g. from the app portal. With a single sign-on session, the page posts a signed " \
+          "SAML response to the app; otherwise the user signs in on the hosted login page first."
+
+        response 200, "an HTML page that posts the SAML response and the app's default RelayState to its ACS URL"
+
+        response 303, "to the hosted login page, or its error page"
+      end
+    end
+
     it "launches the app from an existing session, without InResponseTo" do
       signed_in_response
       sp.update!(default_relay_state: "/dashboard")
 
-      get issuer_path("saml/apps/#{sp.uid}/launch")
+      assert_api_response :get, 200, path_params: project_path_params(project, uid: sp.uid)
 
       saml_response = OneLogin::RubySaml::Response.new(saml_response_from_form, settings: sp_settings)
       expect(saml_response.is_valid?).to be(true), saml_response.errors.join(", ")
@@ -212,14 +276,53 @@ RSpec.describe "SAML identity provider", type: :openapi do
     end
 
     it "asks for a sign-in first when there's no session" do
-      get issuer_path("saml/apps/#{sp.uid}/launch")
+      assert_api_response :get, 303, path_params: project_path_params(project, uid: sp.uid)
 
       expect(response.location).to start_with("#{hosted_base}/login?interaction=")
     end
   end
 
   describe "single logout" do
+    api_path "/v1/accounts/{account_uid}/projects/{project_uid}/saml/slo" do
+      parameter name: :account_uid, in: :path, required: true, schema: { type: :string }
+      parameter name: :project_uid, in: :path, required: true, schema: { type: :string }
+
+      get "Single logout for SAML apps (HTTP-Redirect binding)" do
+        tags "SAML"
+        description "Apps send a LogoutRequest here to end the browser's session, which logs out of its other apps too, " \
+          "and their LogoutResponses on the way back."
+        %w[SAMLRequest SAMLResponse RelayState SigAlg Signature].each { |name| parameter name: name.to_sym, in: :query, schema: { type: :string } }
+
+        response 303, "to the next app to log out, then back to the app that asked"
+      end
+
+      post "Single logout for SAML apps (HTTP-POST binding)" do
+        tags "SAML"
+        request_body required: true, content: {
+          "application/x-www-form-urlencoded" => {
+            schema: {
+              type: :object,
+              properties: {
+                SAMLRequest: { type: :string, description: "Base64-encoded, not deflated." },
+                SAMLResponse: { type: :string, description: "Base64-encoded, not deflated." },
+                RelayState: { type: :string }
+              }
+            }
+          }
+        }
+
+        response 303, "to the next app to log out, then back to the app that asked"
+      end
+    end
+
     let(:other_app) { create(:saml_app, :with_slo, project: project) }
+
+    def logout_settings
+      sp_settings.tap do |settings|
+        settings.name_identifier_value = "casey@shop.test"
+        settings.sessionindex = BrowserSessionApp.find_by!(saml_app: sp).session_index
+      end
+    end
 
     before do
       signed_in_response
@@ -227,11 +330,8 @@ RSpec.describe "SAML identity provider", type: :openapi do
     end
 
     it "logs out of the other apps, then answers the app that asked" do
-      settings = sp_settings
-      settings.name_identifier_value = "casey@shop.test"
-      settings.sessionindex = BrowserSessionApp.find_by!(saml_app: sp).session_index
       logout_request = OneLogin::RubySaml::Logoutrequest.new
-      get URI.parse(logout_request.create(settings)).request_uri
+      assert_api_response :get, 303, params: query_of(logout_request.create(logout_settings)).symbolize_keys, path_params: project_path_params(project)
 
       expect(response.location).to start_with(other_app.slo_url)
       to_other_app = query_of(response.location)
@@ -245,6 +345,16 @@ RSpec.describe "SAML identity provider", type: :openapi do
       expect(response.location).to start_with(sp.slo_url)
       final = OneLogin::RubySaml::Logoutresponse.new(query_of(response.location)["SAMLResponse"], sp_settings, matches_request_id: logout_request.uuid)
       expect(final.validate).to be(true), final.errors.join(", ")
+    end
+
+    it "takes LogoutRequests as a form POST too" do
+      settings = logout_settings
+      settings.compress_request = false
+
+      assert_api_response :post, 303, body: OneLogin::RubySaml::Logoutrequest.new.create_params(settings), path_params: project_path_params(project)
+
+      expect(response.location).to start_with(other_app.slo_url)
+      expect(BrowserSession.sole.revoked_at).to be_present
     end
 
     it "logs out of SAML apps on OpenID Connect logout too" do
