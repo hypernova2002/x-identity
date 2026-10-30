@@ -1,6 +1,6 @@
 module EndUserAuth
   class PasskeySignInRequest < ClientRequest
-    attribute :authentication_id, RequestTypes::Token.meta(description: "From the passkey options.")
-    attribute :credential, RequestTypes::T::Hash.meta(description: "The browser's answer (a PublicKeyCredential), as JSON (its toJSON()).")
+    attribute :authentication_id, SignInFields::PasskeyAuthenticationId
+    attribute :credential, SignInFields::PasskeyCredential
   end
 end

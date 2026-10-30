@@ -107,7 +107,11 @@ changes.
 - Errors share one shape and every code is registered in `backend/app/errors/error_codes.rb`.
 - Records are exposed by prefixed uids (`HasUid`), never database ids.
 - Request bodies are parsed by request models in `backend/app/request_models/`, which reject unknown
-  fields; controllers pass the fields to services as keyword arguments.
+  fields; controllers pass the fields to services as keyword arguments. Every field has a
+  description and every string and array a maximum size. Field types used by more than one
+  resource are in `RequestTypes`; those a resource's requests share (such as create and update) are
+  in its `Fields` module, e.g. `SamlApps::Fields`. Limits use the model's constant where there is
+  one. Optional text fields reject `""`; `null` clears them.
 - Services take plain arguments (including `ip` and `user_agent` for auditing) and never touch the
   request.
 - Sign-in logic is shared between console users and end users through realms.

@@ -16,3 +16,15 @@ module FreeFormObjectSchema
 end
 
 JsonModel::Builder.singleton_class.prepend(FreeFormObjectSchema)
+
+# json_model_rb 0.1.30 drops every constraint of a type with a `format`, such as an email's length
+# limits. Keep them, leaving out only the pattern, which the format already describes.
+module FormatConstraints
+  def as_schema
+    return super unless type.meta[:format]
+
+    super.merge(*extract_constraints.reject { |constraint| constraint.key?(:pattern) })
+  end
+end
+
+JsonModel::Builder::ConstrainedBuilder.prepend(FormatConstraints)

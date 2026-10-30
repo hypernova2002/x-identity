@@ -1,5 +1,5 @@
 module EndUserAuth
   class ResendConfirmationRequest < ClientRequest
-    attribute :email, RequestTypes::EmailLookup
+    attribute :email, SignInFields::SignInEmail
   end
 end

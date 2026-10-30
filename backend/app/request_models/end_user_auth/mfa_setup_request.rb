@@ -1,5 +1,5 @@
 module EndUserAuth
   class MfaSetupRequest < ClientRequest
-    attribute :session, RequestTypes::Token
+    attribute :session, SignInFields::MfaSetupSession
   end
 end

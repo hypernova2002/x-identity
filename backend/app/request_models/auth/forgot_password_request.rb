@@ -1,5 +1,5 @@
 module Auth
   class ForgotPasswordRequest < ApplicationRequestModel
-    attribute :email, RequestTypes::EmailLookup
+    attribute :email, SignInFields::SignInEmail
   end
 end

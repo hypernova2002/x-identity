@@ -35,12 +35,22 @@ class ApplicationRequestModel < Dry::Struct
     schema_hash = super.except(:required).merge(required.any? ? { required: required } : {}).merge(additionalProperties: false)
     return schema_hash unless schema_hash[:properties]
 
-    schema_hash.merge(properties: schema_hash[:properties].to_h { |name, property| [name, describe(name, property)] })
+    schema_hash.merge(properties: schema_hash[:properties].to_h { |name, property| [ name, describe(name, property) ] })
   end
 
   def self.describe(name, property)
-    description = schema.keys.find { |key| key.name == name.to_sym }&.type&.meta&.dig(:description)
+    key = schema.keys.find { |schema_key| schema_key.name == name.to_sym }
+    description = key && description_of(key.type)
     description ? property.merge(description: description) : property
   end
-  private_class_method :describe
+
+  # A shared type's description also describes it when it's made `.optional` or given a constructor.
+  def self.description_of(type)
+    return unless type.respond_to?(:meta)
+
+    type.meta[:description] ||
+      (description_of(type.right) if type.is_a?(Dry::Types::Sum)) ||
+      (description_of(type.type) if type.is_a?(Dry::Types::Constructor))
+  end
+  private_class_method :describe, :description_of
 end

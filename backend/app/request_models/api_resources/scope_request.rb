@@ -1,6 +1,6 @@
 module ApiResources
   class ScopeRequest < ApplicationRequestModel
-    attribute :name, RequestTypes::T::String.constrained(min_size: 1, max_size: 64).meta(description: "e.g. orders:read")
-    attribute? :description, RequestTypes::T::String.constrained(max_size: 200).optional
+    attribute :name, RequestTypes::ScopeName.meta(description: "Letters, numbers and _ . : / -, e.g. orders:read.")
+    attribute? :description, RequestTypes::T::String.constrained(min_size: 1, max_size: 200).optional.meta(description: "What the scope allows.")
   end
 end

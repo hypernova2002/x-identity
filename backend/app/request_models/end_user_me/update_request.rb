@@ -1,6 +1,6 @@
 module EndUserMe
   class UpdateRequest < ApplicationRequestModel
-    attribute? :name, RequestTypes::Name.optional
-    attribute? :custom_attributes, RequestTypes::CustomAttributes
+    attribute? :name, RequestTypes::Name.optional.meta(description: "The end user's name; null removes it.")
+    attribute? :custom_attributes, RequestTypes::CustomAttributes.meta(description: "Values for the project's user-editable custom attributes, keyed by attribute key.")
   end
 end

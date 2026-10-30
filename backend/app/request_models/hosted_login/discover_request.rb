@@ -1,5 +1,5 @@
 module HostedLogin
   class DiscoverRequest < ApplicationRequestModel
-    attribute :email, RequestTypes::EmailLookup
+    attribute :email, SignInFields::SignInEmail
   end
 end

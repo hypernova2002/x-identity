@@ -1,6 +1,6 @@
 module HostedLogin
   class SignInRequest < ApplicationRequestModel
-    attribute :email, RequestTypes::EmailLookup
-    attribute :password, RequestTypes::Password
+    attribute :email, SignInFields::SignInEmail
+    attribute :password, SignInFields::SignInPassword
   end
 end

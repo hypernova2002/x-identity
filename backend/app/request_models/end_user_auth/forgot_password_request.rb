@@ -1,5 +1,5 @@
 module EndUserAuth
   class ForgotPasswordRequest < ClientRequest
-    attribute :email, RequestTypes::EmailLookup
+    attribute :email, SignInFields::SignInEmail
   end
 end

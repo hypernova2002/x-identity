@@ -11,20 +11,23 @@ module AuthConfigurations
     end
 
     attribute? :mfa_requirement, T::String.enum(*AuthConfiguration.mfa_requirements.keys)
-    attribute? :require_email_verification, T::Bool
+      .meta(description: "off, optional (users can turn MFA on) or required (users must set up MFA when they next sign in).")
+    attribute? :require_email_verification, T::Bool.meta(description: "Users must confirm their email address before they can sign in.")
     attribute? :notify_new_devices, T::Bool
+      .meta(description: "Email users when they sign in from a device and country they haven't used in 90 days.")
     attribute? :passwordless_after_passkey, T::Bool
       .meta(description: "Users who have a passkey that works where they sign in can't sign in with a password there. Resetting the password by email lets them in to add a new passkey. Needs passkeys on.")
     attribute? :passkeys, T::String.enum(*AuthConfiguration.passkeys.keys)
       .meta(description: "off, optional (users can add passkeys and sign in with them) or required (sign-ins must use a passkey wherever passkeys work, and require MFA elsewhere). Projects need a verified custom domain; required needs MFA not off.")
-      .meta(description: "Email users when they sign in from a device and country they haven't used in 90 days.")
     attribute? :password_min_length, T::Integer.constrained(gteq: 8, lteq: AuthConfiguration::PASSWORD_MAX_LENGTH)
-    attribute? :password_require_uppercase, T::Bool
-    attribute? :password_require_lowercase, T::Bool
-    attribute? :password_require_number, T::Bool
-    attribute? :password_require_symbol, T::Bool
+      .meta(description: "The shortest password allowed, 8–#{AuthConfiguration::PASSWORD_MAX_LENGTH} characters.")
+    attribute? :password_require_uppercase, T::Bool.meta(description: "Passwords must contain an uppercase letter.")
+    attribute? :password_require_lowercase, T::Bool.meta(description: "Passwords must contain a lowercase letter.")
+    attribute? :password_require_number, T::Bool.meta(description: "Passwords must contain a number.")
+    attribute? :password_require_symbol, T::Bool.meta(description: "Passwords must contain a symbol.")
     attribute? :password_max_age_seconds, seconds(:password_max_age_seconds, "How long a password lasts; null means forever.")
     attribute? :lockout_threshold, T::Integer.constrained(gteq: 3, lteq: 100)
+      .meta(description: "Failed sign-ins for an email, within the lockout window, before it's locked. 3–100.")
     attribute? :lockout_window_seconds, seconds(:lockout_window_seconds, "Period in which failed sign-ins are counted.")
     attribute? :lockout_duration_seconds, seconds(:lockout_duration_seconds, "How long an email stays locked.")
     attribute? :access_token_ttl_seconds, seconds(:access_token_ttl_seconds, "Access token lifetime.")
@@ -33,10 +36,10 @@ module AuthConfigurations
     attribute? :sso_session_ttl_seconds, seconds(:sso_session_ttl_seconds, "Projects only: how long a hosted login session signs users in to other apps.")
     attribute? :client_secret_rotation_overlap_seconds,
       seconds(:client_secret_rotation_overlap_seconds, "Projects only: how long a confidential client's previous secrets keep working after it's rotated; 0 stops them at once.")
-    attribute? :token_requests_per_minute,
-      T::Integer.constrained(gteq: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.min, lteq: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.max)
-        .meta(description: "Projects only: token endpoint requests allowed per app client per minute, unless the app sets its own limit.")
+    attribute? :token_requests_per_minute, RequestTypes::TokenRequestsPerMinute
+      .meta(description: "Projects only: token endpoint requests allowed per app client per minute, unless the app sets its own limit.")
     attribute? :signing_algorithm, T::String.enum(*SigningKey::ALGORITHMS)
+      .meta(description: "The algorithm new signing keys use: #{SigningKey::ALGORITHMS.join(', ')}.")
     attribute? :signing_key_rotation_seconds, seconds(:signing_key_rotation_seconds, "How often signing keys are replaced.")
     attribute? :mfa_max_failed_attempts, T::Integer.constrained(gteq: 3, lteq: 20)
       .meta(description: "Consecutive wrong one-time or recovery codes before the user is disabled.")

@@ -1,7 +1,7 @@
 module Groups
   class UpdateRequest < ApplicationRequestModel
-    attribute? :name, RequestTypes::Name
-    attribute? :description, RequestTypes::T::String.constrained(max_size: 500).optional
-    attribute? :default_for_new_users, RequestTypes::T::Bool.meta(description: "New end users join the group automatically.")
+    attribute? :name, Fields::Name
+    attribute? :description, Fields::Description
+    attribute? :default_for_new_users, Fields::DefaultForNewUsers
   end
 end

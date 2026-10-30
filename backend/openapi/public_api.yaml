@@ -244,6 +244,8 @@ paths:
                   type: integer
                   minimum: 3
                   maximum: 100
+                  description: Failed sign-ins for an email, within the lockout window,
+                    before it's locked. 3–100.
                 lockout_window_seconds:
                   type: integer
                   minimum: 60
@@ -261,9 +263,13 @@ paths:
                   - 'off'
                   - optional
                   - required
+                  description: off, optional (users can turn MFA on) or required (users
+                    must set up MFA when they next sign in).
                 notify_new_devices:
                   anyOf:
                   - type: boolean
+                  description: Email users when they sign in from a device and country
+                    they haven't used in 90 days.
                 otp_digits:
                   type: integer
                   minimum: 6
@@ -299,8 +305,10 @@ paths:
                   - 'off'
                   - optional
                   - required
-                  description: Email users when they sign in from a device and country
-                    they haven't used in 90 days.
+                  description: off, optional (users can add passkeys and sign in with
+                    them) or required (sign-ins must use a passkey wherever passkeys
+                    work, and require MFA elsewhere). Projects need a verified custom
+                    domain; required needs MFA not off.
                 password_max_age_seconds:
                   anyOf:
                   - type: 'null'
@@ -313,18 +321,23 @@ paths:
                   type: integer
                   minimum: 8
                   maximum: 128
+                  description: The shortest password allowed, 8–128 characters.
                 password_require_lowercase:
                   anyOf:
                   - type: boolean
+                  description: Passwords must contain a lowercase letter.
                 password_require_number:
                   anyOf:
                   - type: boolean
+                  description: Passwords must contain a number.
                 password_require_symbol:
                   anyOf:
                   - type: boolean
+                  description: Passwords must contain a symbol.
                 password_require_uppercase:
                   anyOf:
                   - type: boolean
+                  description: Passwords must contain an uppercase letter.
                 passwordless_after_passkey:
                   anyOf:
                   - type: boolean
@@ -339,6 +352,8 @@ paths:
                 require_email_verification:
                   anyOf:
                   - type: boolean
+                  description: Users must confirm their email address before they
+                    can sign in.
                 session_idle_timeout_seconds:
                   anyOf:
                   - type: 'null'
@@ -352,6 +367,8 @@ paths:
                   - ES256
                   - RS256
                   - PS256
+                  description: 'The algorithm new signing keys use: ES256, RS256,
+                    PS256.'
                 signing_key_rotation_seconds:
                   type: integer
                   minimum: 2592000
@@ -408,14 +425,17 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The new user's name.
                 password:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The new password. It must meet the password policy.
                 token:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the link in the invitation email.
               type: object
               unevaluatedProperties: false
               required:
@@ -465,6 +485,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the link in the confirmation email.
               type: object
               unevaluatedProperties: false
               required:
@@ -502,6 +523,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the link sent to the new address.
               type: object
               unevaluatedProperties: false
               required:
@@ -545,6 +567,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 254
+                  description: The email address the user signs in with, in any case.
               type: object
               unevaluatedProperties: false
               required:
@@ -576,6 +599,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: The session of the mfa_setup challenge.
               type: object
               unevaluatedProperties: false
               required:
@@ -729,6 +753,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: The refresh token from signing in.
               type: object
               unevaluatedProperties: false
               required:
@@ -770,6 +795,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 254
+                  description: The email address the user signs in with, in any case.
               type: object
               unevaluatedProperties: false
               required:
@@ -801,10 +827,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The new password. It must meet the password policy.
                 token:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the link in the password reset email.
               type: object
               unevaluatedProperties: false
               required:
@@ -857,6 +885,7 @@ paths:
                   - new_password
                   - mfa_setup
                   - passkey_setup
+                  description: The challenge being answered, from the sign-in response.
                 code:
                   type: string
                   minLength: 1
@@ -880,6 +909,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: The session from the challenge.
               type: object
               unevaluatedProperties: false
               required:
@@ -981,10 +1011,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 254
+                  description: The email address the user signs in with, in any case.
                 password:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The user's password.
               type: object
               unevaluatedProperties: false
               required:
@@ -1045,6 +1077,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: The refresh token from signing in.
               type: object
               unevaluatedProperties: false
               required:
@@ -1196,11 +1229,15 @@ paths:
                 email:
                   type: string
                   format: email
+                  minLength: 3
+                  maxLength: 254
+                  description: Where the invitation is sent.
                 role:
                   enum:
                   - owner
                   - admin
                   - member
+                  description: The role the user gets on accepting.
               type: object
               unevaluatedProperties: false
               required:
@@ -1272,6 +1309,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The user's name.
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -1313,9 +1351,14 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The user's current password.
                 new_email:
                   type: string
                   format: email
+                  minLength: 3
+                  maxLength: 254
+                  description: The new email address. A confirmation link is sent
+                    to it.
                 otp_code:
                   type: string
                   minLength: 1
@@ -1400,6 +1443,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The user's current password.
               type: object
               unevaluatedProperties: false
               required:
@@ -1440,7 +1484,8 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 32
-                  description: A TOTP code or an unused recovery code.
+                  description: A code from the authenticator, to confirm it's set
+                    up.
               type: object
               unevaluatedProperties: false
               required:
@@ -1505,6 +1550,7 @@ paths:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 60
                   description: Defaults to the browser and device, e.g. "Safari on
                     iPhone".
@@ -1512,6 +1558,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the passkey registration options.
               type: object
               unevaluatedProperties: false
               required:
@@ -1595,6 +1642,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 60
+                  description: The passkey's name, shown in the user's list of passkeys.
               type: object
               unevaluatedProperties: false
               required:
@@ -1643,10 +1691,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The user's current password.
                 new_password:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The new password. It must meet the password policy.
               type: object
               unevaluatedProperties: false
               required:
@@ -1841,6 +1891,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The project's name.
               type: object
               unevaluatedProperties: false
               required:
@@ -2017,6 +2068,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The API's name.
                 scopes:
                   type: array
                   items:
@@ -2025,18 +2077,21 @@ paths:
                         anyOf:
                         - type: 'null'
                         - type: string
+                          minLength: 1
                           maxLength: 200
+                        description: What the scope allows.
                       name:
                         type: string
                         minLength: 1
                         maxLength: 64
-                        description: e.g. orders:read
+                        description: 'Letters, numbers and _ . : / -, e.g. orders:read.'
                     type: object
                     unevaluatedProperties: false
                     required:
                     - name
                     additionalProperties: false
                   maxItems: 50
+                  description: The scopes apps can be granted.
               type: object
               unevaluatedProperties: false
               required:
@@ -2120,6 +2175,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The API's name.
                 scopes:
                   type: array
                   items:
@@ -2128,12 +2184,14 @@ paths:
                         anyOf:
                         - type: 'null'
                         - type: string
+                          minLength: 1
                           maxLength: 200
+                        description: What the scope allows.
                       name:
                         type: string
                         minLength: 1
                         maxLength: 64
-                        description: e.g. orders:read
+                        description: 'Letters, numbers and _ . : / -, e.g. orders:read.'
                     type: object
                     unevaluatedProperties: false
                     required:
@@ -2210,6 +2268,7 @@ paths:
                   type: array
                   items:
                     type: string
+                    minLength: 1
                     maxLength: 255
                   maxItems: 20
                   description: Browser origins allowed to call the API, e.g. https://shop.example.com.
@@ -2218,14 +2277,15 @@ paths:
                   - public
                   - confidential
                   description: public for browser and mobile apps; confidential for
-                    server-side apps that can keep a secret.
+                    server-side apps that can keep a secret. Can't be changed later.
                 launch_url:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 2048
-                  description: Where apps may send users after logging out of hosted
-                    login, compared exactly.
+                  description: Where the app portal opens the app. Apps without one
+                    aren't listed in the portal.
                 machine:
                   anyOf:
                   - type: boolean
@@ -2235,19 +2295,21 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The app's name.
                 post_logout_redirect_uris:
                   type: array
                   items:
                     type: string
+                    minLength: 1
                     maxLength: 2048
                   maxItems: 20
-                  description: 'Where users may be sent back after signing in with
-                    an identity provider, compared exactly: https URLs, http://localhost
-                    URLs, or app schemes like com.example.app:/callback.'
+                  description: Where apps may send users after logging out of hosted
+                    login, compared exactly.
                 redirect_uris:
                   type: array
                   items:
                     type: string
+                    minLength: 1
                     maxLength: 2048
                   maxItems: 20
                   description: 'Where users may be sent back after signing in with
@@ -2330,10 +2392,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The uid of the API the app is granted.
                 scopes:
                   type: array
                   items:
                     type: string
+                    minLength: 1
                     maxLength: 64
                   maxItems: 50
                   description: Scopes of the API the app may request.
@@ -2409,10 +2473,12 @@ paths:
                   enum:
                   - end_user
                   - group
+                  description: Whether the app is assigned to an end user or a group.
                 principal_uid:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The uid of the end user or group.
               type: object
               unevaluatedProperties: false
               required:
@@ -2771,34 +2837,40 @@ paths:
                   - number
                   - boolean
                   - date
-                  description: Can't be changed later.
+                  description: string, number, boolean, date. Can't be changed later.
                 include_in_token:
                   anyOf:
                   - type: boolean
+                  description: The value is included in the end user's tokens.
                 key:
                   type: string
                   minLength: 1
                   maxLength: 40
                   pattern: "^[a-z][a-z0-9_]*$"
-                  description: Lowercase letters, numbers and underscores. Can't be
-                    changed later.
+                  description: Lowercase letters, numbers and underscores, starting
+                    with a letter. Can't be changed later.
                 label:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The attribute's name, shown in the console and to end
+                    users.
                 max_length:
                   anyOf:
                   - type: 'null'
                   - type: integer
                     minimum: 1
                     maximum: 2048
-                  description: String attributes only.
+                  description: 'String attributes only: the longest value allowed.
+                    null allows up to 2048 characters.'
                 required:
                   anyOf:
                   - type: boolean
+                  description: Every end user must have a value.
                 user_editable:
                   anyOf:
                   - type: boolean
+                  description: End users can set and change the value themselves.
               type: object
               unevaluatedProperties: false
               required:
@@ -2957,15 +3029,19 @@ paths:
                   minLength: 6
                   maxLength: 6
                   pattern: "^\\d{6}$"
-                  description: The 6-digit code from the email.
+                  description: The 6-digit code from the email, sent with email instead
+                    of token.
                 email:
                   type: string
                   minLength: 1
                   maxLength: 254
+                  description: The address the email was sent to, sent with code instead
+                    of token.
                 password:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The new password. It must meet the password policy.
                 token:
                   type: string
                   minLength: 1
@@ -3024,15 +3100,19 @@ paths:
                   minLength: 6
                   maxLength: 6
                   pattern: "^\\d{6}$"
-                  description: The 6-digit code from the email.
+                  description: The 6-digit code from the email, sent with email instead
+                    of token.
                 email:
                   type: string
                   minLength: 1
                   maxLength: 254
+                  description: The address the email was sent to, sent with code instead
+                    of token.
                 password:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The new password. It must meet the password policy.
                 token:
                   type: string
                   minLength: 1
@@ -3096,11 +3176,14 @@ paths:
                   minLength: 6
                   maxLength: 6
                   pattern: "^\\d{6}$"
-                  description: The 6-digit code from the email.
+                  description: The 6-digit code from the email, sent with email instead
+                    of token.
                 email:
                   type: string
                   minLength: 1
                   maxLength: 254
+                  description: The address the email was sent to, sent with code instead
+                    of token.
                 token:
                   type: string
                   minLength: 1
@@ -3162,6 +3245,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 254
+                  description: The email address the user signs in with, in any case.
               type: object
               unevaluatedProperties: false
               required:
@@ -3403,6 +3487,8 @@ paths:
                   type: string
                   minLength: 43
                   maxLength: 128
+                  description: The random code verifier whose SHA-256 was sent as
+                    code_challenge.
                 redirect_uri:
                   type: string
                   minLength: 1
@@ -3615,6 +3701,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: The refresh token from signing in.
               type: object
               unevaluatedProperties: false
               required:
@@ -3672,6 +3759,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 254
+                  description: The email address the user signs in with, in any case.
               type: object
               unevaluatedProperties: false
               required:
@@ -3775,10 +3863,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 254
+                  description: The email address the user signs in with, in any case.
                 password:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The user's password.
               type: object
               unevaluatedProperties: false
               required:
@@ -3849,6 +3939,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: The refresh token from signing in.
               type: object
               unevaluatedProperties: false
               required:
@@ -3902,14 +3993,19 @@ paths:
                 email:
                   type: string
                   format: email
+                  minLength: 3
+                  maxLength: 254
+                  description: An email address. Stored in lowercase.
                 name:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The end user's name.
                 password:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The new password. It must meet the password policy.
               type: object
               unevaluatedProperties: false
               required:
@@ -4197,12 +4293,16 @@ paths:
                 email:
                   type: string
                   format: email
+                  minLength: 3
+                  maxLength: 254
+                  description: The end user's email address.
                 name:
                   anyOf:
                   - type: 'null'
                   - type: string
                     minLength: 1
                     maxLength: 100
+                  description: The end user's name; null removes it.
                 send_invitation:
                   anyOf:
                   - type: boolean
@@ -4412,10 +4512,13 @@ paths:
                   - type: string
                     minLength: 1
                     maxLength: 100
+                  description: The end user's name; null removes it.
                 status:
                   enum:
                   - active
                   - disabled
+                  description: Disabled end users can't sign in, and their sessions
+                    end.
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -4641,11 +4744,14 @@ paths:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 500
+                  description: What the group is for; null removes it.
                 name:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The group's name, unique in the project.
               type: object
               unevaluatedProperties: false
               required:
@@ -4749,6 +4855,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The uid of the end user to add.
               type: object
               unevaluatedProperties: false
               required:
@@ -4871,7 +4978,7 @@ paths:
                   type: string
                   minLength: 10
                   maxLength: 10
-                  description: Apple only.
+                  description: 'Apple only: the 10-character ID of the sign-in key.'
                 apple_private_key:
                   type: string
                   minLength: 1
@@ -4882,7 +4989,7 @@ paths:
                   type: string
                   minLength: 10
                   maxLength: 10
-                  description: Apple only.
+                  description: 'Apple only: the 10-character team ID.'
                 client_id:
                   type: string
                   minLength: 1
@@ -4918,6 +5025,7 @@ paths:
                 enabled:
                   anyOf:
                   - type: boolean
+                  description: Disabled providers can't be used to sign in.
                 group_mappings:
                   type: array
                   items:
@@ -4926,6 +5034,7 @@ paths:
                         type: string
                         minLength: 1
                         maxLength: 64
+                        description: The uid of the project group.
                       value:
                         type: string
                         minLength: 1
@@ -4947,7 +5056,7 @@ paths:
                   - oidc
                   - saml
                   description: google, apple, oidc for any other OpenID Connect provider,
-                    or saml.
+                    or saml. Can't be changed later.
                 name:
                   type: string
                   minLength: 1
@@ -4957,14 +5066,18 @@ paths:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 255
-                  description: 'SAML only: the attribute with the email; empty uses
+                  description: 'SAML only: the attribute with the email; null uses
                     the NameID.'
                 saml_groups_attribute:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 255
+                  description: 'SAML only: the attribute with the user''s groups,
+                    for group mappings; null if the IdP sends none.'
                 saml_idp_certificates:
                   type: array
                   items:
@@ -4982,18 +5095,24 @@ paths:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 255
+                  description: 'SAML only: the attribute with the user''s name; null
+                    if the IdP sends none.'
                 saml_name_id_format:
                   enum:
                   - email
                   - persistent
                   - unspecified
+                  description: 'The format of the NameID: email, persistent, unspecified.'
                 saml_slo_url:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 2048
-                  description: 'SAML only: the IdP''s logout URL (HTTP-Redirect).'
+                  description: 'SAML only: the IdP''s logout URL (HTTP-Redirect);
+                    null if it has none.'
                 saml_sso_url:
                   type: string
                   minLength: 1
@@ -5060,10 +5179,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 2048
+                  description: The URL the IdP's SAML metadata is published at.
                 metadata_xml:
                   type: string
                   minLength: 1
                   maxLength: 256000
+                  description: The IdP's SAML metadata document.
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -5124,16 +5245,17 @@ paths:
                   type: string
                   minLength: 10
                   maxLength: 10
-                  description: Apple only.
+                  description: 'Apple only: the 10-character ID of the sign-in key.'
                 apple_private_key:
                   type: string
                   maxLength: 4000
-                  description: Write-only.
+                  description: 'Apple only: the .p8 key''s contents, in PEM format.
+                    Write-only; blank keeps the current one.'
                 apple_team_id:
                   type: string
                   minLength: 10
                   maxLength: 10
-                  description: Apple only.
+                  description: 'Apple only: the 10-character team ID.'
                 client_id:
                   type: string
                   minLength: 1
@@ -5143,7 +5265,8 @@ paths:
                 client_secret:
                   type: string
                   maxLength: 1000
-                  description: Write-only.
+                  description: Google and OIDC only. Write-only; blank keeps the current
+                    one.
                 create_users:
                   anyOf:
                   - type: boolean
@@ -5168,6 +5291,7 @@ paths:
                 enabled:
                   anyOf:
                   - type: boolean
+                  description: Disabled providers can't be used to sign in.
                 group_mappings:
                   type: array
                   items:
@@ -5176,6 +5300,7 @@ paths:
                         type: string
                         minLength: 1
                         maxLength: 64
+                        description: The uid of the project group.
                       value:
                         type: string
                         minLength: 1
@@ -5194,6 +5319,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: Shown to end users, e.g. on sign-in buttons.
                 on_custom_domain:
                   anyOf:
                   - type: boolean
@@ -5204,14 +5330,18 @@ paths:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 255
-                  description: 'SAML only: the attribute with the email; empty uses
+                  description: 'SAML only: the attribute with the email; null uses
                     the NameID.'
                 saml_groups_attribute:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 255
+                  description: 'SAML only: the attribute with the user''s groups,
+                    for group mappings; null if the IdP sends none.'
                 saml_idp_certificates:
                   type: array
                   items:
@@ -5229,18 +5359,24 @@ paths:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 255
+                  description: 'SAML only: the attribute with the user''s name; null
+                    if the IdP sends none.'
                 saml_name_id_format:
                   enum:
                   - email
                   - persistent
                   - unspecified
+                  description: 'The format of the NameID: email, persistent, unspecified.'
                 saml_slo_url:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 2048
-                  description: 'SAML only: the IdP''s logout URL (HTTP-Redirect).'
+                  description: 'SAML only: the IdP''s logout URL (HTTP-Redirect);
+                    null if it has none.'
                 saml_sso_url:
                   type: string
                   minLength: 1
@@ -5328,14 +5464,15 @@ paths:
               properties:
                 custom_attributes:
                   type: object
-                  description: Values for the project's custom attributes, keyed by
-                    attribute key.
+                  description: Values for the project's user-editable custom attributes,
+                    keyed by attribute key.
                 name:
                   anyOf:
                   - type: 'null'
                   - type: string
                     minLength: 1
                     maxLength: 100
+                  description: The end user's name; null removes it.
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -5383,7 +5520,7 @@ paths:
                   minLength: 6
                   maxLength: 6
                   pattern: "^\\d{6}$"
-                  description: The 6-digit code from the email.
+                  description: The 6-digit code sent to the new address.
               type: object
               unevaluatedProperties: false
               required:
@@ -5663,10 +5800,12 @@ paths:
                   - admin
                   - developer
                   - viewer
+                  description: The user's role in the project.
                 user_uid:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The uid of the account's user to add.
               type: object
               unevaluatedProperties: false
               required:
@@ -5728,6 +5867,7 @@ paths:
                   - admin
                   - developer
                   - viewer
+                  description: The user's role in the project.
               type: object
               unevaluatedProperties: false
               required:
@@ -5850,6 +5990,7 @@ paths:
                   type: array
                   items:
                     type: string
+                    minLength: 1
                     maxLength: 2048
                   minItems: 1
                   maxItems: 10
@@ -5877,53 +6018,65 @@ paths:
                     - source
                     additionalProperties: false
                   maxItems: 20
+                  description: Attributes sent in the assertion, each taken from a
+                    field of the end user.
                 default_relay_state:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 1024
                   description: Sent with IdP-initiated sign-ins, e.g. the page to
-                    open in the app.
+                    open in the app; null sends none.
                 enabled:
                   anyOf:
                   - type: boolean
+                  description: Disabled apps can't be signed in to.
                 entity_id:
                   type: string
                   minLength: 1
                   maxLength: 1024
-                  description: The app's SAML entity ID (Issuer).
+                  description: The app's SAML entity ID (Issuer), unique in the project.
                 name:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The app's name.
                 name_id_format:
                   enum:
                   - email
                   - persistent
                   - unspecified
+                  description: 'The format of the NameID: email, persistent, unspecified.'
                 require_signed_requests:
                   anyOf:
                   - type: boolean
+                  description: Reject authentication requests that aren't signed with
+                    the app's certificate.
                 sign_assertion:
                   anyOf:
                   - type: boolean
+                  description: Sign the assertion.
                 sign_response:
                   anyOf:
                   - type: boolean
+                  description: Sign the whole response.
                 slo_url:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 2048
                   description: The app's single logout URL, for the HTTP-Redirect
-                    binding.
+                    binding; null if it has none.
                 sp_certificate:
                   anyOf:
                   - type: 'null'
                   - type: string
+                    minLength: 1
                     maxLength: 10000
                   description: The app's signing certificate (PEM), to verify its
-                    signed requests.
+                    signed requests; null if it has none.
               type: object
               unevaluatedProperties: false
               required:
@@ -5974,10 +6127,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 2048
+                  description: The URL the app's SAML metadata is published at.
                 metadata_xml:
                   type: string
                   minLength: 1
                   maxLength: 256000
+                  description: The app's SAML metadata document.
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -6149,6 +6304,7 @@ paths:
                 allow_self_sign_up:
                   anyOf:
                   - type: boolean
+                  description: End users can create their own accounts.
                 confirm_sign_up_url:
                   anyOf:
                   - type: 'null'
@@ -6161,6 +6317,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The project's name.
                 reset_password_url:
                   anyOf:
                   - type: 'null'
@@ -6333,10 +6490,12 @@ paths:
                   - owner
                   - admin
                   - member
+                  description: The user's role in the account.
                 status:
                   enum:
                   - active
                   - disabled
+                  description: Disabled users can't sign in, and their sessions end.
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -6399,23 +6558,30 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The new account's name, e.g. the company's.
                 email:
                   type: string
                   format: email
+                  minLength: 3
+                  maxLength: 254
+                  description: The owner's email address, used to sign in.
                 name:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The name of the account's owner.
                 password:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: The new password. It must meet the password policy.
                 slug:
                   type: string
                   minLength: 3
                   maxLength: 40
                   pattern: "^[A-Za-z0-9-]+$"
-                  description: Account alias used in sign-in URLs.
+                  description: Account alias used in sign-in URLs. Letters, numbers
+                    and hyphens; stored in lowercase.
               type: object
               unevaluatedProperties: false
               required:

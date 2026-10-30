@@ -1,5 +1,5 @@
 module Auth
   class ResendConfirmationRequest < ApplicationRequestModel
-    attribute :email, RequestTypes::EmailLookup
+    attribute :email, SignInFields::SignInEmail
   end
 end

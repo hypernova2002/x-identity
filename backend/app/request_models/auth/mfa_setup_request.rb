@@ -1,5 +1,5 @@
 module Auth
   class MfaSetupRequest < ApplicationRequestModel
-    attribute :session, RequestTypes::Token
+    attribute :session, SignInFields::MfaSetupSession
   end
 end

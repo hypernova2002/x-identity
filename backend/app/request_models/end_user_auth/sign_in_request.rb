@@ -1,6 +1,6 @@
 module EndUserAuth
   class SignInRequest < ClientRequest
-    attribute :email, RequestTypes::EmailLookup
-    attribute :password, RequestTypes::Password
+    attribute :email, SignInFields::SignInEmail
+    attribute :password, SignInFields::SignInPassword
   end
 end

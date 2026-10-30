@@ -1,4 +1,5 @@
-# Field types shared by request models, constrained to the limits the models enforce.
+# Field types shared by request models of more than one resource, constrained to the limits the
+# models enforce. Types used by one resource live in that resource's Fields module.
 #
 # Patterns end up in the OpenAPI document, where Ruby's \A and \z anchors aren't valid, so they use
 # ^ and $. In Ruby those match at line breaks, so every pattern is paired with a length limit, and
@@ -10,35 +11,27 @@ module RequestTypes
   # the canonical form. Non-strings are passed through untouched so they fail the type check.
   NORMALIZE_EMAIL = ->(value) { value.is_a?(String) ? EmailAddress.normalize(value) : value }
   Email = T::String.constrained(min_size: 3, max_size: 254, format: URI::MailTo::EMAIL_REGEXP).meta(format: "email")
+    .meta(description: "An email address. Stored in lowercase.").constructor(NORMALIZE_EMAIL)
+  EmailLookup = T::String.constrained(min_size: 1, max_size: 254).meta(description: "The email address, in any case.")
     .constructor(NORMALIZE_EMAIL)
-  EmailLookup = T::String.constrained(min_size: 1, max_size: 254).constructor(NORMALIZE_EMAIL)
-  Password = T::String.constrained(min_size: 1, max_size: AuthConfiguration::PASSWORD_MAX_LENGTH)
-  Name = T::String.constrained(min_size: 1, max_size: 100)
+  Password = T::String.constrained(min_size: 1, max_size: AuthConfiguration::PASSWORD_MAX_LENGTH).meta(description: "The password.")
+  Name = T::String.constrained(min_size: 1, max_size: 100).meta(description: "A display name.")
   Uid = T::String.constrained(min_size: 1, max_size: 64)
   Token = T::String.constrained(min_size: 1, max_size: 256)
   OtpCode = T::String.constrained(min_size: 1, max_size: 32).meta(description: "A TOTP code or an unused recovery code.")
   EmailCode = T::String.constrained(min_size: 6, max_size: 6, format: /^\d{6}$/).meta(description: "The 6-digit code from the email.")
-  AccountRole = T::String.enum(*User.roles.keys)
-  ProjectRole = T::String.enum(*ProjectMembership.roles.keys)
-
-  Origins = T::Array.of(T::String.constrained(max_size: 255)).constrained(max_size: AppClient::MAX_ORIGINS)
-    .meta(description: "Browser origins allowed to call the API, e.g. https://shop.example.com.")
-  RedirectUris = T::Array.of(T::String.constrained(max_size: 2048)).constrained(max_size: AppClient::MAX_REDIRECT_URIS)
-    .meta(description: "Where users may be sent back after signing in with an identity provider, compared exactly: " \
-      "https URLs, http://localhost URLs, or app schemes like com.example.app:/callback.")
   Jwt = T::String.constrained(min_size: 1, max_size: 16_384)
+  AccountRole = T::String.enum(*User.roles.keys).meta(description: "The user's role in the account.")
+  ProjectRole = T::String.enum(*ProjectMembership.roles.keys).meta(description: "The user's role in the project.")
 
-  ProviderClientId = T::String.constrained(min_size: 1, max_size: 255)
-    .meta(description: "The client id registered with the provider. For Apple, the Services ID.")
-  ProviderAudiences = T::Array.of(T::String.constrained(min_size: 1, max_size: 255)).constrained(max_size: IdentityProvider::MAX_AUDIENCES)
-    .meta(description: "Client ids of native apps that send the provider's ID tokens directly, e.g. iOS and Android client ids or an app's bundle id.")
-  ProviderScopes = T::String.constrained(min_size: 1, max_size: 500)
-    .meta(description: "Space-separated; must include openid. Ignored for Apple, which always asks for name and email.")
-  ProviderDiscoveryUrl = T::String.constrained(min_size: 1, max_size: 2048)
-    .meta(description: "OIDC only: the issuer URL, or its /.well-known/openid-configuration URL.")
-  AppleId = T::String.constrained(min_size: 10, max_size: 10).meta(description: "Apple only.")
-  AttributeMaxLength = T::Integer.constrained(gteq: 1, lteq: EndUserAttributeDefinition::MAX_STRING_LENGTH).optional
-    .meta(description: "String attributes only.")
+  Url = T::String.constrained(min_size: 1, max_size: WebUrl::MAX_LENGTH)
+  Hostname = T::String.constrained(min_size: 1, max_size: 253)
+  SamlEntityId = T::String.constrained(min_size: 1, max_size: 1024)
+  SamlNameIdFormat = T::String.enum(*SamlApp::NAME_ID_FORMATS.keys).meta(description: "The format of the NameID: #{SamlApp::NAME_ID_FORMATS.keys.join(', ')}.")
+  SamlMetadataXml = T::String.constrained(min_size: 1, max_size: 256_000)
+  Certificate = T::String.constrained(min_size: 1, max_size: 10_000)
+  ScopeName = T::String.constrained(min_size: 1, max_size: 64)
+  TokenRequestsPerMinute = T::Integer.constrained(gteq: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.min, lteq: AuthConfiguration::TOKEN_REQUESTS_PER_MINUTE.max)
 
   # Keys are defined per project by admins, so they can't be declared as a nested request model;
   # values are checked against the project's attribute definitions by EndUsers::AttributeValidator.
