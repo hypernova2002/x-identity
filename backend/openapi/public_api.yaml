@@ -204,30 +204,42 @@ paths:
                   type: integer
                   minimum: 300
                   maximum: 3600
+                  description: Access token lifetime. In seconds, 300–3600.
                 client_secret_rotation_overlap_seconds:
                   type: integer
                   minimum: 0
                   maximum: 2592000
+                  description: 'Projects only: how long a confidential client''s previous
+                    secrets keep working after it''s rotated; 0 stops them at once.
+                    In seconds, 0–2592000.'
                 email_code_failure_window_seconds:
                   type: integer
                   minimum: 300
                   maximum: 86400
+                  description: Period in which wrong email codes are counted. In seconds,
+                    300–86400.
                 email_code_max_attempts:
                   type: integer
                   minimum: 3
                   maximum: 10
+                  description: Wrong guesses before a single email code stops working.
                 email_code_max_failures_per_code:
                   type: integer
                   minimum: 2
                   maximum: 100
+                  description: Wrong attempts with the same code value, across all
+                    addresses, within the failure window.
                 email_code_max_failures_per_email:
                   type: integer
                   minimum: 3
                   maximum: 100
+                  description: Wrong email codes per address, across all codes, within
+                    the failure window.
                 lockout_duration_seconds:
                   type: integer
                   minimum: 60
                   maximum: 86400
+                  description: How long an email stays locked. In seconds, 60–86400.
                 lockout_threshold:
                   type: integer
                   minimum: 3
@@ -236,10 +248,14 @@ paths:
                   type: integer
                   minimum: 60
                   maximum: 86400
+                  description: Period in which failed sign-ins are counted. In seconds,
+                    60–86400.
                 mfa_max_failed_attempts:
                   type: integer
                   minimum: 3
                   maximum: 20
+                  description: Consecutive wrong one-time or recovery codes before
+                    the user is disabled.
                 mfa_requirement:
                   enum:
                   - 'off'
@@ -252,33 +268,47 @@ paths:
                   type: integer
                   minimum: 6
                   maximum: 10
+                  description: Code length for new credentials. Most authenticator
+                    apps only support 6.
                 otp_drift_steps:
                   type: integer
                   minimum: 0
                   maximum: 2
+                  description: TOTP steps accepted either side of the current one,
+                    for clock differences.
                 otp_hotp_look_ahead:
                   type: integer
                   minimum: 1
                   maximum: 20
+                  description: HOTP counter values searched ahead, for tokens pressed
+                    without signing in.
                 otp_method:
                   enum:
                   - totp
                   - hotp
+                  description: totp for authenticator apps or hotp for hardware tokens,
+                    for everyone. Existing credentials keep working.
                 otp_step_seconds:
                   type: integer
                   minimum: 30
                   maximum: 900
+                  description: TOTP step length for new credentials, in seconds. Most
+                    authenticator apps only support 30.
                 passkeys:
                   enum:
                   - 'off'
                   - optional
                   - required
+                  description: Email users when they sign in from a device and country
+                    they haven't used in 90 days.
                 password_max_age_seconds:
                   anyOf:
                   - type: 'null'
                   - type: integer
                     minimum: 86400
                     maximum: 31536000
+                  description: How long a password lasts; null means forever. In seconds,
+                    86400–31536000.
                 password_min_length:
                   type: integer
                   minimum: 8
@@ -298,10 +328,14 @@ paths:
                 passwordless_after_passkey:
                   anyOf:
                   - type: boolean
+                  description: Users who have a passkey that works where they sign
+                    in can't sign in with a password there. Resetting the password
+                    by email lets them in to add a new passkey. Needs passkeys on.
                 refresh_token_ttl_seconds:
                   type: integer
                   minimum: 86400
                   maximum: 31536000
+                  description: Session lifetime from sign-in. In seconds, 86400–31536000.
                 require_email_verification:
                   anyOf:
                   - type: boolean
@@ -311,6 +345,8 @@ paths:
                   - type: integer
                     minimum: 300
                     maximum: 2592000
+                  description: Unused sessions end after this; null means never. In
+                    seconds, 300–2592000.
                 signing_algorithm:
                   enum:
                   - ES256
@@ -320,14 +356,19 @@ paths:
                   type: integer
                   minimum: 2592000
                   maximum: 31536000
+                  description: How often signing keys are replaced. In seconds, 2592000–31536000.
                 sso_session_ttl_seconds:
                   type: integer
                   minimum: 300
                   maximum: 2592000
+                  description: 'Projects only: how long a hosted login session signs
+                    users in to other apps. In seconds, 300–2592000.'
                 token_requests_per_minute:
                   type: integer
                   minimum: 10
                   maximum: 10000
+                  description: 'Projects only: token endpoint requests allowed per
+                    app client per minute, unless the app sets its own limit.'
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -576,8 +617,11 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the passkey options.
                 credential:
                   type: object
+                  description: The browser's answer (a PublicKeyCredential), as JSON
+                    (its toJSON()).
               type: object
               unevaluatedProperties: false
               required:
@@ -618,6 +662,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: The session of the passkey_setup challenge.
               type: object
               unevaluatedProperties: false
               required:
@@ -804,6 +849,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: 'For passkey: from the passkey options for this challenge.'
                 challenge:
                   enum:
                   - otp
@@ -815,16 +861,21 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 32
+                  description: For otp and mfa_setup.
                 credential:
                   type: object
+                  description: 'For passkey: the browser''s answer; for passkey_setup:
+                    the new passkey (a PublicKeyCredential), as JSON.'
                 new_password:
                   type: string
                   minLength: 1
                   maxLength: 128
+                  description: For new_password.
                 registration_id:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: 'For passkey_setup: from the passkey setup options.'
                 session:
                   type: string
                   minLength: 1
@@ -889,6 +940,8 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: The session of a challenge whose mfa_methods include
+                    passkey.
               type: object
               unevaluatedProperties: false
               required:
@@ -1267,6 +1320,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 32
+                  description: Required when MFA is turned on.
               type: object
               unevaluatedProperties: false
               required:
@@ -1341,6 +1395,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 32
+                  description: A TOTP code or an unused recovery code.
                 current_password:
                   type: string
                   minLength: 1
@@ -1385,6 +1440,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 32
+                  description: A TOTP code or an unused recovery code.
               type: object
               unevaluatedProperties: false
               required:
@@ -1443,11 +1499,15 @@ paths:
               properties:
                 credential:
                   type: object
+                  description: The PublicKeyCredential the browser created, as JSON
+                    (its toJSON()).
                 name:
                   anyOf:
                   - type: 'null'
                   - type: string
                     maxLength: 60
+                  description: Defaults to the browser and device, e.g. "Safari on
+                    iPhone".
                 registration_id:
                   type: string
                   minLength: 1
@@ -1945,10 +2005,14 @@ paths:
                   - type: integer
                     minimum: 300
                     maximum: 3600
+                  description: How long tokens for the API last, in seconds; null
+                    uses the project's access token lifetime.
                 identifier:
                   type: string
                   minLength: 3
                   maxLength: 255
+                  description: The tokens' audience (aud), e.g. https://orders.example.com.
+                    Unique in the project, and can't be changed.
                 name:
                   type: string
                   minLength: 1
@@ -1966,6 +2030,7 @@ paths:
                         type: string
                         minLength: 1
                         maxLength: 64
+                        description: e.g. orders:read
                     type: object
                     unevaluatedProperties: false
                     required:
@@ -2049,6 +2114,8 @@ paths:
                   - type: integer
                     minimum: 300
                     maximum: 3600
+                  description: How long tokens for the API last, in seconds; null
+                    uses the project's access token lifetime.
                 name:
                   type: string
                   minLength: 1
@@ -2066,12 +2133,15 @@ paths:
                         type: string
                         minLength: 1
                         maxLength: 64
+                        description: e.g. orders:read
                     type: object
                     unevaluatedProperties: false
                     required:
                     - name
                     additionalProperties: false
                   maxItems: 50
+                  description: Replaces the API's scopes. Removed scopes are taken
+                    out of every app's grant.
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -2142,18 +2212,25 @@ paths:
                     type: string
                     maxLength: 255
                   maxItems: 20
+                  description: Browser origins allowed to call the API, e.g. https://shop.example.com.
                 client_type:
                   enum:
                   - public
                   - confidential
+                  description: public for browser and mobile apps; confidential for
+                    server-side apps that can keep a secret.
                 launch_url:
                   anyOf:
                   - type: 'null'
                   - type: string
                     maxLength: 2048
+                  description: Where apps may send users after logging out of hosted
+                    login, compared exactly.
                 machine:
                   anyOf:
                   - type: boolean
+                  description: 'A machine-to-machine app: confidential, with no browser
+                    settings, getting tokens for APIs with client credentials.'
                 name:
                   type: string
                   minLength: 1
@@ -2164,12 +2241,18 @@ paths:
                     type: string
                     maxLength: 2048
                   maxItems: 20
+                  description: 'Where users may be sent back after signing in with
+                    an identity provider, compared exactly: https URLs, http://localhost
+                    URLs, or app schemes like com.example.app:/callback.'
                 redirect_uris:
                   type: array
                   items:
                     type: string
                     maxLength: 2048
                   maxItems: 20
+                  description: 'Where users may be sent back after signing in with
+                    an identity provider, compared exactly: https URLs, http://localhost
+                    URLs, or app schemes like com.example.app:/callback.'
               type: object
               unevaluatedProperties: false
               required:
@@ -2253,6 +2336,7 @@ paths:
                     type: string
                     maxLength: 64
                   maxItems: 50
+                  description: Scopes of the API the app may request.
               type: object
               unevaluatedProperties: false
               required:
@@ -2687,6 +2771,7 @@ paths:
                   - number
                   - boolean
                   - date
+                  description: Can't be changed later.
                 include_in_token:
                   anyOf:
                   - type: boolean
@@ -2695,6 +2780,8 @@ paths:
                   minLength: 1
                   maxLength: 40
                   pattern: "^[a-z][a-z0-9_]*$"
+                  description: Lowercase letters, numbers and underscores. Can't be
+                    changed later.
                 label:
                   type: string
                   minLength: 1
@@ -2705,6 +2792,7 @@ paths:
                   - type: integer
                     minimum: 1
                     maximum: 2048
+                  description: String attributes only.
                 required:
                   anyOf:
                   - type: boolean
@@ -2858,15 +2946,18 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 code:
                   type: string
                   minLength: 6
                   maxLength: 6
                   pattern: "^\\d{6}$"
+                  description: The 6-digit code from the email.
                 email:
                   type: string
                   minLength: 1
@@ -2879,6 +2970,8 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the link in the invitation, instead of email and
+                    code.
               type: object
               unevaluatedProperties: false
               required:
@@ -2920,15 +3013,18 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 code:
                   type: string
                   minLength: 6
                   maxLength: 6
                   pattern: "^\\d{6}$"
+                  description: The 6-digit code from the email.
                 email:
                   type: string
                   minLength: 1
@@ -2941,6 +3037,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the link in the email, instead of email and code.
               type: object
               unevaluatedProperties: false
               required:
@@ -2988,15 +3085,18 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 code:
                   type: string
                   minLength: 6
                   maxLength: 6
                   pattern: "^\\d{6}$"
+                  description: The 6-digit code from the email.
                 email:
                   type: string
                   minLength: 1
@@ -3005,6 +3105,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the link in the email, instead of email and code.
               type: object
               unevaluatedProperties: false
               required:
@@ -3051,10 +3152,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 email:
                   type: string
                   minLength: 1
@@ -3096,16 +3199,21 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the passkey options.
                 client_id:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 credential:
                   type: object
+                  description: The browser's answer (a PublicKeyCredential), as JSON
+                    (its toJSON()).
               type: object
               unevaluatedProperties: false
               required:
@@ -3153,10 +3261,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
               type: object
               unevaluatedProperties: false
               required:
@@ -3278,14 +3388,17 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 code:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: From the redirect back to the app.
                 code_verifier:
                   type: string
                   minLength: 43
@@ -3294,6 +3407,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 2048
+                  description: The redirect URI the sign-in started with.
               type: object
               unevaluatedProperties: false
               required:
@@ -3412,22 +3526,29 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 id_token:
                   type: string
                   minLength: 1
                   maxLength: 16384
+                  description: The ID token the provider's SDK returned.
                 name:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: The user's name, for apps that receive it separately
+                    (Apple, first sign-in only).
                 nonce:
                   type: string
                   minLength: 16
                   maxLength: 256
+                  description: The random nonce the app generated for this sign-in;
+                    for Apple, the value before hashing.
               type: object
               unevaluatedProperties: false
               required:
@@ -3484,10 +3605,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 refresh_token:
                   type: string
                   minLength: 1
@@ -3539,10 +3662,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 email:
                   type: string
                   minLength: 1
@@ -3584,14 +3709,18 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 session:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: The session of a challenge whose mfa_methods include
+                    passkey.
               type: object
               unevaluatedProperties: false
               required:
@@ -3636,10 +3765,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 email:
                   type: string
                   minLength: 1
@@ -3708,10 +3839,12 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 refresh_token:
                   type: string
                   minLength: 1
@@ -3756,12 +3889,16 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 64
+                  description: The app client's uid.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 256
+                  description: Confidential clients only.
                 custom_attributes:
                   type: object
+                  description: Values for the project's custom attributes, keyed by
+                    attribute key.
                 email:
                   type: string
                   format: email
@@ -3849,6 +3986,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 253
+                  description: A subdomain you control, e.g. login.example.com.
               type: object
               unevaluatedProperties: false
               required:
@@ -4054,6 +4192,8 @@ paths:
               properties:
                 custom_attributes:
                   type: object
+                  description: Values for the project's custom attributes, keyed by
+                    attribute key.
                 email:
                   type: string
                   format: email
@@ -4066,6 +4206,8 @@ paths:
                 send_invitation:
                   anyOf:
                   - type: boolean
+                  description: Email an invitation to set a password. Defaults to
+                    true.
               type: object
               unevaluatedProperties: false
               required:
@@ -4262,6 +4404,8 @@ paths:
               properties:
                 custom_attributes:
                   type: object
+                  description: Values for the project's custom attributes, keyed by
+                    attribute key.
                 name:
                   anyOf:
                   - type: 'null'
@@ -4492,6 +4636,7 @@ paths:
                 default_for_new_users:
                   anyOf:
                   - type: boolean
+                  description: New end users join the group automatically.
                 description:
                   anyOf:
                   - type: 'null'
@@ -4714,36 +4859,52 @@ paths:
                     minLength: 1
                     maxLength: 255
                   maxItems: 10
+                  description: Client ids of native apps that send the provider's
+                    ID tokens directly, e.g. iOS and Android client ids or an app's
+                    bundle id.
                 allow_idp_initiated:
                   anyOf:
                   - type: boolean
+                  description: 'SAML only: accept sign-ins started from the provider,
+                    landing on the app portal.'
                 apple_key_id:
                   type: string
                   minLength: 10
                   maxLength: 10
+                  description: Apple only.
                 apple_private_key:
                   type: string
                   minLength: 1
                   maxLength: 4000
+                  description: 'Apple only: the .p8 key''s contents, in PEM format.
+                    Write-only.'
                 apple_team_id:
                   type: string
                   minLength: 10
                   maxLength: 10
+                  description: Apple only.
                 client_id:
                   type: string
                   minLength: 1
                   maxLength: 255
+                  description: The client id registered with the provider. For Apple,
+                    the Services ID.
                 client_secret:
                   type: string
                   minLength: 1
                   maxLength: 1000
+                  description: Google and OIDC only. Write-only.
                 create_users:
                   anyOf:
                   - type: boolean
+                  description: Create end users on their first sign-in, even when
+                    self sign-up is off.
                 discovery_url:
                   type: string
                   minLength: 1
                   maxLength: 2048
+                  description: 'OIDC only: the issuer URL, or its /.well-known/openid-configuration
+                    URL.'
                 domains:
                   type: array
                   items:
@@ -4751,6 +4912,9 @@ paths:
                     minLength: 1
                     maxLength: 253
                   maxItems: 50
+                  description: Email domains the provider is authoritative for. SAML
+                    providers only sign in addresses at these domains, and users who
+                    enter them are sent to the provider.
                 enabled:
                   anyOf:
                   - type: boolean
@@ -4766,6 +4930,7 @@ paths:
                         type: string
                         minLength: 1
                         maxLength: 255
+                        description: A group value the provider sends.
                     type: object
                     unevaluatedProperties: false
                     required:
@@ -4773,21 +4938,28 @@ paths:
                     - value
                     additionalProperties: false
                   maxItems: 100
+                  description: Provider group values mapped to project groups. Replaces
+                    the current mappings.
                 kind:
                   enum:
                   - google
                   - apple
                   - oidc
                   - saml
+                  description: google, apple, oidc for any other OpenID Connect provider,
+                    or saml.
                 name:
                   type: string
                   minLength: 1
                   maxLength: 100
+                  description: Shown to end users, e.g. on sign-in buttons.
                 saml_email_attribute:
                   anyOf:
                   - type: 'null'
                   - type: string
                     maxLength: 255
+                  description: 'SAML only: the attribute with the email; empty uses
+                    the NameID.'
                 saml_groups_attribute:
                   anyOf:
                   - type: 'null'
@@ -4800,10 +4972,12 @@ paths:
                     minLength: 1
                     maxLength: 10000
                   maxItems: 5
+                  description: 'SAML only: the IdP''s signing certificates (PEM).'
                 saml_idp_entity_id:
                   type: string
                   minLength: 1
                   maxLength: 1024
+                  description: 'SAML only: the IdP''s entity ID.'
                 saml_name_attribute:
                   anyOf:
                   - type: 'null'
@@ -4819,14 +4993,18 @@ paths:
                   - type: 'null'
                   - type: string
                     maxLength: 2048
+                  description: 'SAML only: the IdP''s logout URL (HTTP-Redirect).'
                 saml_sso_url:
                   type: string
                   minLength: 1
                   maxLength: 2048
+                  description: 'SAML only: the IdP''s sign-on URL (HTTP-Redirect).'
                 scopes:
                   type: string
                   minLength: 1
                   maxLength: 500
+                  description: Space-separated; must include openid. Ignored for Apple,
+                    which always asks for name and email.
               type: object
               unevaluatedProperties: false
               required:
@@ -4934,34 +5112,49 @@ paths:
                     minLength: 1
                     maxLength: 255
                   maxItems: 10
+                  description: Client ids of native apps that send the provider's
+                    ID tokens directly, e.g. iOS and Android client ids or an app's
+                    bundle id.
                 allow_idp_initiated:
                   anyOf:
                   - type: boolean
+                  description: 'SAML only: accept sign-ins started from the provider,
+                    landing on the app portal.'
                 apple_key_id:
                   type: string
                   minLength: 10
                   maxLength: 10
+                  description: Apple only.
                 apple_private_key:
                   type: string
                   maxLength: 4000
+                  description: Write-only.
                 apple_team_id:
                   type: string
                   minLength: 10
                   maxLength: 10
+                  description: Apple only.
                 client_id:
                   type: string
                   minLength: 1
                   maxLength: 255
+                  description: The client id registered with the provider. For Apple,
+                    the Services ID.
                 client_secret:
                   type: string
                   maxLength: 1000
+                  description: Write-only.
                 create_users:
                   anyOf:
                   - type: boolean
+                  description: Create end users on their first sign-in, even when
+                    self sign-up is off.
                 discovery_url:
                   type: string
                   minLength: 1
                   maxLength: 2048
+                  description: 'OIDC only: the issuer URL, or its /.well-known/openid-configuration
+                    URL.'
                 domains:
                   type: array
                   items:
@@ -4969,6 +5162,9 @@ paths:
                     minLength: 1
                     maxLength: 253
                   maxItems: 50
+                  description: Email domains the provider is authoritative for. SAML
+                    providers only sign in addresses at these domains, and users who
+                    enter them are sent to the provider.
                 enabled:
                   anyOf:
                   - type: boolean
@@ -4984,6 +5180,7 @@ paths:
                         type: string
                         minLength: 1
                         maxLength: 255
+                        description: A group value the provider sends.
                     type: object
                     unevaluatedProperties: false
                     required:
@@ -4991,6 +5188,8 @@ paths:
                     - value
                     additionalProperties: false
                   maxItems: 100
+                  description: Provider group values mapped to project groups. Replaces
+                    the current mappings.
                 name:
                   type: string
                   minLength: 1
@@ -4998,11 +5197,16 @@ paths:
                 on_custom_domain:
                   anyOf:
                   - type: boolean
+                  description: 'SAML only: use the project''s verified custom domain
+                    for the service provider''s entity ID and URLs. Send the new metadata
+                    to the identity provider''s admin after switching.'
                 saml_email_attribute:
                   anyOf:
                   - type: 'null'
                   - type: string
                     maxLength: 255
+                  description: 'SAML only: the attribute with the email; empty uses
+                    the NameID.'
                 saml_groups_attribute:
                   anyOf:
                   - type: 'null'
@@ -5015,10 +5219,12 @@ paths:
                     minLength: 1
                     maxLength: 10000
                   maxItems: 5
+                  description: 'SAML only: the IdP''s signing certificates (PEM).'
                 saml_idp_entity_id:
                   type: string
                   minLength: 1
                   maxLength: 1024
+                  description: 'SAML only: the IdP''s entity ID.'
                 saml_name_attribute:
                   anyOf:
                   - type: 'null'
@@ -5034,14 +5240,18 @@ paths:
                   - type: 'null'
                   - type: string
                     maxLength: 2048
+                  description: 'SAML only: the IdP''s logout URL (HTTP-Redirect).'
                 saml_sso_url:
                   type: string
                   minLength: 1
                   maxLength: 2048
+                  description: 'SAML only: the IdP''s sign-on URL (HTTP-Redirect).'
                 scopes:
                   type: string
                   minLength: 1
                   maxLength: 500
+                  description: Space-separated; must include openid. Ignored for Apple,
+                    which always asks for name and email.
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -5118,6 +5328,8 @@ paths:
               properties:
                 custom_attributes:
                   type: object
+                  description: Values for the project's custom attributes, keyed by
+                    attribute key.
                 name:
                   anyOf:
                   - type: 'null'
@@ -5171,6 +5383,7 @@ paths:
                   minLength: 6
                   maxLength: 6
                   pattern: "^\\d{6}$"
+                  description: The 6-digit code from the email.
               type: object
               unevaluatedProperties: false
               required:
@@ -5640,6 +5853,8 @@ paths:
                     maxLength: 2048
                   minItems: 1
                   maxItems: 10
+                  description: Assertion consumer service URLs, for the HTTP-POST
+                    binding. The first is used for IdP-initiated sign-in.
                 attribute_mappings:
                   type: array
                   items:
@@ -5648,10 +5863,13 @@ paths:
                         type: string
                         minLength: 1
                         maxLength: 255
+                        description: The attribute name the app expects.
                       source:
                         type: string
                         minLength: 1
                         maxLength: 50
+                        description: email, email_verified, name, uid, groups, or
+                          custom:<attribute key>.
                     type: object
                     unevaluatedProperties: false
                     required:
@@ -5664,6 +5882,8 @@ paths:
                   - type: 'null'
                   - type: string
                     maxLength: 1024
+                  description: Sent with IdP-initiated sign-ins, e.g. the page to
+                    open in the app.
                 enabled:
                   anyOf:
                   - type: boolean
@@ -5671,6 +5891,7 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 1024
+                  description: The app's SAML entity ID (Issuer).
                 name:
                   type: string
                   minLength: 1
@@ -5694,11 +5915,15 @@ paths:
                   - type: 'null'
                   - type: string
                     maxLength: 2048
+                  description: The app's single logout URL, for the HTTP-Redirect
+                    binding.
                 sp_certificate:
                   anyOf:
                   - type: 'null'
                   - type: string
                     maxLength: 10000
+                  description: The app's signing certificate (PEM), to verify its
+                    signed requests.
               type: object
               unevaluatedProperties: false
               required:
@@ -5919,6 +6144,8 @@ paths:
                   - type: string
                     minLength: 1
                     maxLength: 2048
+                  description: An https URL containing {token}, used for links in
+                    end-user emails. null removes the link.
                 allow_self_sign_up:
                   anyOf:
                   - type: boolean
@@ -5928,6 +6155,8 @@ paths:
                   - type: string
                     minLength: 1
                     maxLength: 2048
+                  description: An https URL containing {token}, used for links in
+                    end-user emails. null removes the link.
                 name:
                   type: string
                   minLength: 1
@@ -5938,6 +6167,8 @@ paths:
                   - type: string
                     minLength: 1
                     maxLength: 2048
+                  description: An https URL containing {token}, used for links in
+                    end-user emails. null removes the link.
               type: object
               unevaluatedProperties: false
               additionalProperties: false
@@ -6184,6 +6415,7 @@ paths:
                   minLength: 3
                   maxLength: 40
                   pattern: "^[A-Za-z0-9-]+$"
+                  description: Account alias used in sign-in URLs.
               type: object
               unevaluatedProperties: false
               required:

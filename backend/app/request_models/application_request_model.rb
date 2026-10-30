@@ -27,10 +27,20 @@ class ApplicationRequestModel < Dry::Struct
   end
 
   # json_model_rb 0.1.30 marks `attribute?` keys as required unless their type is also `.optional`,
-  # so `required` is rebuilt from the struct's own key definitions.
+  # so `required` is rebuilt from the struct's own key definitions. It also drops the descriptions
+  # given with `.meta(description:)`, so they're added back to each property.
   # @return [Hash] JSON Schema for the request body
   def self.as_schema
     required = schema.keys.select(&:required?).map(&:name).sort
-    super.except(:required).merge(required.any? ? { required: required } : {}).merge(additionalProperties: false)
+    schema_hash = super.except(:required).merge(required.any? ? { required: required } : {}).merge(additionalProperties: false)
+    return schema_hash unless schema_hash[:properties]
+
+    schema_hash.merge(properties: schema_hash[:properties].to_h { |name, property| [name, describe(name, property)] })
   end
+
+  def self.describe(name, property)
+    description = schema.keys.find { |key| key.name == name.to_sym }&.type&.meta&.dig(:description)
+    description ? property.merge(description: description) : property
+  end
+  private_class_method :describe
 end
