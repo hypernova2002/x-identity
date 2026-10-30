@@ -16,14 +16,17 @@ module EndUsers
     # @return [EndUser]
     # @raise [ApiError] `validation_failed`
     def update(**changes)
-      if changes.key?(:custom_attributes)
-        result = AttributeValidator.new(project: @project).validate(changes[:custom_attributes], existing: @end_user.custom_attributes)
-        raise ApiError.new(:validation_failed, details: result.details) if result.details.any?
+      EndUser.transaction do
+        @end_user.lock!
+        if changes.key?(:custom_attributes)
+          result = AttributeValidator.new(project: @project).validate(changes[:custom_attributes], existing: @end_user.custom_attributes)
+          raise ApiError.new(:validation_failed, details: result.details) if result.details.any?
 
-        @end_user.custom_attributes = result.values
+          @end_user.custom_attributes = result.values
+        end
+        @end_user.name = changes[:name] if changes.key?(:name)
+        raise ApiError.from_record(@end_user) unless @end_user.save
       end
-      @end_user.name = changes[:name] if changes.key?(:name)
-      raise ApiError.from_record(@end_user) unless @end_user.save
 
       @project.realm.recorder(ip: @ip, user_agent: @user_agent)
         .record(action: "end_user.profile_updated", actor: @end_user, target: @end_user, metadata: { fields: changes.keys.map(&:to_s) })

@@ -45,16 +45,17 @@ module EndUsers
     def update(end_user, **changes)
       authorize!
 
-      if changes.key?(:custom_attributes)
-        result = AttributeValidator.new(project: @project).validate(changes[:custom_attributes], existing: end_user.custom_attributes, by_admin: true)
-        raise ApiError.new(:validation_failed, details: result.details) if result.details.any?
-
-        end_user.custom_attributes = result.values
-      end
-      end_user.name = changes[:name] if changes.key?(:name)
-
-      previous_status = end_user.status
+      previous_status = nil
       EndUser.transaction do
+        end_user.lock!
+        previous_status = end_user.status
+        if changes.key?(:custom_attributes)
+          result = AttributeValidator.new(project: @project).validate(changes[:custom_attributes], existing: end_user.custom_attributes, by_admin: true)
+          raise ApiError.new(:validation_failed, details: result.details) if result.details.any?
+
+          end_user.custom_attributes = result.values
+        end
+        end_user.name = changes[:name] if changes.key?(:name)
         raise ApiError.from_record(end_user) unless end_user.save
 
         end_user.disable! if changes[:status] == "disabled" && end_user.active?

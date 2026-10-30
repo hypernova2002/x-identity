@@ -111,5 +111,10 @@ changes.
 - Services take plain arguments (including `ip` and `user_agent` for auditing) and never touch the
   request.
 - Sign-in logic is shared between console users and end users through realms.
+- A write whose result depends on what's already stored (merging values, rules across fields or
+  rows) locks the resource's main row with `lock!` or `with_lock` inside its transaction, then
+  reads, validates and saves. Locking reloads the row, so the write never builds on a copy loaded
+  before another request's change. Use a transaction-scoped advisory lock only when there's no row
+  to lock yet.
 - The frontend reaches the API through `web/src/services/`; design tokens are in
   `web/src/assets/tokens.css`, and feature code uses the wrappers in `web/src/components/base/`.
