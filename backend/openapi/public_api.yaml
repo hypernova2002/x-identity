@@ -11940,6 +11940,7 @@ components:
       - verified_at
       - last_checked_at
       - check_error
+      - check_error_params
       - dns_missing_since
       - certificate_status
       - verify_until
@@ -11974,7 +11975,17 @@ components:
           type:
           - string
           - 'null'
-          description: What the last DNS check found wrong.
+          enum:
+          - missing_txt_record
+          - cname_mismatch
+          - missing_cname
+          - unknown
+          -
+          description: What the last DNS check found wrong, as a code.
+        check_error_params:
+          type: object
+          description: 'Values the check error refers to: name, hostname, found and
+            target.'
         dns_missing_since:
           type:
           - string

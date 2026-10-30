@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -429,6 +429,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_000005) do
     t.string "certificate_status", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "check_error_params", default: {}, null: false
     t.index ["hostname"], name: "index_project_domains_on_hostname", unique: true
     t.index ["project_id"], name: "index_project_domains_one_unverified", unique: true, where: "((status)::text <> 'verified'::text)"
     t.index ["project_id"], name: "index_project_domains_one_verified", unique: true, where: "((status)::text = 'verified'::text)"

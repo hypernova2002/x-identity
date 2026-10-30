@@ -3,14 +3,19 @@ class Schemas::ProjectDomain
 
   schema(
     type: :object,
-    required: %w[uid hostname status verified_at last_checked_at check_error dns_missing_since certificate_status verify_until created_at saml_apps saml_identity_providers passkey_count passkey_related_origins dns_records],
+    required: %w[uid hostname status verified_at last_checked_at check_error check_error_params dns_missing_since certificate_status verify_until created_at saml_apps saml_identity_providers passkey_count passkey_related_origins dns_records],
     properties: {
       uid: { type: :string },
       hostname: { type: :string },
       status: { type: :string, enum: %w[pending verified failed] },
       verified_at: { type: [ :string, :null ], format: "date-time" },
       last_checked_at: { type: [ :string, :null ], format: "date-time" },
-      check_error: { type: [ :string, :null ], description: "What the last DNS check found wrong." },
+      check_error: {
+        type: [ :string, :null ],
+        enum: [ "missing_txt_record", "cname_mismatch", "missing_cname", "unknown", nil ],
+        description: "What the last DNS check found wrong, as a code."
+      },
+      check_error_params: { type: :object, description: "Values the check error refers to: name, hostname, found and target." },
       dns_missing_since: { type: [ :string, :null ], format: "date-time", description: "Since when a verified domain's DNS records have been missing." },
       certificate_status: { type: :string, enum: %w[external], description: "external: TLS certificates are issued outside x-identity." },
       verify_until: { type: :string, format: "date-time", description: "When a pending domain stops being checked and fails." },

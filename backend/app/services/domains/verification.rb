@@ -13,8 +13,10 @@ module Domains
 
     # @return [ProjectDomain]
     def call
-      problem = problem_with_records
-      @domain.assign_attributes(last_checked_at: Time.current, check_attempts: @domain.check_attempts + 1, check_error: problem)
+      problem, params = problem_with_records
+      @domain.assign_attributes(
+        last_checked_at: Time.current, check_attempts: @domain.check_attempts + 1, check_error: problem, check_error_params: params || {}
+      )
 
       if @domain.status_verified?
         @domain.update!(dns_missing_since: problem ? (@domain.dns_missing_since || Time.current) : nil)
@@ -33,17 +35,18 @@ module Domains
 
     private
 
+    # @return [Array(String, Hash), nil] the problem's code and the values its message refers to
     def problem_with_records
       return nil if @domain.local? && !Rails.env.production?
 
       unless Array(@resolver.txt(@domain.txt_record_name)).include?(@domain.verification_token)
-        return "No TXT record #{@domain.txt_record_name} with the verification value was found."
+        return [ "missing_txt_record", { name: @domain.txt_record_name } ]
       end
 
       cname = @resolver.cname(@domain.hostname)
       return nil if cname == @domain.cname_target
 
-      cname ? "#{@domain.hostname} points to #{cname} instead of #{@domain.cname_target}." : "No CNAME record for #{@domain.hostname} was found."
+      cname ? [ "cname_mismatch", { hostname: @domain.hostname, found: cname, target: @domain.cname_target } ] : [ "missing_cname", { hostname: @domain.hostname } ]
     end
 
     def verify!

@@ -25,14 +25,17 @@ RSpec.describe Domains::Verification do
 
   it "keeps a domain pending, saying what's wrong, while records are missing or wrong" do
     records[:txt] = [ "something else" ]
-    expect(verify).to have_attributes(status: "pending", check_error: /No TXT record _x-identity.login.acme.com/)
+    expect(verify).to have_attributes(status: "pending", check_error: "missing_txt_record", check_error_params: { "name" => "_x-identity.login.acme.com" })
 
     records[:txt] = [ domain.verification_token ]
     records[:cname] = "elsewhere.example.com"
-    expect(verify).to have_attributes(status: "pending", check_error: "login.acme.com points to elsewhere.example.com instead of domains.x-identity.localhost.")
+    expect(verify).to have_attributes(
+      status: "pending", check_error: "cname_mismatch",
+      check_error_params: { "hostname" => "login.acme.com", "found" => "elsewhere.example.com", "target" => "domains.x-identity.localhost" }
+    )
 
     records[:cname] = nil
-    expect(verify.check_error).to eq("No CNAME record for login.acme.com was found.")
+    expect([ verify.check_error, verify.check_error_params ]).to eq([ "missing_cname", { "hostname" => "login.acme.com" } ])
   end
 
   it "fails a domain still unverified after 72 hours" do
