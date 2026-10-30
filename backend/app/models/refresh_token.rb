@@ -9,6 +9,9 @@ class RefreshToken < ApplicationRecord
   validates :family_id, :authenticated_at, :expires_at, presence: true
 
   scope :active, -> { where(used_at: nil, revoked_at: nil).where("expires_at > ?", Time.current) }
+  # Tokens of sessions that have ended. Used tokens of live sessions aren't included, because
+  # presenting one again is how a stolen token is noticed.
+  scope :ended, -> { where("revoked_at IS NOT NULL OR expires_at < ?", Time.current) }
 
   # @param token [String]
   # @return [String]
@@ -22,11 +25,10 @@ class RefreshToken < ApplicationRecord
     find_by(token_digest: digest(token))
   end
 
-  # Deletes a user's refresh tokens from sessions that have ended: expired or revoked. Used tokens
-  # of live sessions stay, because presenting one again is how a stolen token is noticed.
+  # Deletes a user's refresh tokens from sessions that have ended.
   # @param subject [User, EndUser]
   def self.prune_for!(subject)
-    Prunable.delete_batch(where(subject: subject).where("revoked_at IS NOT NULL OR expires_at < ?", Time.current))
+    Prunable.delete_batch(ended.where(subject: subject))
   end
 
   # @param family_id [String]

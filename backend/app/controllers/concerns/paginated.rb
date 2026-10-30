@@ -8,16 +8,20 @@ module Paginated
   DEFAULT_PER_PAGE = 25
   MAX_PER_PAGE = 100
   COUNT_CAP = 10_000
+  # The database still reads every row before a page, so very deep pages are refused.
+  MAX_PAGE = 1_000
 
   private
 
   # @param scope [ActiveRecord::Relation, #count]
   # @param capped [Boolean] count at most {COUNT_CAP} rows (or up to the requested page, if further)
+  # @raise [ApiError] `validation_failed` when the page is past {MAX_PAGE}
   def paginated(scope, capped: false)
     per_page = params.fetch(:per_page, DEFAULT_PER_PAGE).to_i.clamp(1, MAX_PER_PAGE)
+    page = [ params.fetch(:page, 1).to_i, 1 ].max
+    raise ApiError.validation(page: "Must be at most #{MAX_PAGE}. Use search or filters to narrow the list.") if page > MAX_PAGE
     return paginate(scope, per_page: per_page) unless capped && params[:exact_count] != "true"
 
-    page = [ params.fetch(:page, 1).to_i, 1 ].max
     limit = [ COUNT_CAP, page * per_page ].max
     count = scope.except(:order).limit(limit + 1).count(:all)
     page_of_rows = paginate(scope, per_page: per_page, count: count)

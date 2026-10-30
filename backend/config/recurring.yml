@@ -8,6 +8,10 @@ default: &default
     class: CheckDomainsJob
     queue: maintenance
     schedule: every hour at minute 30
+  prune_expired_records:
+    class: PruneExpiredRecordsJob
+    queue: maintenance
+    schedule: every hour at minute 45
   clear_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     queue: maintenance

@@ -31,6 +31,7 @@ class OneTimeToken < ApplicationRecord
   validates :expires_at, presence: true
 
   scope :usable, -> { where(consumed_at: nil).where("expires_at > ?", Time.current) }
+  scope :spent, -> { where("consumed_at IS NOT NULL OR expires_at < ?", Time.current) }
 
   # @param token [String]
   # @return [String]
@@ -66,7 +67,7 @@ class OneTimeToken < ApplicationRecord
 
     record = transaction do
       usable.where(subject: subject, purpose: purpose).update_all(consumed_at: Time.current) if replace
-      Prunable.delete_batch(where(subject: subject, purpose: purpose).where("consumed_at IS NOT NULL OR expires_at < ?", Time.current))
+      Prunable.delete_batch(spent.where(subject: subject, purpose: purpose))
       create!(
         subject: subject,
         purpose: purpose,

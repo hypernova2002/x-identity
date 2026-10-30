@@ -20,7 +20,7 @@ module ListParameters
         schema: { type: :object, properties: { search: { type: :string, description: search }, **filters } }
       },
       { name: :sort, in: :query, schema: { type: :string, enum: sorts.flat_map { |key| [ key, "-#{key}" ] } }, description: "`-` sorts descending." },
-      { name: :page, in: :query, schema: { type: :integer, minimum: 1 } },
+      { name: :page, in: :query, schema: { type: :integer, minimum: 1, maximum: Paginated::MAX_PAGE } },
       { name: :per_page, in: :query, schema: { type: :integer, minimum: 1 }, description: "Values above #{Paginated::MAX_PER_PAGE} are capped." },
       *(capped ? [ EXACT_COUNT ] : [])
     ]

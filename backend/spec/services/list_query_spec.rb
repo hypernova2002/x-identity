@@ -37,6 +37,13 @@ RSpec.describe ListQuery do
     expect(sql).to end_with(%("groups"."id" ASC))
   end
 
+  it "places nulls last only where there can be nulls, so descending sorts on required columns can use an index" do
+    nullable = described_class.new(sorts: { "name" => :name, "description" => :description }, default_sort: "name")
+    sql = ->(sort) { nullable.call(project.groups, ActionController::Parameters.new(sort: sort)).to_sql }
+
+    expect([ sql.call("-name"), sql.call("-description") ].map { |query| query.include?("NULLS LAST") }).to eq([ false, true ])
+  end
+
   it "maps q[search] to the listing's search predicate and combines filters" do
     expect(names(q: { search: "sta" })).to eq(%w[Staff])
     expect(names(q: { search: "s", default_for_new_users_eq: "false" })).to eq(%w[Admins Staff])

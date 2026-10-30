@@ -74,6 +74,13 @@ RSpec.describe "Project audit log", type: :openapi do
     expect([ response.headers["Total"], response.headers["Total-Capped"] ]).to eq([ "8", "true" ])
   end
 
+  it "refuses pages past the last one it serves" do
+    get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/audit-events", params: { page: Paginated::MAX_PAGE + 1 },
+      headers: auth_headers_for(member("developer"))
+
+    expect([ response.status, response.parsed_body.dig("error", "details", 0, "field") ]).to eq([ 422, "page" ])
+  end
+
   it "is readable by project admins" do
     assert_api_response :get, 200, headers: auth_headers_for(member("admin")), path_params: path_params
   end

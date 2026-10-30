@@ -44,6 +44,14 @@ class ListQuery
     column = @sorts.fetch(key) { raise ApiError.validation(sort: "Sort by one of: #{@sorts.keys.join(', ')}.") }
 
     expression = column.is_a?(Symbol) ? scope.arel_table[column] : Arel.sql(column)
-    scope.reorder(expression.public_send(direction).nulls_last, scope.arel_table[:id].public_send(direction))
+    ordering = expression.public_send(direction)
+    ordering = ordering.nulls_last if nullable?(scope, column)
+    scope.reorder(ordering, scope.arel_table[:id].public_send(direction))
+  end
+
+  # NULLS LAST on a descending sort stops Postgres reading the rows in order from an index, so it's
+  # only added where there can be nulls to place. SQL expressions might be null, so they keep it.
+  def nullable?(scope, column)
+    !column.is_a?(Symbol) || scope.klass.columns_hash.fetch(column.to_s).null
   end
 end

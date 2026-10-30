@@ -3,6 +3,8 @@
 # stored. Sessions end when they expire, on logout, and when the user's sessions are revoked.
 class BrowserSession < ApplicationRecord
   COOKIE_NAME = "xid_sso".freeze
+  # Ended sessions are kept this long, to leave time to finish single logout.
+  KEEP_ENDED_FOR = 1.day
 
   belongs_to :project
   belongs_to :end_user
@@ -12,6 +14,7 @@ class BrowserSession < ApplicationRecord
   has_many :browser_session_apps, dependent: :delete_all
 
   scope :active, -> { where(revoked_at: nil).where("expires_at > ?", Time.current) }
+  scope :ended_before, ->(cutoff) { where("revoked_at < ? OR expires_at < ?", cutoff, cutoff) }
 
   # @param token [String]
   # @return [String]
@@ -39,11 +42,19 @@ class BrowserSession < ApplicationRecord
     [ session, token ]
   end
 
-  # Hosted login sessions that ended over a day ago; the delay leaves time to finish single logout.
+  # Deletes a user's hosted login sessions that ended over {KEEP_ENDED_FOR} ago.
   # @param end_user [EndUser]
   def self.prune_for!(end_user)
-    cutoff = 1.day.ago
-    ids = where(end_user: end_user).where("revoked_at < ? OR expires_at < ?", cutoff, cutoff).limit(Prunable::BATCH).pluck(:id)
+    delete_with_apps(where(end_user: end_user).ended_before(KEEP_ENDED_FOR.ago).limit(Prunable::BATCH).pluck(:id))
+  end
+
+  # Deletes every hosted login session that ended over {KEEP_ENDED_FOR} ago, a batch at a time.
+  def self.prune_all!
+    ended_before(KEEP_ENDED_FOR.ago).in_batches(of: Prunable::SWEEP_BATCH) { |batch| delete_with_apps(batch.pluck(:id)) }
+  end
+
+  # @param ids [Array<Integer>]
+  def self.delete_with_apps(ids)
     return if ids.empty?
 
     BrowserSessionApp.where(browser_session_id: ids).delete_all

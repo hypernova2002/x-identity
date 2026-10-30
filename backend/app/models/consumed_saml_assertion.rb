@@ -3,12 +3,14 @@
 class ConsumedSamlAssertion < ApplicationRecord
   belongs_to :identity_provider
 
+  scope :expired, -> { where("expires_at < ?", Time.current) }
+
   # @param provider [IdentityProvider]
   # @param assertion_id [String]
   # @param expires_at [Time]
   # @return [Boolean] false when the assertion was already used
   def self.consume(provider, assertion_id, expires_at)
-    where("expires_at < ?", Time.current).delete_all
+    Prunable.delete_batch(expired)
     create!(identity_provider: provider, assertion_id: assertion_id, expires_at: expires_at)
     true
   rescue ActiveRecord::RecordNotUnique
