@@ -4,7 +4,7 @@ RSpec.describe AttributeDefinitions::CreateRequest do
   let(:valid_body) { { key: "plan", label: "Plan", data_type: "string" } }
 
   it_behaves_like "a required field", :key
-  it_behaves_like "a string field", :key, min: 1, max: 40
+  it_behaves_like "a string field", :key, min: 1, max: EndUserAttributeDefinition::KEY_MAX_LENGTH
   it_behaves_like "a field accepting", :key, %w[plan plan_2 a]
   it_behaves_like "a field rejecting", :key, %w[Plan 2plan _plan plan-2]
 

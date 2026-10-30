@@ -145,10 +145,29 @@ RSpec.shared_examples "an array field" do |field, max:, item:, min: 0, invalid_i
   it_behaves_like "a nullable field", field, nullable
 end
 
-RSpec.shared_examples "a hash field" do |field, nullable: false|
-  it_behaves_like "a field accepting", field, [ {}, { "a" => "b" } ]
+RSpec.shared_examples "a hash field" do |field, max:, nullable: false|
+  it "accepts #{max} keys for #{field}" do
+    expect_accepted(body_with(field, Array.new(max) { |index| [ "key#{index}", true ] }.to_h))
+  end
+
+  it "rejects #{max + 1} keys for #{field}" do
+    expect_rejected(body_with(field, Array.new(max + 1) { |index| [ "key#{index}", true ] }.to_h), field)
+  end
+
+  it_behaves_like "a field accepting", field, [ {} ]
   it_behaves_like "a field rejecting", field, [ "a", [ "a" ] ]
   it_behaves_like "a nullable field", field, nullable
+end
+
+RSpec.shared_examples "a custom attributes field" do |field|
+  max_length = EndUserAttributeDefinition::MAX_STRING_LENGTH
+  key_length = EndUserAttributeDefinition::KEY_MAX_LENGTH
+
+  it_behaves_like "a hash field", field, max: EndUserAttributeDefinition::MAX_PER_PROJECT
+  it_behaves_like "a field accepting", field,
+    [ { "a" * key_length => "x" }, { "plan" => "a" * max_length }, { "seats" => 3 }, { "score" => 1.5 }, { "vip" => true }, { "plan" => nil } ]
+  it_behaves_like "a field rejecting", field,
+    [ { "a" * (key_length + 1) => "x" }, { "" => "x" }, { "plan" => "a" * (max_length + 1) }, { "plan" => [ "a" ] }, { "plan" => { "a" => "b" } } ]
 end
 
 RSpec.shared_examples "an email field" do |field, nullable: false|

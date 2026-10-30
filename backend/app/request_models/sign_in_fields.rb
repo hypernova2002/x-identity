@@ -9,7 +9,7 @@ module SignInFields
   ChallengeNewPassword = RequestTypes::Password.meta(description: "For new_password.")
   ChallengeAuthenticationId = RequestTypes::Token.meta(description: "For passkey: from the passkey options for this challenge.")
   ChallengeRegistrationId = RequestTypes::Token.meta(description: "For passkey_setup: from the passkey setup options.")
-  ChallengeCredential = T::Hash
+  ChallengeCredential = (Passkeys::AssertionCredentialRequest | Passkeys::AttestationCredentialRequest)
     .meta(description: "For passkey: the browser's answer; for passkey_setup: the new passkey (a PublicKeyCredential), as JSON.")
 
   SignInEmail = RequestTypes::EmailLookup.meta(description: "The email address the user signs in with, in any case.")
@@ -21,7 +21,7 @@ module SignInFields
   PasskeyChallengeSession = RequestTypes::Token.meta(description: "The session of a challenge whose mfa_methods include passkey.")
   PasskeySetupSession = RequestTypes::Token.meta(description: "The session of the passkey_setup challenge.")
   PasskeyAuthenticationId = RequestTypes::Token.meta(description: "From the passkey options.")
-  PasskeyCredential = T::Hash.meta(description: "The browser's answer (a PublicKeyCredential), as JSON (its toJSON()).")
+  PasskeyCredential = Passkeys::AssertionCredentialRequest.meta(description: "The browser's answer (a PublicKeyCredential), as JSON (its toJSON()).")
 
   EmailLinkToken = RequestTypes::Token.meta(description: "From the link in the email, instead of email and code.")
   EmailLinkCode = RequestTypes::EmailCode.meta(description: "The 6-digit code from the email, sent with email instead of token.")

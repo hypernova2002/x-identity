@@ -11,7 +11,7 @@ module RequestFieldExamplesSpec
     attribute? :enabled, T::Bool
     attribute? :limit, T::Integer.constrained(gteq: 1, lteq: 60)
     attribute? :urls, T::Array.of(T::String.constrained(min_size: 1, max_size: 8)).constrained(min_size: 1, max_size: 3)
-    attribute? :extra, T::Hash
+    attribute? :extra, T::Hash.constrained(max_size: 3)
   end
 end
 
@@ -27,5 +27,5 @@ RSpec.describe RequestFieldExamplesSpec::ExampleRequest do
   it_behaves_like "a boolean field", :enabled
   it_behaves_like "an integer field", :limit, min: 1, max: 60
   it_behaves_like "an array field", :urls, min: 1, max: 3, item: "https", item_max: 8, invalid_items: [ "" ]
-  it_behaves_like "a hash field", :extra
+  it_behaves_like "a hash field", :extra, max: 3
 end

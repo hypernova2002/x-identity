@@ -9,7 +9,8 @@ class EndUserAttributeDefinition < ApplicationRecord
     %w[key label data_type required user_editable include_in_token]
   end
 
-  MAX_PER_PROJECT = 50
+  MAX_PER_PROJECT = 200
+  KEY_MAX_LENGTH = 255
   MAX_STRING_LENGTH = 2048
   RESERVED_KEYS = %w[
     sub uid email email_verified name password status iss aud exp iat auth_time amr sid jti token_use client_id
@@ -21,7 +22,7 @@ class EndUserAttributeDefinition < ApplicationRecord
 
   validates :key,
     presence: true,
-    format: { with: /\A[a-z][a-z0-9_]{0,39}\z/, message: "must start with a letter and use only lowercase letters, numbers and underscores" },
+    format: { with: /\A[a-z][a-z0-9_]{0,#{KEY_MAX_LENGTH - 1}}\z/, message: "must start with a letter and use only lowercase letters, numbers and underscores" },
     exclusion: { in: RESERVED_KEYS, message: "is reserved" },
     uniqueness: { scope: :project_id }
   validates :label, presence: true, length: { maximum: 100 }

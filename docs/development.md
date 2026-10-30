@@ -108,7 +108,8 @@ changes.
 - Records are exposed by prefixed uids (`HasUid`), never database ids.
 - Request bodies are parsed by request models in `backend/app/request_models/`, which reject unknown
   fields; controllers pass the fields to services as keyword arguments. Every field has a
-  description and every string and array a maximum size. Field types used by more than one
+  description and every string, array and hash a maximum size. Objects with known fields are
+  nested request models (e.g. `Passkeys::AssertionCredentialRequest`). Field types used by more than one
   resource are in `RequestTypes`; those a resource's requests share (such as create and update) are
   in its `Fields` module, e.g. `SamlApps::Fields`. Limits use the model's constant where there is
   one. Optional text fields reject `""`; `null` clears them.

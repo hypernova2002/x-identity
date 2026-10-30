@@ -643,7 +643,83 @@ paths:
                   maxLength: 256
                   description: From the passkey options.
                 credential:
+                  properties:
+                    authenticatorAttachment:
+                      anyOf:
+                      - type: 'null'
+                      - enum:
+                        - platform
+                        - cross-platform
+                      description: 'Where the passkey is: platform (this device) or
+                        cross-platform (a security key or phone).'
+                    clientExtensionResults:
+                      anyOf:
+                      - type: 'null'
+                      - type: object
+                        maxProperties: 16
+                      description: The results of WebAuthn extensions, keyed by extension.
+                    id:
+                      type: string
+                      minLength: 1
+                      maxLength: 1364
+                      description: The credential ID, base64url-encoded.
+                    rawId:
+                      type: string
+                      minLength: 1
+                      maxLength: 1364
+                      description: The credential ID, base64url-encoded (the same
+                        as id).
+                    response:
+                      properties:
+                        attestationObject:
+                          anyOf:
+                          - type: 'null'
+                          - type: string
+                            minLength: 1
+                            maxLength: 65536
+                          description: The attestation object.
+                        authenticatorData:
+                          type: string
+                          minLength: 1
+                          maxLength: 8192
+                          description: The authenticator data.
+                        clientDataJSON:
+                          type: string
+                          minLength: 1
+                          maxLength: 8192
+                          description: The client data the browser passed to the authenticator.
+                        signature:
+                          type: string
+                          minLength: 1
+                          maxLength: 2048
+                          description: The authenticator's signature.
+                        userHandle:
+                          anyOf:
+                          - type: 'null'
+                          - type: string
+                            minLength: 1
+                            maxLength: 86
+                          description: The user handle the passkey was created with.
+                      type: object
+                      unevaluatedProperties: false
+                      required:
+                      - authenticatorData
+                      - clientDataJSON
+                      - signature
+                      additionalProperties: false
+                      description: The authenticator's signed answer.
+                    type:
+                      enum:
+                      - public-key
+                      description: Always public-key.
                   type: object
+                  unevaluatedProperties: false
+                  required:
+                  - id
+                  - rawId
+                  - response
+                  - type
+                  additionalProperties: false
                   description: The browser's answer (a PublicKeyCredential), as JSON
                     (its toJSON()).
               type: object
@@ -892,7 +968,170 @@ paths:
                   maxLength: 32
                   description: For otp and mfa_setup.
                 credential:
-                  type: object
+                  anyOf:
+                  - properties:
+                      authenticatorAttachment:
+                        anyOf:
+                        - type: 'null'
+                        - enum:
+                          - platform
+                          - cross-platform
+                        description: 'Where the passkey is: platform (this device)
+                          or cross-platform (a security key or phone).'
+                      clientExtensionResults:
+                        anyOf:
+                        - type: 'null'
+                        - type: object
+                          maxProperties: 16
+                        description: The results of WebAuthn extensions, keyed by
+                          extension.
+                      id:
+                        type: string
+                        minLength: 1
+                        maxLength: 1364
+                        description: The credential ID, base64url-encoded.
+                      rawId:
+                        type: string
+                        minLength: 1
+                        maxLength: 1364
+                        description: The credential ID, base64url-encoded (the same
+                          as id).
+                      response:
+                        properties:
+                          attestationObject:
+                            anyOf:
+                            - type: 'null'
+                            - type: string
+                              minLength: 1
+                              maxLength: 65536
+                            description: The attestation object.
+                          authenticatorData:
+                            type: string
+                            minLength: 1
+                            maxLength: 8192
+                            description: The authenticator data.
+                          clientDataJSON:
+                            type: string
+                            minLength: 1
+                            maxLength: 8192
+                            description: The client data the browser passed to the
+                              authenticator.
+                          signature:
+                            type: string
+                            minLength: 1
+                            maxLength: 2048
+                            description: The authenticator's signature.
+                          userHandle:
+                            anyOf:
+                            - type: 'null'
+                            - type: string
+                              minLength: 1
+                              maxLength: 86
+                            description: The user handle the passkey was created with.
+                        type: object
+                        unevaluatedProperties: false
+                        required:
+                        - authenticatorData
+                        - clientDataJSON
+                        - signature
+                        additionalProperties: false
+                        description: The authenticator's signed answer.
+                      type:
+                        enum:
+                        - public-key
+                        description: Always public-key.
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - id
+                    - rawId
+                    - response
+                    - type
+                    additionalProperties: false
+                  - properties:
+                      authenticatorAttachment:
+                        anyOf:
+                        - type: 'null'
+                        - enum:
+                          - platform
+                          - cross-platform
+                        description: 'Where the passkey is: platform (this device)
+                          or cross-platform (a security key or phone).'
+                      clientExtensionResults:
+                        anyOf:
+                        - type: 'null'
+                        - type: object
+                          maxProperties: 16
+                        description: The results of WebAuthn extensions, keyed by
+                          extension.
+                      id:
+                        type: string
+                        minLength: 1
+                        maxLength: 1364
+                        description: The credential ID, base64url-encoded.
+                      rawId:
+                        type: string
+                        minLength: 1
+                        maxLength: 1364
+                        description: The credential ID, base64url-encoded (the same
+                          as id).
+                      response:
+                        properties:
+                          attestationObject:
+                            type: string
+                            minLength: 1
+                            maxLength: 65536
+                            description: The attestation object.
+                          authenticatorData:
+                            type: string
+                            minLength: 1
+                            maxLength: 8192
+                            description: The authenticator data.
+                          clientDataJSON:
+                            type: string
+                            minLength: 1
+                            maxLength: 8192
+                            description: The client data the browser passed to the
+                              authenticator.
+                          publicKey:
+                            anyOf:
+                            - type: 'null'
+                            - type: string
+                              minLength: 1
+                              maxLength: 8192
+                            description: The new credential's public key (SubjectPublicKeyInfo).
+                          publicKeyAlgorithm:
+                            type: integer
+                            description: The public key's COSE algorithm, e.g. -7
+                              for ES256.
+                          transports:
+                            type: array
+                            items:
+                              type: string
+                              minLength: 1
+                              maxLength: 32
+                            maxItems: 10
+                            description: How the authenticator can be reached, e.g.
+                              internal, hybrid or usb.
+                        type: object
+                        unevaluatedProperties: false
+                        required:
+                        - attestationObject
+                        - clientDataJSON
+                        additionalProperties: false
+                        description: The authenticator's attestation of the new passkey.
+                      type:
+                        enum:
+                        - public-key
+                        description: Always public-key.
+                    type: object
+                    unevaluatedProperties: false
+                    required:
+                    - id
+                    - rawId
+                    - response
+                    - type
+                    additionalProperties: false
                   description: 'For passkey: the browser''s answer; for passkey_setup:
                     the new passkey (a PublicKeyCredential), as JSON.'
                 new_password:
@@ -1543,7 +1782,88 @@ paths:
             schema:
               properties:
                 credential:
+                  properties:
+                    authenticatorAttachment:
+                      anyOf:
+                      - type: 'null'
+                      - enum:
+                        - platform
+                        - cross-platform
+                      description: 'Where the passkey is: platform (this device) or
+                        cross-platform (a security key or phone).'
+                    clientExtensionResults:
+                      anyOf:
+                      - type: 'null'
+                      - type: object
+                        maxProperties: 16
+                      description: The results of WebAuthn extensions, keyed by extension.
+                    id:
+                      type: string
+                      minLength: 1
+                      maxLength: 1364
+                      description: The credential ID, base64url-encoded.
+                    rawId:
+                      type: string
+                      minLength: 1
+                      maxLength: 1364
+                      description: The credential ID, base64url-encoded (the same
+                        as id).
+                    response:
+                      properties:
+                        attestationObject:
+                          type: string
+                          minLength: 1
+                          maxLength: 65536
+                          description: The attestation object.
+                        authenticatorData:
+                          type: string
+                          minLength: 1
+                          maxLength: 8192
+                          description: The authenticator data.
+                        clientDataJSON:
+                          type: string
+                          minLength: 1
+                          maxLength: 8192
+                          description: The client data the browser passed to the authenticator.
+                        publicKey:
+                          anyOf:
+                          - type: 'null'
+                          - type: string
+                            minLength: 1
+                            maxLength: 8192
+                          description: The new credential's public key (SubjectPublicKeyInfo).
+                        publicKeyAlgorithm:
+                          type: integer
+                          description: The public key's COSE algorithm, e.g. -7 for
+                            ES256.
+                        transports:
+                          type: array
+                          items:
+                            type: string
+                            minLength: 1
+                            maxLength: 32
+                          maxItems: 10
+                          description: How the authenticator can be reached, e.g.
+                            internal, hybrid or usb.
+                      type: object
+                      unevaluatedProperties: false
+                      required:
+                      - attestationObject
+                      - clientDataJSON
+                      additionalProperties: false
+                      description: The authenticator's attestation of the new passkey.
+                    type:
+                      enum:
+                      - public-key
+                      description: Always public-key.
                   type: object
+                  unevaluatedProperties: false
+                  required:
+                  - id
+                  - rawId
+                  - response
+                  - type
+                  additionalProperties: false
                   description: The PublicKeyCredential the browser created, as JSON
                     (its toJSON()).
                 name:
@@ -2845,7 +3165,7 @@ paths:
                 key:
                   type: string
                   minLength: 1
-                  maxLength: 40
+                  maxLength: 255
                   pattern: "^[a-z][a-z0-9_]*$"
                   description: Lowercase letters, numbers and underscores, starting
                     with a letter. Can't be changed later.
@@ -3295,7 +3615,83 @@ paths:
                   maxLength: 256
                   description: Confidential clients only.
                 credential:
+                  properties:
+                    authenticatorAttachment:
+                      anyOf:
+                      - type: 'null'
+                      - enum:
+                        - platform
+                        - cross-platform
+                      description: 'Where the passkey is: platform (this device) or
+                        cross-platform (a security key or phone).'
+                    clientExtensionResults:
+                      anyOf:
+                      - type: 'null'
+                      - type: object
+                        maxProperties: 16
+                      description: The results of WebAuthn extensions, keyed by extension.
+                    id:
+                      type: string
+                      minLength: 1
+                      maxLength: 1364
+                      description: The credential ID, base64url-encoded.
+                    rawId:
+                      type: string
+                      minLength: 1
+                      maxLength: 1364
+                      description: The credential ID, base64url-encoded (the same
+                        as id).
+                    response:
+                      properties:
+                        attestationObject:
+                          anyOf:
+                          - type: 'null'
+                          - type: string
+                            minLength: 1
+                            maxLength: 65536
+                          description: The attestation object.
+                        authenticatorData:
+                          type: string
+                          minLength: 1
+                          maxLength: 8192
+                          description: The authenticator data.
+                        clientDataJSON:
+                          type: string
+                          minLength: 1
+                          maxLength: 8192
+                          description: The client data the browser passed to the authenticator.
+                        signature:
+                          type: string
+                          minLength: 1
+                          maxLength: 2048
+                          description: The authenticator's signature.
+                        userHandle:
+                          anyOf:
+                          - type: 'null'
+                          - type: string
+                            minLength: 1
+                            maxLength: 86
+                          description: The user handle the passkey was created with.
+                      type: object
+                      unevaluatedProperties: false
+                      required:
+                      - authenticatorData
+                      - clientDataJSON
+                      - signature
+                      additionalProperties: false
+                      description: The authenticator's signed answer.
+                    type:
+                      enum:
+                      - public-key
+                      description: Always public-key.
                   type: object
+                  unevaluatedProperties: false
+                  required:
+                  - id
+                  - rawId
+                  - response
+                  - type
+                  additionalProperties: false
                   description: The browser's answer (a PublicKeyCredential), as JSON
                     (its toJSON()).
               type: object
@@ -3988,6 +4384,18 @@ paths:
                   description: Confidential clients only.
                 custom_attributes:
                   type: object
+                  propertyNames:
+                    minLength: 1
+                    maxLength: 255
+                  additionalProperties:
+                    anyOf:
+                    - type: string
+                      maxLength: 2048
+                    - type: integer
+                    - type: number
+                    - type: boolean
+                    - type: 'null'
+                  maxProperties: 200
                   description: Values for the project's custom attributes, keyed by
                     attribute key.
                 email:
@@ -4288,6 +4696,18 @@ paths:
               properties:
                 custom_attributes:
                   type: object
+                  propertyNames:
+                    minLength: 1
+                    maxLength: 255
+                  additionalProperties:
+                    anyOf:
+                    - type: string
+                      maxLength: 2048
+                    - type: integer
+                    - type: number
+                    - type: boolean
+                    - type: 'null'
+                  maxProperties: 200
                   description: Values for the project's custom attributes, keyed by
                     attribute key.
                 email:
@@ -4504,6 +4924,18 @@ paths:
               properties:
                 custom_attributes:
                   type: object
+                  propertyNames:
+                    minLength: 1
+                    maxLength: 255
+                  additionalProperties:
+                    anyOf:
+                    - type: string
+                      maxLength: 2048
+                    - type: integer
+                    - type: number
+                    - type: boolean
+                    - type: 'null'
+                  maxProperties: 200
                   description: Values for the project's custom attributes, keyed by
                     attribute key.
                 name:
@@ -5464,6 +5896,18 @@ paths:
               properties:
                 custom_attributes:
                   type: object
+                  propertyNames:
+                    minLength: 1
+                    maxLength: 255
+                  additionalProperties:
+                    anyOf:
+                    - type: string
+                      maxLength: 2048
+                    - type: integer
+                    - type: number
+                    - type: boolean
+                    - type: 'null'
+                  maxProperties: 200
                   description: Values for the project's user-editable custom attributes,
                     keyed by attribute key.
                 name:
@@ -6008,7 +6452,7 @@ paths:
                       source:
                         type: string
                         minLength: 1
-                        maxLength: 50
+                        maxLength: 262
                         description: email, email_verified, name, uid, groups, or
                           custom:<attribute key>.
                     type: object

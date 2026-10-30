@@ -1,6 +1,6 @@
 module AttributeDefinitions
   class CreateRequest < ApplicationRequestModel
-    attribute :key, RequestTypes::T::String.constrained(min_size: 1, max_size: 40, format: /^[a-z][a-z0-9_]*$/)
+    attribute :key, RequestTypes::T::String.constrained(min_size: 1, max_size: EndUserAttributeDefinition::KEY_MAX_LENGTH, format: /^[a-z][a-z0-9_]*$/)
       .meta(description: "Lowercase letters, numbers and underscores, starting with a letter. Can't be changed later.")
     attribute :label, Fields::Label
     attribute :data_type, RequestTypes::T::String.enum(*EndUserAttributeDefinition.data_types.keys)

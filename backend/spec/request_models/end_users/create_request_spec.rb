@@ -10,7 +10,7 @@ RSpec.describe EndUsers::CreateRequest do
   it_behaves_like "a name field", :name, nullable: true
 
   it_behaves_like "an optional field", :custom_attributes
-  it_behaves_like "a hash field", :custom_attributes
+  it_behaves_like "a custom attributes field", :custom_attributes
 
   it_behaves_like "an optional field", :send_invitation
   it_behaves_like "a boolean field", :send_invitation

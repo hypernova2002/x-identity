@@ -35,12 +35,13 @@ module Passkeys
     end
 
     # @param registration_id [String] from {#options}
-    # @param credential [Hash] the PublicKeyCredential the browser created, as JSON
+    # @param credential [Hash] the PublicKeyCredential the browser created, as JSON, with string or symbol keys
     # @param name [String, nil] defaults to the browser and device, e.g. "Safari on iPhone"
     # @return [WebauthnCredential]
     # @raise [ApiError] `reauthentication_required`, `invalid_passkey` or `validation_failed`
     def finish(registration_id:, credential:, name: nil)
       require_fresh_sign_in!
+      credential = credential.to_h.deep_stringify_keys
       record = OneTimeToken.find_usable(registration_id, purpose: :passkey_registration)
       raise ApiError.new(:invalid_passkey) unless record && record.subject == @user && record.data["rp_id"] == @relying_party.id && record.consume!
 

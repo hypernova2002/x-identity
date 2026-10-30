@@ -7,5 +7,5 @@ RSpec.describe SamlApps::AttributeMapping do
   it_behaves_like "a string field", :name, min: 1, max: 255
 
   it_behaves_like "a required field", :source
-  it_behaves_like "a string field", :source, min: 1, max: 50
+  it_behaves_like "a string field", :source, min: 1, max: "custom:".length + EndUserAttributeDefinition::KEY_MAX_LENGTH
 end

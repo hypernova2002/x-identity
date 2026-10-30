@@ -25,11 +25,12 @@ module Passkeys
     end
 
     # @param authentication_id [String] from {#options}
-    # @param credential [Hash] the browser's answer (a PublicKeyCredential), as JSON
+    # @param credential [Hash] the browser's answer (a PublicKeyCredential), as JSON, with string or symbol keys
     # @param user [User, EndUser, nil] for a second factor: the passkey must be theirs
     # @return [Array(User, Array<String>), Array(EndUser, Array<String>)] the user, and the `amr` the passkey proves
     # @raise [ApiError] `invalid_passkey` or `too_many_attempts`
     def verify(authentication_id:, credential:, user: nil)
+      credential = credential.to_h.deep_stringify_keys
       record = OneTimeToken.find_usable(authentication_id.to_s, purpose: :passkey_authentication)
       raise ApiError.new(:invalid_passkey) unless record && record.subject == (user || @realm.owner) && record.data["rp_id"] == @relying_party.id && record.consume!
 

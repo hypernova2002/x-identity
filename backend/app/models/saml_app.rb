@@ -12,7 +12,7 @@ class SamlApp < ApplicationRecord
     "unspecified" => "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
   }.freeze
   ATTRIBUTE_SOURCES = %w[email email_verified name uid groups].freeze
-  CUSTOM_ATTRIBUTE_SOURCE = /\Acustom:[a-z][a-z0-9_]{0,39}\z/
+  CUSTOM_ATTRIBUTE_SOURCE = /\Acustom:[a-z][a-z0-9_]{0,#{EndUserAttributeDefinition::KEY_MAX_LENGTH - 1}}\z/
   MAX_ACS_URLS = 10
   MAX_ATTRIBUTES = 20
 

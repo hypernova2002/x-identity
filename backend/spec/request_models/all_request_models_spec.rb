@@ -2,8 +2,10 @@ require "rails_helper"
 
 Rails.autoloaders.main.eager_load_dir(Rails.root.join("app/request_models"))
 
+# A nested model given a description with `.meta` is a copy of that model, not another one.
 request_models = ApplicationRequestModel.descendants.select do |request_model|
-  request_model.name.present? && Object.const_source_location(request_model.name)&.first.to_s.start_with?(Rails.root.join("app/request_models").to_s)
+  request_model.name.present? && request_model.meta.empty? &&
+    Object.const_source_location(request_model.name)&.first.to_s.start_with?(Rails.root.join("app/request_models").to_s)
 end
 
 RSpec.describe "Every request model" do
@@ -16,6 +18,13 @@ RSpec.describe "Every request model" do
       when "array"
         problems << "#{path} has no maximum number of items" unless variant[:maxItems]
         schema_problems(variant[:items], "#{path}[]", problems) if variant[:items]
+      when "object"
+        if variant[:properties]
+          variant[:properties].each { |name, nested| schema_problems(nested, "#{path}.#{name}", problems) }
+        else
+          problems << "#{path} has no maximum number of keys" unless variant[:maxProperties]
+          schema_problems(variant[:additionalProperties], "#{path}{}", problems) if variant[:additionalProperties].is_a?(Hash)
+        end
       end
     end
     problems
@@ -29,7 +38,7 @@ RSpec.describe "Every request model" do
         expect(properties.reject { |_name, property| property[:description] }.keys).to eq([])
       end
 
-      it "limits the size of every string and array" do
+      it "limits the size of every string, array and object" do
         expect(properties.flat_map { |name, property| schema_problems(property, name.to_s) }).to eq([])
       end
 

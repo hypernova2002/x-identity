@@ -35,5 +35,10 @@ module RequestTypes
 
   # Keys are defined per project by admins, so they can't be declared as a nested request model;
   # values are checked against the project's attribute definitions by EndUsers::AttributeValidator.
-  CustomAttributes = T::Hash.meta(description: "Values for the project's custom attributes, keyed by attribute key.")
+  # Dates are sent as strings, and null clears a value.
+  CustomAttributeKey = T::String.constrained(min_size: 1, max_size: EndUserAttributeDefinition::KEY_MAX_LENGTH)
+  CustomAttributeValue = T::String.constrained(max_size: EndUserAttributeDefinition::MAX_STRING_LENGTH) | T::Integer | T::Float | T::Bool | T::Nil
+  CustomAttributes = T::Hash.map(CustomAttributeKey, CustomAttributeValue)
+    .constrained(type: Hash, max_size: EndUserAttributeDefinition::MAX_PER_PROJECT)
+    .meta(description: "Values for the project's custom attributes, keyed by attribute key.")
 end

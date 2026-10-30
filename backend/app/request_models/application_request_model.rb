@@ -19,7 +19,7 @@ class ApplicationRequestModel < Dry::Struct
   # @param input [Hash]
   # @return [Array<Hash{Symbol => String}>]
   def self.error_details(input)
-    input = input.to_h.deep_symbolize_keys
+    input = input.to_h.symbolize_keys
     known = schema.keys.map(&:name)
 
     unknown = (input.keys - known).map { |key| { field: key.to_s, message: "is not allowed" } }

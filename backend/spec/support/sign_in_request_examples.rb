@@ -22,7 +22,7 @@ RSpec.shared_examples "a challenge response request" do
   it_behaves_like "an optional field", :registration_id
   it_behaves_like "a token field", :registration_id
   it_behaves_like "an optional field", :credential
-  it_behaves_like "a hash field", :credential
+  it_behaves_like "a passkey challenge credential field", :credential
 end
 
 RSpec.shared_examples "an email and password request" do
@@ -51,7 +51,7 @@ RSpec.shared_examples "a passkey sign-in request" do
   it_behaves_like "a required field", :authentication_id
   it_behaves_like "a token field", :authentication_id
   it_behaves_like "a required field", :credential
-  it_behaves_like "a hash field", :credential
+  it_behaves_like "a passkey assertion field", :credential
 end
 
 # Requests that take the email and code, or the token from the email's link.
