@@ -87,11 +87,11 @@ class Project < ApplicationRecord
 
       uri = URI.parse(url.gsub("{token}", "token"))
       valid_scheme = uri.scheme == "https" || (uri.scheme == "http" && %w[localhost 127.0.0.1].include?(uri.host))
-      errors.add(field, "must be an https URL") unless valid_scheme && uri.host.present?
-      errors.add(field, "must contain {token}") unless url.include?("{token}")
-      errors.add(field, "is too long") if url.length > 2048
+      errors.add(field, :not_https_url) unless valid_scheme && uri.host.present?
+      errors.add(field, :missing_token_placeholder) unless url.include?("{token}")
+      errors.add(field, :too_long, count: 2048) if url.length > 2048
     rescue URI::InvalidURIError
-      errors.add(field, "is not a valid URL")
+      errors.add(field, :invalid_url)
     end
   end
 end

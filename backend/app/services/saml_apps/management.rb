@@ -66,12 +66,12 @@ module SamlApps
     # @raise [ApiError] `validation_failed`
     def parse_metadata(metadata_xml: nil, metadata_url: nil)
       authorize!
-      raise ApiError.validation(metadata: "send either metadata_xml or metadata_url") unless metadata_xml.present? ^ metadata_url.present?
+      raise ApiError.validation(:metadata, :xml_or_url_required) unless metadata_xml.present? ^ metadata_url.present?
 
       xml = metadata_xml.presence || @http_client.get_text(metadata_url)
       SamlIdp::SpMetadata.parse(xml)
     rescue IdentityProviders::HttpClient::Error => error
-      raise ApiError.validation(metadata_url: "couldn't be loaded: #{error.message}")
+      raise ApiError.validation(:metadata_url, :not_loadable, reason: error.message)
     end
 
     private

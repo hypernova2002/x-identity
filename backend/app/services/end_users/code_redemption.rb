@@ -24,7 +24,7 @@ module EndUsers
       elsif email.present? && code.present?
         by_code(purpose, email, code)
       else
-        raise ApiError.validation(code: "is required with email, unless a token is given")
+        raise ApiError.validation(:code, :required_with_email)
       end
 
       raise ApiError.new(:invalid_code) unless record && @project.realm.owns?(record.subject) && record.subject.active?

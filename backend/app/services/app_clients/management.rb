@@ -64,7 +64,7 @@ module AppClients
     # @raise [ApiError] `conflict` for public clients
     def rotate_secret(app_client)
       authorize!
-      raise ApiError.new(:conflict, message: "Public clients don't have a secret.") unless app_client.client_type_confidential?
+      raise ApiError.new(:conflict, reason: :public_client_has_no_secret) unless app_client.client_type_confidential?
 
       secret = AppClient.transaction do
         app_client.rotate_secret!.tap { recorder.record(action: "app_client.secret_rotated", actor: @actor, target: app_client) }
@@ -79,7 +79,7 @@ module AppClients
     def revoke_secret(app_client, secret)
       authorize!
       if app_client.secrets.usable.where.not(id: secret.id).none?
-        raise ApiError.new(:conflict, message: "This is the client's only working secret. Rotate the secret first.")
+        raise ApiError.new(:conflict, reason: :only_working_secret)
       end
 
       AppClient.transaction do

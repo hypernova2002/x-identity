@@ -107,6 +107,11 @@ changes.
 ## Conventions
 
 - Errors share one shape and every code is registered in `backend/app/errors/error_codes.rb`.
+  Clients translate errors from codes, never from messages: an error's `code`, its `reason` when one
+  code covers several cases (with `params` for names in the message), and each detail's `code` and
+  `params` (e.g. `too_long` with `count`). English messages for reasons and detail codes are in
+  `backend/config/locales/en.yml`; validations use codes (`errors.add(:field, :code)`,
+  `message: :code`), never message strings.
 - Records are exposed by prefixed uids (`HasUid`), never database ids.
 - Request bodies are parsed by request models in `backend/app/request_models/`, which reject unknown
   fields; controllers pass the fields to services as keyword arguments. Every field has a

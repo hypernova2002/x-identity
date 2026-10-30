@@ -18,9 +18,9 @@ module EndUsers
     # @param otp_code [String, nil] required when the end user has MFA turned on
     # @raise [ApiError] `validation_failed` or `invalid_otp`
     def request(new_email:, current_password:, otp_code: nil)
-      raise ApiError.validation(current_password: "is incorrect") unless Passwords::Hasher.new.matches?(current_password, @end_user.password_digest)
+      raise ApiError.validation(:current_password, :incorrect) unless Passwords::Hasher.new.matches?(current_password, @end_user.password_digest)
       Mfa::Verifier.new(user: @end_user, ip: @ip, user_agent: @user_agent).verify!(otp_code) if @end_user.mfa_enabled?
-      raise ApiError.validation(new_email: "must be different from your current email") if new_email == @end_user.email
+      raise ApiError.validation(:new_email, :same_as_current_email) if new_email == @end_user.email
 
       EndUserEmailChangeJob.perform_later(
         end_user_id: @end_user.id,

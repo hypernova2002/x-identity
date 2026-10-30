@@ -76,7 +76,7 @@ class AuthConfiguration < ApplicationRecord
   validates :otp_step_seconds, numericality: { only_integer: true, in: OTP_STEP_SECONDS }
   validates :otp_drift_steps, numericality: { only_integer: true, in: 0..2 }
   validates :otp_hotp_look_ahead, numericality: { only_integer: true, in: 1..20 }
-  validates :otp_method, inclusion: { in: OTP_METHODS, message: "must be totp or hotp" }
+  validates :otp_method, inclusion: { in: OTP_METHODS, message: :invalid_otp_method }
   DURATION_RANGES.each do |attribute, range|
     validates attribute, numericality: { only_integer: true, in: range }, allow_nil: OPTIONAL_DURATIONS.include?(attribute)
   end
@@ -131,31 +131,32 @@ class AuthConfiguration < ApplicationRecord
 
   # Checks a candidate password against this configuration's password rules.
   # @param password [String, nil]
-  # @return [Array<String>] human-readable violations; empty when the password is acceptable
-  def password_violations(password)
+  # @param field [String, Symbol] the request field the password was sent as
+  # @return [Array<Hash>] error details, see {ErrorDetail}; empty when the password is acceptable
+  def password_violations(password, field: :password)
     password = password.to_s
     violations = []
-    violations << "must be at least #{password_min_length} characters" if password.length < password_min_length
-    violations << "must be at most #{PASSWORD_MAX_LENGTH} characters" if password.length > PASSWORD_MAX_LENGTH
-    violations << "must include an uppercase letter" if password_require_uppercase && !password.match?(/[[:upper:]]/)
-    violations << "must include a lowercase letter" if password_require_lowercase && !password.match?(/[[:lower:]]/)
-    violations << "must include a number" if password_require_number && !password.match?(/\d/)
-    violations << "must include a symbol" if password_require_symbol && !password.match?(/[^[:alnum:]]/)
-    violations
+    violations << [ :too_short, { count: password_min_length } ] if password.length < password_min_length
+    violations << [ :too_long, { count: PASSWORD_MAX_LENGTH } ] if password.length > PASSWORD_MAX_LENGTH
+    violations << [ :needs_uppercase, {} ] if password_require_uppercase && !password.match?(/[[:upper:]]/)
+    violations << [ :needs_lowercase, {} ] if password_require_lowercase && !password.match?(/[[:lower:]]/)
+    violations << [ :needs_number, {} ] if password_require_number && !password.match?(/\d/)
+    violations << [ :needs_symbol, {} ] if password_require_symbol && !password.match?(/[^[:alnum:]]/)
+    violations.map { |code, params| ErrorDetail.build(field, code, **params) }
   end
 
   private
 
   def passwordless_needs_passkeys
-    errors.add(:passwordless_after_passkey, "needs passkeys to be on") if passkeys_off?
+    errors.add(:passwordless_after_passkey, :needs_passkeys) if passkeys_off?
   end
 
   # Sign-ins where a passkey can't be used fall back to requiring MFA, so MFA can't be off; a
   # project's passkeys need its custom domain.
   def passkeys_can_be_required
-    errors.add(:passkeys, "can't be required while MFA is off, since sign-ins where passkeys can't be used then require MFA") if mfa_off?
+    errors.add(:passkeys, :required_without_mfa) if mfa_off?
     return unless owner.is_a?(Project) && !owner.domains.status_verified.exists?
 
-    errors.add(:passkeys, "can only be required once the project has a verified custom domain")
+    errors.add(:passkeys, :required_without_custom_domain)
   end
 end

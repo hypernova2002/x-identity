@@ -11,10 +11,10 @@ module SamlSp
       document = SamlIdp::Messages.parse(xml.to_s)
       descriptor = document.at_xpath("//md:EntityDescriptor[md:IDPSSODescriptor]", namespaces)
       idp = descriptor&.at_xpath("md:IDPSSODescriptor", namespaces)
-      raise ApiError.validation(metadata: "has no SAML identity provider (IDPSSODescriptor)") unless idp
+      raise ApiError.validation(:metadata, :no_saml_identity_provider) unless idp
 
       sso = idp.at_xpath("md:SingleSignOnService[@Binding='#{SamlIdp::Messages::REDIRECT_BINDING}']", namespaces)
-      raise ApiError.validation(metadata: "has no single sign-on URL for the HTTP-Redirect binding") unless sso
+      raise ApiError.validation(:metadata, :no_redirect_sso_url) unless sso
 
       {
         saml_idp_entity_id: descriptor["entityID"],
@@ -23,7 +23,7 @@ module SamlSp
         saml_idp_certificates: certificates(idp, namespaces)
       }.compact
     rescue SamlIdp::Messages::Error => error
-      raise ApiError.validation(metadata: error.message)
+      raise ApiError.validation(:metadata, :unreadable_saml_metadata, reason: error.message)
     end
 
     def certificates(idp, namespaces)

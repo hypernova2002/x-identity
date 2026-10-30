@@ -90,7 +90,7 @@ module Apps
     end
 
     def sort_column
-      SORTS.fetch(@sort.delete_prefix("-")) { raise ApiError.validation(sort: "Sort by one of: #{SORTS.keys.join(', ')}.") }
+      SORTS.fetch(@sort.delete_prefix("-")) { raise ApiError.validation(:sort, :unknown_sort, values: SORTS.keys) }
     end
 
     def direction

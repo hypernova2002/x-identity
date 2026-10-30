@@ -9,19 +9,21 @@ RSpec.describe AuthConfiguration do
     end
 
     it "enforces the minimum length" do
-      expect(configuration.password_violations("short")).to eq([ "must be at least 10 characters" ])
+      expect(configuration.password_violations("short")).to eq(
+        [ { field: "password", code: "too_short", message: "is too short (minimum is 10 characters)", params: { count: 10 } } ]
+      )
     end
 
     it "enforces the platform maximum length" do
-      expect(configuration.password_violations("a" * 129)).to eq([ "must be at most 128 characters" ])
+      expect(configuration.password_violations("a" * 129, field: :new_password).map { |detail| detail.slice(:field, :code, :params) }).to eq(
+        [ { field: "new_password", code: "too_long", params: { count: 128 } } ]
+      )
     end
 
     it "enforces each required character class" do
       configuration.assign_attributes(password_require_uppercase: true, password_require_number: true, password_require_symbol: true)
 
-      expect(configuration.password_violations("lowercaseonly")).to eq(
-        [ "must include an uppercase letter", "must include a number", "must include a symbol" ]
-      )
+      expect(configuration.password_violations("lowercaseonly").pluck(:code)).to eq(%w[needs_uppercase needs_number needs_symbol])
     end
   end
 

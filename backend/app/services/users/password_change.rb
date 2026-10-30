@@ -17,9 +17,9 @@ module Users
     # @param field [Symbol] the request field to report violations against
     # @raise [ApiError] `validation_failed`
     def set_password!(password, field: :new_password)
-      violations = @realm.auth_configuration.password_violations(password)
-      raise ApiError.validation(field => violations) if violations.any?
-      raise ApiError.validation(field => "must be different from your current password") if @hasher.matches?(password, @user.password_digest)
+      violations = @realm.auth_configuration.password_violations(password, field: field)
+      raise ApiError.new(:validation_failed, details: violations) if violations.any?
+      raise ApiError.validation(field, :same_as_current_password) if @hasher.matches?(password, @user.password_digest)
 
       @user.change_password!(@hasher.digest(password))
     end
@@ -30,7 +30,7 @@ module Users
     # @param keep_session_id [String] the current access token's session (its `sid`), which stays signed in
     # @raise [ApiError] `validation_failed`
     def change!(current_password:, new_password:, keep_session_id:)
-      raise ApiError.validation(current_password: "is incorrect") unless @hasher.matches?(current_password, @user.password_digest)
+      raise ApiError.validation(:current_password, :incorrect) unless @hasher.matches?(current_password, @user.password_digest)
 
       ApplicationRecord.transaction do
         set_password!(new_password)

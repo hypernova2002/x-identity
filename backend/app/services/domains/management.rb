@@ -20,7 +20,7 @@ module Domains
     def add(hostname:)
       authorize!
       unverified = @project.domains.where.not(status: "verified").first
-      raise ApiError.new(:conflict, message: "Finish setting up #{unverified.hostname}, or remove it, first.") if unverified
+      raise ApiError.new(:conflict, reason: :domain_setup_unfinished, params: { hostname: unverified.hostname }) if unverified
 
       domain = @project.domains.new(hostname: hostname)
       ProjectDomain.transaction do
@@ -31,7 +31,7 @@ module Domains
       DomainVerificationJob.perform_later(domain_id: domain.id)
       domain
     rescue ActiveRecord::RecordNotUnique
-      raise ApiError.new(:conflict, message: "This domain is already being set up.")
+      raise ApiError.new(:conflict, reason: :domain_already_being_set_up)
     end
 
     # Checks the domain's DNS now, instead of waiting for the next automatic check.

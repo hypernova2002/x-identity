@@ -23,13 +23,13 @@ module EndUsers
         field = "custom_attributes.#{key}"
 
         if definition.nil?
-          details << { field: field, message: "is not a known attribute" }
+          details << ErrorDetail.build(field, :unknown_attribute)
         elsif !by_admin && !definition.user_editable
-          details << { field: field, message: "can't be changed" }
+          details << ErrorDetail.build(field, :not_user_editable)
         elsif value.nil?
           values.delete(key)
         elsif (normalized = normalize(definition, value)).nil?
-          details << { field: field, message: invalid_message(definition) }
+          details << invalid_detail(field, definition)
         else
           values[key] = normalized
         end
@@ -40,7 +40,7 @@ module EndUsers
         next unless definition.required && (by_admin || definition.user_editable)
         next if values.key?(definition.key) || reported.include?("custom_attributes.#{definition.key}")
 
-        details << { field: "custom_attributes.#{definition.key}", message: "is required" }
+        details << ErrorDetail.build("custom_attributes.#{definition.key}", :required)
       end
 
       Result.new(values: values, details: details)
@@ -64,12 +64,12 @@ module EndUsers
       nil
     end
 
-    def invalid_message(definition)
+    def invalid_detail(field, definition)
       case definition.data_type
-      when "string" then "must be text of at most #{definition.max_length || EndUserAttributeDefinition::MAX_STRING_LENGTH} characters"
-      when "number" then "must be a number"
-      when "boolean" then "must be true or false"
-      when "date" then "must be a date like 2026-01-31"
+      when "string" then ErrorDetail.build(field, :not_text, count: definition.max_length || EndUserAttributeDefinition::MAX_STRING_LENGTH)
+      when "number" then ErrorDetail.build(field, :wrong_type, type: "number")
+      when "boolean" then ErrorDetail.build(field, :wrong_type, type: "boolean")
+      when "date" then ErrorDetail.build(field, :not_a_date)
       end
     end
   end

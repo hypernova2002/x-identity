@@ -19,10 +19,10 @@ module Users
     # @param otp_code [String, nil] required when the user has MFA turned on
     # @raise [ApiError] `validation_failed` or `invalid_otp`
     def request(user:, new_email:, current_password:, otp_code: nil)
-      raise ApiError.validation(current_password: "is incorrect") unless Passwords::Hasher.new.matches?(current_password, user.password_digest)
+      raise ApiError.validation(:current_password, :incorrect) unless Passwords::Hasher.new.matches?(current_password, user.password_digest)
       Mfa::Verifier.new(user: user, ip: @ip, user_agent: @user_agent).verify!(otp_code) if user.mfa_enabled?
-      raise ApiError.validation(new_email: "is invalid") unless new_email.match?(URI::MailTo::EMAIL_REGEXP) && new_email.length <= 254
-      raise ApiError.validation(new_email: "must be different from your current email") if new_email == user.email
+      raise ApiError.validation(:new_email, :invalid) unless new_email.match?(URI::MailTo::EMAIL_REGEXP) && new_email.length <= 254
+      raise ApiError.validation(:new_email, :same_as_current_email) if new_email == user.email
 
       EmailChangeEmailJob.perform_later(
         user_id: user.id,

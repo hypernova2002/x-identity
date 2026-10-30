@@ -26,6 +26,6 @@ class AppAssignment < ApplicationRecord
   def everything_in_one_project
     return if app.nil? || principal.nil?
 
-    errors.add(:principal, "must belong to the app's project") unless app.project_id == project_id && principal.project_id == project_id
+    errors.add(:principal, :other_project) unless app.project_id == project_id && principal.project_id == project_id
   end
 end

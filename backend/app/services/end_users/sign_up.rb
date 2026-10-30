@@ -25,7 +25,7 @@ module EndUsers
 
       result = AttributeValidator.new(project: @project).validate(custom_attributes)
       details = result.details
-      details += @project.auth_configuration!.password_violations(password).map { |message| { field: "password", message: message } }
+      details += @project.auth_configuration!.password_violations(password)
       raise ApiError.new(:validation_failed, details: details) if details.any?
 
       EndUserSignUpJob.perform_later(

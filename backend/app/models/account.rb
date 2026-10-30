@@ -22,8 +22,8 @@ class Account < ApplicationRecord
   validates :slug,
     presence: true,
     length: { in: 3..40 },
-    format: { with: /\A[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\z/, message: "may only contain lowercase letters, numbers and hyphens" },
-    exclusion: { in: RESERVED_SLUGS, message: "is reserved" },
+    format: { with: /\A[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\z/, message: :invalid_slug },
+    exclusion: { in: RESERVED_SLUGS, message: :reserved },
     uniqueness: true
 
   # @return [Realms::AccountRealm]

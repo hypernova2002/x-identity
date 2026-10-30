@@ -29,7 +29,7 @@ module Accounts
       Auth::EmailVerification.new(account: account, ip: @ip, user_agent: @user_agent).request(email: user.email)
       Result.new(account: account, user: user)
     rescue ActiveRecord::RecordNotUnique
-      raise ApiError.validation(slug: "has already been taken")
+      raise ApiError.validation(:slug, :taken)
     end
 
     private
@@ -38,7 +38,7 @@ module Accounts
       details = []
       details += ApiError.from_record(account, field_names: { name: "account_name" }).details unless account.valid?
       details += ApiError.from_record(user).details.reject { |detail| detail[:field] == "account" } unless user.valid?
-      details += AuthConfiguration.new.password_violations(password).map { |message| { field: "password", message: message } }
+      details += AuthConfiguration.new.password_violations(password)
 
       raise ApiError.new(:validation_failed, details: details) if details.any?
     end

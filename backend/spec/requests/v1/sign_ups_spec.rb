@@ -52,7 +52,7 @@ RSpec.describe "Sign up", type: :openapi do
     create(:account, slug: "acme")
 
     assert_api_response :post, 422, body: body do
-      expect(parsed_body.dig("error", "details")).to include({ "field" => "slug", "message" => "has already been taken" })
+      expect(parsed_body.dig("error", "details")).to include(include("field" => "slug", "code" => "taken"))
     end
   end
 

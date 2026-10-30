@@ -33,18 +33,33 @@ RSpec.describe ApplicationRequestModel do
     it "reports every missing, invalid and unknown field at once" do
       details = request_class.error_details("role" => "superuser", "age" => "old", "nickname" => "D")
 
-      expect(details).to eq(
+      expect(details.map { |detail| detail.slice(:field, :code, :params) }).to eq(
         [
-          { field: "email", message: "is required" },
-          { field: "role", message: "is invalid" },
-          { field: "age", message: "is invalid" },
-          { field: "nickname", message: "is not allowed" }
+          { field: "email", code: "required", params: {} },
+          { field: "role", code: "inclusion", params: { values: %w[admin member] } },
+          { field: "age", code: "wrong_type", params: { type: "integer" } },
+          { field: "nickname", code: "not_allowed", params: {} }
         ]
       )
     end
 
-    it "reports values that break a constraint" do
-      expect(request_class.error_details(email: "x" * 21, role: "admin")).to eq([ { field: "email", message: "is invalid" } ])
+    it "names the limit a value broke, with an English message" do
+      expect(request_class.error_details(email: "x" * 21, role: "admin")).to eq(
+        [ { field: "email", code: "too_long", message: "is too long (maximum is 20 characters)", params: { count: 20 } } ]
+      )
+    end
+
+    it "reports a broken rule of a list's item as invalid" do
+      list_class = Class.new(described_class) do
+        attribute :tags, JsonModel::Types::Array.of(JsonModel::Types::String.constrained(max_size: 3)).constrained(max_size: 2)
+
+        def self.name
+          "ExampleListRequest"
+        end
+      end
+
+      expect(list_class.error_details(tags: %w[a b c]).sole).to include(code: "too_many", params: { count: 2 })
+      expect(list_class.error_details(tags: %w[long]).sole).to include(code: "invalid", params: {})
     end
   end
 

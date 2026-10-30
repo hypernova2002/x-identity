@@ -11209,7 +11209,7 @@ components:
     Error:
       type: object
       description: |-
-        Standard error response. Codes and their HTTP statuses:
+        Standard error response. Clients show their own message for `code`, or for `reason` when it's set, and for each detail's `code`; `message` is English. Codes and their HTTP statuses:
 
         - `bad_request` (400): The request could not be understood.
         - `unauthorized` (401): Authentication is required.
@@ -11258,7 +11258,9 @@ components:
           type: object
           required:
           - code
+          - reason
           - message
+          - params
           - details
           properties:
             code:
@@ -11304,20 +11306,168 @@ components:
               - rate_limited
               - internal_error
               - identity_provider_error
+            reason:
+              type:
+              - string
+              - 'null'
+              enum:
+              - domain_setup_unfinished
+              - domain_already_being_set_up
+              - public_client_has_no_secret
+              - only_working_secret
+              - already_project_member
+              - end_user_email_taken
+              - invitation_already_accepted
+              - already_group_member
+              - already_assigned
+              - passkeys_need_custom_domain
+              - passkey_already_saved
+              - certificate_already_waiting
+              - certificate_not_next
+              - active_certificate
+              - disabled_by_administrator
+              - provider_sign_in_failed
+              - verify_email_before_provider
+              - email_outside_provider_domains
+              - saml_response_not_valid
+              - saml_response_unrequested
+              - saml_response_transient_name_id
+              - saml_response_reused
+              - saml_response_unreadable
+              -
+              description: Which case of the code this is, when the code covers several.
             message:
               type: string
+            params:
+              type: object
+              description: Values the reason's message refers to, e.g. a group's name.
             details:
               type: array
               items:
                 type: object
                 required:
                 - field
+                - code
                 - message
+                - params
                 properties:
                   field:
                     type: string
+                    description: The request field, with dots for nested fields, e.g.
+                      custom_attributes.plan.
+                  code:
+                    type: string
+                    enum:
+                    - model_invalid
+                    - inclusion
+                    - exclusion
+                    - invalid
+                    - confirmation
+                    - accepted
+                    - empty
+                    - blank
+                    - present
+                    - too_long
+                    - password_too_long
+                    - too_short
+                    - wrong_length
+                    - not_a_number
+                    - not_an_integer
+                    - greater_than
+                    - greater_than_or_equal_to
+                    - equal_to
+                    - less_than
+                    - less_than_or_equal_to
+                    - other_than
+                    - in
+                    - odd
+                    - even
+                    - required
+                    - taken
+                    - not_allowed
+                    - wrong_type
+                    - too_few
+                    - too_many
+                    - incorrect
+                    - reserved
+                    - not_an_object
+                    - invalid_url
+                    - not_https_url
+                    - not_web_url
+                    - missing_token_placeholder
+                    - not_loadable
+                    - page_too_high
+                    - unknown_sort
+                    - needs_uppercase
+                    - needs_lowercase
+                    - needs_number
+                    - needs_symbol
+                    - same_as_current_password
+                    - same_as_current_email
+                    - required_with_email
+                    - invalid_code_challenge
+                    - invalid_slug
+                    - other_account
+                    - other_project
+                    - unknown_user
+                    - invalid_hostname
+                    - hostname_taken
+                    - reserved_hostname
+                    - localhost_in_production
+                    - needs_custom_domain
+                    - invalid_otp_method
+                    - needs_passkeys
+                    - required_without_mfa
+                    - required_without_custom_domain
+                    - too_many_passkeys
+                    - invalid_attribute_key
+                    - only_for_string_attributes
+                    - too_many_attributes
+                    - unknown_attribute
+                    - not_user_editable
+                    - not_text
+                    - not_a_date
+                    - machine_app_not_confidential
+                    - not_for_machine_apps
+                    - invalid_origin_list
+                    - invalid_origins
+                    - invalid_redirect_uri_list
+                    - invalid_redirect_uris
+                    - invalid_api_identifier
+                    - invalid_scope_list
+                    - invalid_scope_names
+                    - duplicate_scope_names
+                    - scope_description_too_long
+                    - not_machine_app
+                    - invalid_scope_name_list
+                    - undefined_scopes
+                    - already_granted
+                    - invalid_scope_format
+                    - missing_openid_scope
+                    - invalid_audience_list
+                    - invalid_apple_id
+                    - invalid_apple_private_key
+                    - incomplete_discovery
+                    - discovery_issuer_mismatch
+                    - invalid_domain_list
+                    - domains_taken
+                    - unknown_groups
+                    - invalid_certificate_list
+                    - invalid_acs_url_list
+                    - invalid_certificate
+                    - invalid_attribute_mappings
+                    - needs_sp_certificate
+                    - xml_or_url_required
+                    - unreadable_saml_metadata
+                    - no_saml_service_provider
+                    - no_saml_identity_provider
+                    - no_redirect_sso_url
                   message:
                     type: string
+                  params:
+                    type: object
+                    description: Values the message refers to, e.g. count for too_long,
+                      values for inclusion.
       title: Error
     Group:
       type: object

@@ -64,15 +64,15 @@ class SamlApp < ApplicationRecord
 
   def acs_urls_are_web_urls
     valid = acs_urls.is_a?(Array) && acs_urls.size.between?(1, MAX_ACS_URLS) && acs_urls.all? { |url| WebUrl.valid?(url) }
-    errors.add(:acs_urls, "must be 1 to #{MAX_ACS_URLS} https URLs (or http://localhost)") unless valid
+    errors.add(:acs_urls, :invalid_acs_url_list, count: MAX_ACS_URLS) unless valid
   end
 
   def slo_url_is_a_web_url
-    errors.add(:slo_url, "must be an https URL (or http://localhost)") if slo_url.present? && !WebUrl.valid?(slo_url)
+    errors.add(:slo_url, :not_web_url) if slo_url.present? && !WebUrl.valid?(slo_url)
   end
 
   def sp_certificate_is_a_certificate
-    errors.add(:sp_certificate, "must be an X.509 certificate in PEM format") if sp_certificate.present? && certificate.nil?
+    errors.add(:sp_certificate, :invalid_certificate) if sp_certificate.present? && certificate.nil?
   end
 
   def attribute_mappings_are_valid
@@ -84,12 +84,11 @@ class SamlApp < ApplicationRecord
     names = Array(attribute_mappings).filter_map { |mapping| mapping["name"] if mapping.is_a?(Hash) }
     valid &&= names.uniq.size == names.size
     unless valid
-      errors.add(:attribute_mappings, "must be up to #{MAX_ATTRIBUTES} attributes with unique names, each from " \
-        "#{ATTRIBUTE_SOURCES.join(', ')} or custom:<attribute key>")
+      errors.add(:attribute_mappings, :invalid_attribute_mappings, count: MAX_ATTRIBUTES, sources: ATTRIBUTE_SOURCES)
     end
   end
 
   def signed_requests_need_a_certificate
-    errors.add(:require_signed_requests, "needs the app's certificate") if require_signed_requests && sp_certificate.blank?
+    errors.add(:require_signed_requests, :needs_sp_certificate) if require_signed_requests && sp_certificate.blank?
   end
 end

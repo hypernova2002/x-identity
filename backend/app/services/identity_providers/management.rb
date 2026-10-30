@@ -89,11 +89,11 @@ module IdentityProviders
     # @raise [ApiError] `validation_failed`
     def parse_saml_metadata(metadata_xml: nil, metadata_url: nil)
       authorize!
-      raise ApiError.validation(metadata: "send either metadata_xml or metadata_url") unless metadata_xml.present? ^ metadata_url.present?
+      raise ApiError.validation(:metadata, :xml_or_url_required) unless metadata_xml.present? ^ metadata_url.present?
 
       SamlSp::IdpMetadata.parse(metadata_xml.presence || @http_client.get_text(metadata_url))
     rescue HttpClient::Error => error
-      raise ApiError.validation(metadata_url: "couldn't be loaded: #{error.message}")
+      raise ApiError.validation(:metadata_url, :not_loadable, reason: error.message)
     end
 
     private
@@ -103,7 +103,7 @@ module IdentityProviders
     def mappings_for(group_mappings)
       groups = @project.groups.where(uid: group_mappings.map { |mapping| mapping[:group_uid] }).index_by(&:uid)
       unknown = group_mappings.map { |mapping| mapping[:group_uid] }.uniq - groups.keys
-      raise ApiError.validation(group_mappings: "refers to unknown groups: #{unknown.join(', ')}") if unknown.any?
+      raise ApiError.validation(:group_mappings, :unknown_groups, groups: unknown) if unknown.any?
 
       group_mappings.map { |mapping| { value: mapping[:value], group: groups.fetch(mapping[:group_uid]) } }.uniq
     end

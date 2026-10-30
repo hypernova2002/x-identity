@@ -16,6 +16,6 @@ module OnCustomDomain
   private
 
   def custom_domain_verified
-    errors.add(:on_custom_domain, "needs a verified custom domain") unless project&.domains&.status_verified&.exists?
+    errors.add(:on_custom_domain, :needs_custom_domain) unless project&.domains&.status_verified&.exists?
   end
 end

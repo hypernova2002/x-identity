@@ -33,7 +33,7 @@ module Passkeys
       origins = []
       origins << domain.base_url if domain && endpoints&.domain == domain
       origins.concat(Array(app_client&.allowed_origins)) if domain
-      raise ApiError.new(:passkeys_unavailable, message: "Passkeys work on the project's custom domain, and from its apps' allowed origins.") if origins.empty?
+      raise ApiError.new(:passkeys_unavailable, reason: :passkeys_need_custom_domain) if origins.empty?
 
       WebAuthn::RelyingParty.new(id: domain.hostname, allowed_origins: origins.uniq, name: realm.display_name)
     end

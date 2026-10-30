@@ -58,7 +58,7 @@ module IdentityProviders
     def link(end_user, claims)
       ensure_active!(end_user)
       if end_user.password_set? && !end_user.email_verified?
-        raise ApiError.new(:email_not_verified, message: "Confirm your email address, or sign in with your password, before signing in with #{@provider.name}.")
+        raise ApiError.new(:email_not_verified, reason: :verify_email_before_provider, params: { provider: @provider.name })
       end
       raise ApiError.new(:identity_conflict) if end_user.identities.exists?(identity_provider: @provider)
 
@@ -111,14 +111,14 @@ module IdentityProviders
     end
 
     def ensure_active!(end_user)
-      raise ApiError.new(:user_disabled, message: "This user has been disabled. Ask an administrator to re-enable it.") unless end_user.active?
+      raise ApiError.new(:user_disabled, reason: :disabled_by_administrator) unless end_user.active?
     end
 
     def verified_email(claims)
       email = email_claim(claims)
       verified = [ true, "true" ].include?(claims["email_verified"])
       if @provider.kind_saml? && !(email && verified)
-        raise ApiError.new(:provider_email_unverified, message: "#{@provider.name} can only sign in addresses at #{@provider.domains.join(', ').presence || 'its listed domains'}.")
+        raise ApiError.new(:provider_email_unverified, reason: :email_outside_provider_domains, params: { provider: @provider.name, domains: @provider.domains })
       end
       raise ApiError.new(:provider_email_unverified) unless email && verified
 

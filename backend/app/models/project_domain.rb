@@ -19,8 +19,8 @@ class ProjectDomain < ApplicationRecord
 
   before_validation :set_defaults, on: :create
 
-  validates :hostname, presence: true, format: { with: HOSTNAME_FORMAT, message: "must be a hostname like login.example.com" },
-    uniqueness: { message: "is already used by a project" }
+  validates :hostname, presence: true, format: { with: HOSTNAME_FORMAT, message: :invalid_hostname },
+    uniqueness: { message: :hostname_taken }
   validate :hostname_allowed
 
   # @return [String] the TXT record that proves the project's owner controls the domain
@@ -62,9 +62,9 @@ class ProjectDomain < ApplicationRecord
   def hostname_allowed
     return if hostname.blank?
 
-    errors.add(:hostname, "can't be a .localhost domain in production") if local? && Rails.env.production?
+    errors.add(:hostname, :localhost_in_production) if local? && Rails.env.production?
     reserved = [ Rails.configuration.x.app_base_url, Rails.configuration.x.console_base_url ].map { |url| URI.parse(url).host } + [ cname_target ]
     # Subdomains of x-identity's own hosts are reserved too, except in development, where they're all on localhost.
-    errors.add(:hostname, "belongs to x-identity") if reserved.any? { |host| hostname == host || (host != "localhost" && hostname.end_with?(".#{host}")) }
+    errors.add(:hostname, :reserved_hostname) if reserved.any? { |host| hostname == host || (host != "localhost" && hostname.end_with?(".#{host}")) }
   end
 end

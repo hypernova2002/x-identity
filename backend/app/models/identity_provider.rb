@@ -54,7 +54,7 @@ class IdentityProvider < ApplicationRecord
 
   validates :name, presence: true, length: { maximum: 100 }
   validates :client_id, presence: true, length: { maximum: 255 }, unless: :kind_saml?
-  validates :scopes, length: { maximum: 500 }, format: { with: SCOPE_FORMAT, message: "must be scopes separated by single spaces" }
+  validates :scopes, length: { maximum: 500 }, format: { with: SCOPE_FORMAT, message: :invalid_scope_format }
   validates :client_secret, presence: true, length: { maximum: 1000 }, if: -> { kind_google? || kind_oidc? }
   validates :saml_idp_entity_id, presence: true, length: { maximum: 1024 }, if: :kind_saml?
   validates :saml_name_id_format, inclusion: { in: SamlApp::NAME_ID_FORMATS.keys }
@@ -63,7 +63,7 @@ class IdentityProvider < ApplicationRecord
   validate :saml_certificates_are_certificates, if: :kind_saml?
   validate :domains_are_unique_domains
   validates :discovery_url, presence: true, length: { maximum: 2048 }, if: :kind_oidc?
-  validates :apple_team_id, :apple_key_id, format: { with: APPLE_ID_FORMAT, message: "must be 10 letters and digits" }, if: :kind_apple?
+  validates :apple_team_id, :apple_key_id, format: { with: APPLE_ID_FORMAT, message: :invalid_apple_id }, if: :kind_apple?
   validate :scopes_include_openid, if: -> { kind_google? || kind_oidc? }
   validate :additional_audiences_are_strings
   validate :apple_private_key_is_an_ec_key, if: :kind_apple?
@@ -151,41 +151,41 @@ class IdentityProvider < ApplicationRecord
   end
 
   def saml_urls_are_web_urls
-    errors.add(:saml_sso_url, "must be an https URL (or http://localhost)") unless WebUrl.valid?(saml_sso_url)
-    errors.add(:saml_slo_url, "must be an https URL (or http://localhost)") if saml_slo_url.present? && !WebUrl.valid?(saml_slo_url)
+    errors.add(:saml_sso_url, :not_web_url) unless WebUrl.valid?(saml_sso_url)
+    errors.add(:saml_slo_url, :not_web_url) if saml_slo_url.present? && !WebUrl.valid?(saml_slo_url)
   end
 
   def saml_certificates_are_certificates
     certificates = Array(saml_idp_certificates)
     valid = certificates.size.between?(1, MAX_CERTIFICATES) && saml_x509_certificates.size == certificates.size
-    errors.add(:saml_idp_certificates, "must be 1 to #{MAX_CERTIFICATES} X.509 certificates in PEM format") unless valid
+    errors.add(:saml_idp_certificates, :invalid_certificate_list, count: MAX_CERTIFICATES) unless valid
   end
 
   def domains_are_unique_domains
     unless domains.is_a?(Array) && domains.size <= MAX_DOMAINS && domains.all? { |domain| domain.match?(DOMAIN_FORMAT) }
-      return errors.add(:domains, "must be up to #{MAX_DOMAINS} domains like acme.com")
+      return errors.add(:domains, :invalid_domain_list, count: MAX_DOMAINS)
     end
 
     taken = project&.identity_providers&.where.not(id: id)&.flat_map(&:domains).to_a & domains
-    errors.add(:domains, "already belong to another provider: #{taken.join(', ')}") if taken.any?
+    errors.add(:domains, :domains_taken, domains: taken) if taken.any?
   end
 
   def scopes_include_openid
-    errors.add(:scopes, "must include openid") unless scopes.to_s.split(" ").include?("openid")
+    errors.add(:scopes, :missing_openid_scope) unless scopes.to_s.split(" ").include?("openid")
   end
 
   def additional_audiences_are_strings
     valid = additional_audiences.is_a?(Array) && additional_audiences.size <= MAX_AUDIENCES &&
       additional_audiences.all? { |audience| audience.is_a?(String) && audience.present? && audience.length <= 255 }
-    errors.add(:additional_audiences, "must be a list of at most #{MAX_AUDIENCES} client ids") unless valid
+    errors.add(:additional_audiences, :invalid_audience_list, count: MAX_AUDIENCES) unless valid
   end
 
   def apple_private_key_is_an_ec_key
-    errors.add(:apple_private_key, "must be the .p8 key from Apple, in PEM format") unless apple_signing_key
+    errors.add(:apple_private_key, :invalid_apple_private_key) unless apple_signing_key
   end
 
   def metadata_is_complete
     missing = METADATA_KEYS.reject { |key| metadata.is_a?(Hash) && metadata[key].present? }
-    errors.add(:discovery_url, "hasn't been loaded, or is missing #{missing.join(', ')}") if missing.any?
+    errors.add(:discovery_url, :incomplete_discovery, missing: missing) if missing.any?
   end
 end

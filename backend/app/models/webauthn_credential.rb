@@ -23,6 +23,6 @@ class WebauthnCredential < ApplicationRecord
   def within_user_limit
     return if subject.nil? || WebauthnCredential.where(subject: subject).count < MAX_PER_USER
 
-    errors.add(:base, "A user can have at most #{MAX_PER_USER} passkeys")
+    errors.add(:base, :too_many_passkeys, count: MAX_PER_USER)
   end
 end

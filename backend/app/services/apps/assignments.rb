@@ -18,7 +18,7 @@ module Apps
     # @raise [ApiError] `forbidden` or `conflict`
     def assign(app, principal)
       authorize!
-      raise ApiError.new(:conflict, message: "#{label(principal)} already has access to #{app.name}.") if AppAssignment.exists?(app: app, principal: principal)
+      raise ApiError.new(:conflict, reason: :already_assigned, params: { principal: label(principal), app: app.name }) if AppAssignment.exists?(app: app, principal: principal)
 
       AppAssignment.transaction do
         AppAssignment.create!(project: @project, app: app, principal: principal).tap { |assignment| record("app.assigned", app, assignment) }

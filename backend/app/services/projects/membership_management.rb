@@ -18,8 +18,8 @@ module Projects
     def add(user_uid:, role:)
       authorize!
       user = @project.account.users.find_by(uid: user_uid)
-      raise ApiError.validation(user_uid: "does not match a user in this account") if user.nil?
-      raise ApiError.new(:conflict, message: "This user is already a member of the project.") if @project.project_memberships.exists?(user: user)
+      raise ApiError.validation(:user_uid, :unknown_user) if user.nil?
+      raise ApiError.new(:conflict, reason: :already_project_member) if @project.project_memberships.exists?(user: user)
 
       membership = @project.project_memberships.new(user: user, role: role)
       ProjectMembership.transaction do

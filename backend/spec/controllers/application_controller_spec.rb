@@ -5,7 +5,7 @@ RSpec.describe ApplicationController, type: :controller do
     def index
       case params[:failure]
       when "api_error"
-        raise ApiError.new(:forbidden, details: [ { field: "role", message: "must be owner" } ])
+        raise ApiError.new(:conflict, reason: :already_group_member, params: { email: "dana@acme.test", group: "Support" })
       when "not_found"
         raise ActiveRecord::RecordNotFound
       when "parameter_missing"
@@ -14,17 +14,19 @@ RSpec.describe ApplicationController, type: :controller do
     end
   end
 
-  it "renders an ApiError with its code, message and details" do
+  it "renders an ApiError with its code, reason and the reason's params" do
     get :index, params: { failure: "api_error" }
 
     expect([ response.status, response.parsed_body ]).to eq(
       [
-        403,
+        409,
         {
           "error" => {
-            "code" => "forbidden",
-            "message" => "You do not have permission to perform this action.",
-            "details" => [ { "field" => "role", "message" => "must be owner" } ]
+            "code" => "conflict",
+            "reason" => "already_group_member",
+            "message" => "dana@acme.test is already in Support.",
+            "params" => { "email" => "dana@acme.test", "group" => "Support" },
+            "details" => []
           }
         }
       ]
@@ -42,7 +44,7 @@ RSpec.describe ApplicationController, type: :controller do
 
     expect(response.parsed_body["error"]).to include(
       "code" => "validation_failed",
-      "details" => [ { "field" => "project", "message" => "is required" } ]
+      "details" => [ { "field" => "project", "code" => "required", "message" => "is required", "params" => {} } ]
     )
   end
 end

@@ -16,7 +16,6 @@ module IdentityProviders
   # portal.
   class BrowserSignIn
     CODE_CHALLENGE_FORMAT = /\A[A-Za-z0-9_-]{43}\z/
-    DISABLED_MESSAGE = "This user has been disabled. Ask an administrator to re-enable it.".freeze
 
     # @param project [Project]
     # @param ip [String, nil] the caller's IP address, for the audit log
@@ -41,7 +40,7 @@ module IdentityProviders
     # @raise [ApiError] `invalid_redirect_uri` or `validation_failed`
     def authorize(provider:, app_client:, redirect_uri:, state:, code_challenge:, issuer: nil)
       raise ApiError.new(:invalid_redirect_uri) unless app_client.redirect_uri_allowed?(redirect_uri)
-      raise ApiError.validation(code_challenge: "must be the base64url SHA-256 of the code verifier") unless code_challenge.match?(CODE_CHALLENGE_FORMAT)
+      raise ApiError.validation(:code_challenge, :invalid_code_challenge) unless code_challenge.match?(CODE_CHALLENGE_FORMAT)
 
       provider_url(provider, "app_client_id" => app_client.id, "redirect_uri" => redirect_uri, "state" => state, "code_challenge" => code_challenge, "issuer" => issuer)
     end
@@ -111,7 +110,7 @@ module IdentityProviders
       raise ApiError.new(:invalid_code) unless valid && record.consume!
 
       end_user = record.subject
-      raise ApiError.new(:user_disabled, message: DISABLED_MESSAGE) unless end_user.active?
+      raise ApiError.new(:user_disabled, reason: :disabled_by_administrator) unless end_user.active?
 
       Auth::SignInFlow.new(context: Auth::SignInContext.new(realm: @project.realm(issuer: data["issuer"]), app_client: app_client, ip: @ip, user_agent: @user_agent))
         .continue(user: end_user, amr: [ Auth::Amr::FEDERATED ], authenticated_at: Time.zone.parse(data["authenticated_at"]))
@@ -202,7 +201,7 @@ module IdentityProviders
     end
 
     def oidc_user(provider, app_client, data, code:, error:, apple_user:)
-      raise ApiError.new(:identity_provider_error, message: "Signing in with #{provider.name} was cancelled or failed.") if error.present? || code.blank?
+      raise ApiError.new(:identity_provider_error, reason: :provider_sign_in_failed, params: { provider: provider.name }) if error.present? || code.blank?
       raise ApiError.new(:invalid_state) unless provider.enabled?
 
       id_token = CodeRedemption.new(provider: provider, http_client: @http_client).call(code: code, code_verifier: data["provider_verifier"])

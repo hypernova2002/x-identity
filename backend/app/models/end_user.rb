@@ -80,6 +80,6 @@ class EndUser < ApplicationRecord
   end
 
   def custom_attributes_is_a_hash
-    errors.add(:custom_attributes, "must be an object") unless custom_attributes.is_a?(Hash)
+    errors.add(:custom_attributes, :not_an_object) unless custom_attributes.is_a?(Hash)
   end
 end

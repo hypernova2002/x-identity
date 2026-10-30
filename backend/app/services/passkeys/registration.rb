@@ -65,7 +65,7 @@ module Passkeys
     rescue WebAuthn::Error
       raise ApiError.new(:invalid_passkey)
     rescue ActiveRecord::RecordNotUnique
-      raise ApiError.new(:invalid_passkey, message: "This passkey is already saved.")
+      raise ApiError.new(:invalid_passkey, reason: :passkey_already_saved)
     end
 
     private

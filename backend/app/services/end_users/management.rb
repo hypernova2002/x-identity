@@ -21,7 +21,7 @@ module EndUsers
     # @raise [ApiError] `forbidden`, `email_taken` or `validation_failed`
     def create(email:, name: nil, custom_attributes: {}, send_invitation: true)
       authorize!
-      raise ApiError.new(:email_taken, message: "An end user with this email address already exists in this project.") if @project.end_users.exists?(email: email)
+      raise ApiError.new(:email_taken, reason: :end_user_email_taken) if @project.end_users.exists?(email: email)
 
       result = AttributeValidator.new(project: @project).validate(custom_attributes, by_admin: true)
       raise ApiError.new(:validation_failed, details: result.details) if result.details.any?
@@ -36,7 +36,7 @@ module EndUsers
       EndUserEmailJob.perform_later(kind: "invitation", end_user_id: end_user.id) if send_invitation
       end_user
     rescue ActiveRecord::RecordNotUnique
-      raise ApiError.new(:email_taken, message: "An end user with this email address already exists in this project.")
+      raise ApiError.new(:email_taken, reason: :end_user_email_taken)
     end
 
     # @param end_user [EndUser]
@@ -126,7 +126,7 @@ module EndUsers
     # @raise [ApiError] `conflict` when the end user has already set a password
     def resend_invitation(end_user)
       authorize!
-      raise ApiError.new(:conflict, message: "This end user has already accepted their invitation.") if end_user.password_set?
+      raise ApiError.new(:conflict, reason: :invitation_already_accepted) if end_user.password_set?
 
       EndUserEmailJob.perform_later(kind: "invitation", end_user_id: end_user.id)
       recorder.record(action: "end_user.invitation_resent", actor: @actor, target: end_user)

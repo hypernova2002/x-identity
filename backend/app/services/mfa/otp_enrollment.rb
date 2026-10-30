@@ -91,7 +91,7 @@ module Mfa
     def verify_password!(password)
       return if Passwords::Hasher.new.matches?(password, @user.password_digest)
 
-      raise ApiError.validation(current_password: "is incorrect")
+      raise ApiError.validation(:current_password, :incorrect)
     end
 
     def record(event)

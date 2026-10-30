@@ -67,7 +67,7 @@ RSpec.describe "OTP enrolment", type: :openapi do
 
     it "doesn't let users choose a different method" do
       assert_api_response :post, 422, headers: headers, body: { otp_type: "hotp" }, path_params: path_params do
-        expect(parsed_body.dig("error", "details")).to include({ "field" => "otp_type", "message" => "is not allowed" })
+        expect(parsed_body.dig("error", "details")).to include(include("field" => "otp_type", "code" => "not_allowed"))
       end
     end
 

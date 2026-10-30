@@ -10,8 +10,11 @@ module RequestFieldHelpers
     expect { described_class.new(body) }.not_to raise_error
   end
 
-  def expect_rejected(body, field, message = "is invalid")
-    expect(described_class.error_details(body)).to eq([ { field: field.to_s, message: message } ])
+  # @param code [Symbol, nil] the detail code the field must be reported with; any code when nil
+  def expect_rejected(body, field, code = nil)
+    details = described_class.error_details(body)
+    expect(details.map { |detail| detail[:field] }).to eq([ field.to_s ])
+    expect(details.sole[:code]).to eq(code.to_s) if code
     expect { described_class.new(body) }.to raise_error(Dry::Struct::Error)
   end
 end
@@ -23,7 +26,7 @@ end
 
 RSpec.shared_examples "a required field" do |field|
   it "requires #{field}" do
-    expect_rejected(valid_body.except(field), field, "is required")
+    expect_rejected(valid_body.except(field), field, :required)
   end
 end
 
@@ -69,7 +72,7 @@ RSpec.shared_examples "a string field" do |field, max:, min: 0, nullable: false,
   end
 
   it "rejects #{max + 1} characters for #{field}" do
-    expect_rejected(body_with(field, value.call(max + 1)), field)
+    expect_rejected(body_with(field, value.call(max + 1)), field, :too_long)
   end
 
   if min.positive?
@@ -78,7 +81,7 @@ RSpec.shared_examples "a string field" do |field, max:, min: 0, nullable: false,
     end
 
     it "rejects #{min - 1} characters for #{field}" do
-      expect_rejected(body_with(field, min == 1 ? "" : value.call(min - 1)), field)
+      expect_rejected(body_with(field, min == 1 ? "" : value.call(min - 1)), field, :too_short)
     end
   end
 
@@ -100,8 +103,16 @@ end
 
 RSpec.shared_examples "an integer field" do |field, min:, max:, nullable: false|
   it_behaves_like "a field accepting", field, [ min, max ]
-  it_behaves_like "a field rejecting", field, [ min - 1, max + 1, 1.5, min.to_s ]
+  it_behaves_like "a field rejecting", field, [ 1.5, min.to_s ]
   it_behaves_like "a nullable field", field, nullable
+
+  it "rejects #{min - 1} for #{field}" do
+    expect_rejected(body_with(field, min - 1), field, :greater_than_or_equal_to)
+  end
+
+  it "rejects #{max + 1} for #{field}" do
+    expect_rejected(body_with(field, max + 1), field, :less_than_or_equal_to)
+  end
 end
 
 # `item` is a valid entry; `invalid_items` are entries the array must reject. `item_max` adds the
@@ -112,12 +123,12 @@ RSpec.shared_examples "an array field" do |field, max:, item:, min: 0, invalid_i
   end
 
   it "rejects #{max + 1} items for #{field}" do
-    expect_rejected(body_with(field, Array.new(max + 1) { item }), field)
+    expect_rejected(body_with(field, Array.new(max + 1) { item }), field, :too_many)
   end
 
   if min.positive?
     it "rejects #{min - 1} items for #{field}" do
-      expect_rejected(body_with(field, Array.new(min - 1) { item }), field)
+      expect_rejected(body_with(field, Array.new(min - 1) { item }), field, :too_few)
     end
   else
     it "accepts no items for #{field}" do
@@ -151,7 +162,7 @@ RSpec.shared_examples "a hash field" do |field, max:, nullable: false|
   end
 
   it "rejects #{max + 1} keys for #{field}" do
-    expect_rejected(body_with(field, Array.new(max + 1) { |index| [ "key#{index}", true ] }.to_h), field)
+    expect_rejected(body_with(field, Array.new(max + 1) { |index| [ "key#{index}", true ] }.to_h), field, :too_many)
   end
 
   it_behaves_like "a field accepting", field, [ {} ]

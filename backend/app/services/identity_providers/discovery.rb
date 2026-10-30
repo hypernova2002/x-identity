@@ -20,16 +20,13 @@ module IdentityProviders
       document = @http_client.get_json(url)
       metadata = document.slice(*KEPT_KEYS)
 
-      problems = IdentityProvider::METADATA_KEYS.filter_map do |key|
-        value = metadata[key]
-        "#{key} is missing" unless value.is_a?(String) && value.start_with?("https://")
-      end
-      problems << "issuer doesn't match the discovery URL" if problems.empty? && url != "#{metadata['issuer'].chomp('/')}#{WELL_KNOWN_PATH}"
-      raise ApiError.validation(discovery_url: "isn't a usable OpenID Connect configuration: #{problems.join(', ')}") if problems.any?
+      missing = IdentityProvider::METADATA_KEYS.reject { |key| metadata[key].is_a?(String) && metadata[key].start_with?("https://") }
+      raise ApiError.validation(:discovery_url, :incomplete_discovery, missing: missing) if missing.any?
+      raise ApiError.validation(:discovery_url, :discovery_issuer_mismatch) if url != "#{metadata['issuer'].chomp('/')}#{WELL_KNOWN_PATH}"
 
       metadata
     rescue HttpClient::Error => error
-      raise ApiError.validation(discovery_url: "couldn't be loaded: #{error.message}")
+      raise ApiError.validation(:discovery_url, :not_loadable, reason: error.message)
     end
   end
 end

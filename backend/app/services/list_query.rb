@@ -41,7 +41,7 @@ class ListQuery
   def ordered(scope, sort)
     direction = sort.start_with?("-") ? :desc : :asc
     key = sort.delete_prefix("-")
-    column = @sorts.fetch(key) { raise ApiError.validation(sort: "Sort by one of: #{@sorts.keys.join(', ')}.") }
+    column = @sorts.fetch(key) { raise ApiError.validation(:sort, :unknown_sort, values: @sorts.keys) }
 
     expression = column.is_a?(Symbol) ? scope.arel_table[column] : Arel.sql(column)
     ordering = expression.public_send(direction)

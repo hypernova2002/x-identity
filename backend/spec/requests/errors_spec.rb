@@ -16,7 +16,7 @@ RSpec.describe "Unhandled errors", type: :request do
     expect([ response.status, response.parsed_body ]).to eq(
       [
         404,
-        { "error" => { "code" => "not_found", "message" => "The requested resource could not be found.", "details" => [] } }
+        { "error" => { "code" => "not_found", "reason" => nil, "message" => "The requested resource could not be found.", "params" => {}, "details" => [] } }
       ]
     )
   end

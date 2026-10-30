@@ -10,7 +10,7 @@ module SamlIdp
       document = Messages.parse(xml.to_s)
       descriptor = document.at_xpath("//md:EntityDescriptor[md:SPSSODescriptor]", Messages::NAMESPACES)
       sp = descriptor&.at_xpath("md:SPSSODescriptor", Messages::NAMESPACES)
-      raise ApiError.validation(metadata: "has no SAML service provider (SPSSODescriptor)") unless sp
+      raise ApiError.validation(:metadata, :no_saml_service_provider) unless sp
 
       {
         entity_id: descriptor["entityID"],
@@ -20,7 +20,7 @@ module SamlIdp
         name_id_format: name_id_format(sp)
       }.compact
     rescue Messages::Error => error
-      raise ApiError.validation(metadata: error.message)
+      raise ApiError.validation(:metadata, :unreadable_saml_metadata, reason: error.message)
     end
 
     def acs_urls(sp)

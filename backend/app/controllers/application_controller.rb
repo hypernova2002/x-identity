@@ -12,11 +12,11 @@ class ApplicationController < ActionController::API
   end
 
   rescue_from ActionController::ParameterMissing do |error|
-    render_error(:validation_failed, details: [ { field: error.param.to_s, message: "is required" } ])
+    render_error(:validation_failed, details: [ ErrorDetail.build(error.param, :required) ])
   end
 
   rescue_from ApiError do |error|
-    render_error(error.code, message: error.message, details: error.details)
+    render_error(error.code, reason: error.reason, params: error.params, details: error.details)
   end
 
   private
@@ -29,7 +29,7 @@ class ApplicationController < ActionController::API
   def parse_request(request_model_class, input = request.request_parameters)
     request_model_class.new(input)
   rescue Dry::Struct::Error
-    details = request_model_class.error_details(input).presence || [ { field: "body", message: "is invalid" } ]
+    details = request_model_class.error_details(input).presence || [ ErrorDetail.build(:body, :invalid) ]
     raise ApiError.new(:validation_failed, details: details)
   end
 
@@ -51,8 +51,8 @@ class ApplicationController < ActionController::API
     { ip: request.remote_ip, user_agent: request.user_agent }
   end
 
-  def render_error(code, message: nil, details: [])
-    error = ErrorResponse.new(code: code, message: message, details: details)
+  def render_error(code, reason: nil, params: {}, details: [])
+    error = ErrorResponse.new(code: code, reason: reason, params: params, details: details)
     render json: error.body, status: error.status
   end
 end

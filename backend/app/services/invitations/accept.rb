@@ -46,7 +46,7 @@ module Invitations
 
     def validate!(user, password)
       details = user.valid? ? [] : ApiError.from_record(user).details
-      details += @account.auth_configuration!.password_violations(password).map { |message| { field: "password", message: message } }
+      details += @account.auth_configuration!.password_violations(password)
 
       raise ApiError.new(:validation_failed, details: details) if details.any?
     end

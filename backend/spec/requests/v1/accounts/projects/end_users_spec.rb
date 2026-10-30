@@ -119,7 +119,10 @@ RSpec.describe "End users (admin)", type: :openapi do
       get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/end-users", params: { sort: "password_digest" }, headers: auth_headers_for(viewer)
 
       expect(response).to have_http_status(:unprocessable_content)
-      expect(response.parsed_body.dig("error", "details")).to eq([ { "field" => "sort", "message" => "Sort by one of: email, name, status, created_at, last_sign_in_at." } ])
+      expect(response.parsed_body.dig("error", "details")).to eq(
+        [ { "field" => "sort", "code" => "unknown_sort", "message" => "must be one of: email, name, status, created_at, last_sign_in_at",
+            "params" => { "values" => %w[email name status created_at last_sign_in_at] } } ]
+      )
     end
 
     it "ignores values it doesn't understand" do

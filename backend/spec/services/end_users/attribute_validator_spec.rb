@@ -25,15 +25,17 @@ RSpec.describe EndUsers::AttributeValidator do
   end
 
   it "enforces the maximum string length" do
-    expect(validator.validate({ nickname: "Casey Jones", newsletter: true }).details.pluck(:field)).to eq([ "custom_attributes.nickname" ])
+    expect(validator.validate({ nickname: "Casey Jones", newsletter: true }).details.map { |detail| detail.slice(:field, :code, :params) }).to eq(
+      [ { field: "custom_attributes.nickname", code: "not_text", params: { count: 5 } } ]
+    )
   end
 
   it "rejects unknown attributes" do
-    expect(validator.validate({ shoe_size: 42, newsletter: true }).details).to include({ field: "custom_attributes.shoe_size", message: "is not a known attribute" })
+    expect(validator.validate({ shoe_size: 42, newsletter: true }).details).to include(include(field: "custom_attributes.shoe_size", code: "unknown_attribute"))
   end
 
   it "only requires attributes the caller can set" do
-    expect(validator.validate({}).details).to eq([ { field: "custom_attributes.newsletter", message: "is required" } ])
+    expect(validator.validate({}).details).to eq([ { field: "custom_attributes.newsletter", code: "required", message: "is required", params: {} } ])
   end
 
   it "requires every required attribute from admins" do

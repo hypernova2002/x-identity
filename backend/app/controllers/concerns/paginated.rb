@@ -19,7 +19,7 @@ module Paginated
   def paginated(scope, capped: false)
     per_page = params.fetch(:per_page, DEFAULT_PER_PAGE).to_i.clamp(1, MAX_PER_PAGE)
     page = [ params.fetch(:page, 1).to_i, 1 ].max
-    raise ApiError.validation(page: "Must be at most #{MAX_PAGE}. Use search or filters to narrow the list.") if page > MAX_PAGE
+    raise ApiError.validation(:page, :page_too_high, count: MAX_PAGE) if page > MAX_PAGE
     return paginate(scope, per_page: per_page) unless capped && params[:exact_count] != "true"
 
     limit = [ COUNT_CAP, page * per_page ].max

@@ -18,14 +18,14 @@ module SamlSp
     # @raise [ApiError] `invalid_saml_response`
     def validate(saml_response, request_id:)
       response = OneLogin::RubySaml::Response.new(saml_response.to_s, settings: settings, matches_request_id: request_id, allowed_clock_drift: CLOCK_DRIFT)
-      reject!("isn't valid: #{response.errors.join('; ')}") unless response.is_valid?
-      reject!("answers a request that wasn't made from this sign-in") if request_id.nil? && response.in_response_to.present?
-      reject!("uses a temporary (transient) NameID; set it to email or persistent") if response.name_id_format == TRANSIENT
-      reject!("was already used") unless ConsumedSamlAssertion.consume(@provider, response.assertion_id.to_s, response.not_on_or_after || 5.minutes.from_now)
+      reject!(:saml_response_not_valid, response.errors.join("; ")) unless response.is_valid?
+      reject!(:saml_response_unrequested) if request_id.nil? && response.in_response_to.present?
+      reject!(:saml_response_transient_name_id) if response.name_id_format == TRANSIENT
+      reject!(:saml_response_reused) unless ConsumedSamlAssertion.consume(@provider, response.assertion_id.to_s, response.not_on_or_after || 5.minutes.from_now)
 
       claims_from(response)
     rescue OneLogin::RubySaml::ValidationError, REXML::ParseException, ArgumentError => error
-      reject!("couldn't be read: #{error.message}")
+      reject!(:saml_response_unreadable, error.message)
     end
 
     private
@@ -60,9 +60,9 @@ module SamlSp
       response.attributes.single(name).presence&.to_s
     end
 
-    def reject!(reason)
-      Rails.logger.info("SAML response from identity provider #{@provider.uid} #{reason}")
-      raise ApiError.new(:invalid_saml_response, message: "The sign-in response from #{@provider.name} #{reason.split(':').first}.")
+    def reject!(reason, problem = nil)
+      Rails.logger.info("SAML response from identity provider #{@provider.uid}: #{reason}#{" (#{problem})" if problem}")
+      raise ApiError.new(:invalid_saml_response, reason: reason, params: { provider: @provider.name })
     end
   end
 end

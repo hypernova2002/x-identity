@@ -57,7 +57,7 @@ module Groups
     # @raise [ApiError] `conflict` when the user is already a member
     def add_member(group, end_user)
       authorize!
-      raise ApiError.new(:conflict, message: "#{end_user.email} is already in #{group.name}.") if group.group_memberships.exists?(end_user: end_user)
+      raise ApiError.new(:conflict, reason: :already_group_member, params: { email: end_user.email, group: group.name }) if group.group_memberships.exists?(end_user: end_user)
 
       GroupMembership.transaction do
         group.group_memberships.create!(end_user: end_user)

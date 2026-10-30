@@ -17,7 +17,7 @@ module SamlApps
     # @raise [ApiError] `conflict` when a next certificate already waits
     def add_next
       authorize!
-      raise ApiError.new(:conflict, message: "A new certificate is already waiting to be activated.") if @project.saml_certificates.status_next.exists?
+      raise ApiError.new(:conflict, reason: :certificate_already_waiting) if @project.saml_certificates.status_next.exists?
 
       SamlCertificate.transaction do
         SamlCertificate.active_for!(@project)
@@ -29,7 +29,7 @@ module SamlApps
     # @param certificate [SamlCertificate]
     def activate(certificate)
       authorize!
-      raise ApiError.new(:conflict, message: "Only a new certificate can be activated.") unless certificate.status_next?
+      raise ApiError.new(:conflict, reason: :certificate_not_next) unless certificate.status_next?
 
       SamlCertificate.transaction do
         @project.saml_certificates.status_active.update_all(status: "retired")
@@ -41,7 +41,7 @@ module SamlApps
     # @param certificate [SamlCertificate]
     def remove(certificate)
       authorize!
-      raise ApiError.new(:conflict, message: "The active certificate can't be removed. Activate another one first.") if certificate.status_active?
+      raise ApiError.new(:conflict, reason: :active_certificate) if certificate.status_active?
 
       SamlCertificate.transaction do
         certificate.destroy!

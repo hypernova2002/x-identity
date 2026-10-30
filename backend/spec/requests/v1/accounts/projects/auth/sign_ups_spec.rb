@@ -95,7 +95,7 @@ RSpec.describe "End-user sign-up", type: :openapi do
 
   it "rejects unknown fields" do
     sign_up(422, body.merge(admin: true)) do
-      expect(parsed_body.dig("error", "details")).to include({ "field" => "admin", "message" => "is not allowed" })
+      expect(parsed_body.dig("error", "details")).to include(include("field" => "admin", "code" => "not_allowed"))
     end
   end
 
@@ -106,7 +106,7 @@ RSpec.describe "End-user sign-up", type: :openapi do
     end
 
     it "requires required attributes" do
-      sign_up(422) { expect(parsed_body.dig("error", "details")).to include({ "field" => "custom_attributes.plan", "message" => "is required" }) }
+      sign_up(422) { expect(parsed_body.dig("error", "details")).to include(include("field" => "custom_attributes.plan", "code" => "required")) }
     end
 
     it "accepts valid attributes" do
@@ -115,7 +115,7 @@ RSpec.describe "End-user sign-up", type: :openapi do
 
     it "refuses attributes end users may not set" do
       sign_up(422, body.merge(custom_attributes: { plan: "pro", credit: 100 })) do
-        expect(parsed_body.dig("error", "details")).to include({ "field" => "custom_attributes.credit", "message" => "can't be changed" })
+        expect(parsed_body.dig("error", "details")).to include(include("field" => "custom_attributes.credit", "code" => "not_user_editable"))
       end
     end
   end

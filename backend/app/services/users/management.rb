@@ -19,8 +19,8 @@ module Users
     # @raise [ApiError] `forbidden`, `last_owner` or `validation_failed`
     def update(target, role: nil, status: nil)
       raise ApiError.new(:forbidden) unless UserManagementPolicy.new(@actor, target).update?(role: role)
-      raise ApiError.validation(role: "is not included in the list") if role && !User.roles.key?(role.to_s)
-      raise ApiError.validation(status: "is not included in the list") if status && !User.statuses.key?(status.to_s)
+      raise ApiError.validation(:role, :inclusion, values: User.roles.keys) if role && !User.roles.key?(role.to_s)
+      raise ApiError.validation(:status, :inclusion, values: User.statuses.keys) if status && !User.statuses.key?(status.to_s)
 
       previous_role = target.role
       previous_status = target.status

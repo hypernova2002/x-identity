@@ -1,31 +1,126 @@
-# Files in the config/locales directory are used for internationalization and
-# are automatically loaded by Rails. If you want to use locales other than
-# English, add the necessary files in this directory.
+# English messages for the API's errors. Clients translate errors from their codes; these are the
+# messages the API sends with them.
 #
-# To use the locales, use `I18n.t`:
-#
-#     I18n.t "hello"
-#
-# In views, this is aliased to just `t`:
-#
-#     <%= t("hello") %>
-#
-# To use a different locale, set it with `I18n.locale`:
-#
-#     I18n.locale = :es
-#
-# This would use the information in config/locales/es.yml.
-#
-# To learn more about the API, please read the Rails Internationalization guide
-# at https://guides.rubyonrails.org/i18n.html.
-#
-# Be aware that YAML interprets the following case-insensitive strings as
-# booleans: `true`, `false`, `on`, `off`, `yes`, `no`. Therefore, these strings
-# must be quoted to be interpreted as strings. For example:
-#
-#     en:
-#       "yes": yup
-#       enabled: "ON"
-
+# errors.messages: field-level problems (an error's `details`), keyed by detail code. Rails' own
+# validation messages (blank, taken, too_long, ...) live in the same scope.
+# errors.reasons: which case of an error code happened (an error's `reason`).
 en:
-  hello: "Hello world"
+  errors:
+    messages:
+      required: "is required"
+      not_allowed: "is not allowed"
+      wrong_type: "must be of type %{type}"
+      too_few:
+        one: "must have at least 1 item"
+        other: "must have at least %{count} items"
+      too_many:
+        one: "must have at most 1 item"
+        other: "must have at most %{count} items"
+      incorrect: "is incorrect"
+      reserved: "is reserved"
+      not_an_object: "must be an object"
+      invalid_url: "is not a valid URL"
+      not_https_url: "must be an https URL"
+      not_web_url: "must be an https URL (or http://localhost)"
+      missing_token_placeholder: "must contain {token}"
+      not_loadable: "couldn't be loaded: %{reason}"
+      page_too_high: "must be at most %{count}. Use search or filters to narrow the list."
+      unknown_sort: "must be one of: %{values}"
+
+      needs_uppercase: "must include an uppercase letter"
+      needs_lowercase: "must include a lowercase letter"
+      needs_number: "must include a number"
+      needs_symbol: "must include a symbol"
+      same_as_current_password: "must be different from your current password"
+      same_as_current_email: "must be different from your current email"
+      required_with_email: "is required with email, unless a token is given"
+      invalid_code_challenge: "must be the base64url SHA-256 of the code verifier"
+
+      invalid_slug: "may only contain lowercase letters, numbers and hyphens"
+      other_account: "must belong to the project's account"
+      other_project: "must belong to the same project"
+      unknown_user: "does not match a user in this account"
+
+      invalid_hostname: "must be a hostname like login.example.com"
+      hostname_taken: "is already used by a project"
+      reserved_hostname: "belongs to x-identity"
+      localhost_in_production: "can't be a .localhost domain in production"
+      needs_custom_domain: "needs a verified custom domain"
+
+      invalid_otp_method: "must be totp or hotp"
+      needs_passkeys: "needs passkeys to be on"
+      required_without_mfa: "can't be required while MFA is off, since sign-ins where passkeys can't be used then require MFA"
+      required_without_custom_domain: "can only be required once the project has a verified custom domain"
+      too_many_passkeys: "A user can have at most %{count} passkeys"
+
+      invalid_attribute_key: "must start with a letter and use only lowercase letters, numbers and underscores"
+      only_for_string_attributes: "only applies to string attributes"
+      too_many_attributes: "A project can have at most %{count} attributes"
+      unknown_attribute: "is not a known attribute"
+      not_user_editable: "can't be changed"
+      not_text: "must be text of at most %{count} characters"
+      not_a_date: "must be a date like 2026-01-31"
+
+      machine_app_not_confidential: "must be confidential for machine-to-machine apps"
+      not_for_machine_apps: "isn't used by machine-to-machine apps"
+      invalid_origin_list: "must be a list of at most %{count} origins"
+      invalid_origins: "must look like https://app.example.com, without a path: %{origins}"
+      invalid_redirect_uri_list: "must be a list of at most %{count} URIs"
+      invalid_redirect_uris: "must be https URLs, http://localhost URLs or app schemes like com.example.app:/callback, without a fragment: %{uris}"
+
+      invalid_api_identifier: "must be 3–255 characters without spaces, e.g. https://orders.example.com"
+      invalid_scope_list: "must be a list of { name, description }"
+      invalid_scope_names: "names may use letters, numbers and _ . : / - (up to 64)"
+      duplicate_scope_names: "names must be unique"
+      scope_description_too_long: "descriptions can be up to %{count} characters"
+      not_machine_app: "must be a machine-to-machine app"
+      invalid_scope_name_list: "must be a list of scope names"
+      undefined_scopes: "aren't defined on the API: %{scopes}"
+      already_granted: "is already granted to this app"
+
+      invalid_scope_format: "must be scopes separated by single spaces"
+      missing_openid_scope: "must include openid"
+      invalid_audience_list: "must be a list of at most %{count} client ids"
+      invalid_apple_id: "must be 10 letters and digits"
+      invalid_apple_private_key: "must be the .p8 key from Apple, in PEM format"
+      incomplete_discovery: "hasn't been loaded, or is missing %{missing}"
+      discovery_issuer_mismatch: "has an issuer that doesn't match the discovery URL"
+      invalid_domain_list: "must be up to %{count} domains like acme.com"
+      domains_taken: "already belong to another provider: %{domains}"
+      unknown_groups: "refers to unknown groups: %{groups}"
+      invalid_certificate_list: "must be 1 to %{count} X.509 certificates in PEM format"
+
+      invalid_acs_url_list: "must be 1 to %{count} https URLs (or http://localhost)"
+      invalid_certificate: "must be an X.509 certificate in PEM format"
+      invalid_attribute_mappings: "must be up to %{count} attributes with unique names, each from %{sources} or custom:<attribute key>"
+      needs_sp_certificate: "needs the app's certificate"
+      xml_or_url_required: "send either metadata_xml or metadata_url"
+      unreadable_saml_metadata: "couldn't be read: %{reason}"
+      no_saml_service_provider: "has no SAML service provider (SPSSODescriptor)"
+      no_saml_identity_provider: "has no SAML identity provider (IDPSSODescriptor)"
+      no_redirect_sso_url: "has no single sign-on URL for the HTTP-Redirect binding"
+
+    reasons:
+      domain_setup_unfinished: "Finish setting up %{hostname}, or remove it, first."
+      domain_already_being_set_up: "This domain is already being set up."
+      public_client_has_no_secret: "Public clients don't have a secret."
+      only_working_secret: "This is the client's only working secret. Rotate the secret first."
+      already_project_member: "This user is already a member of the project."
+      end_user_email_taken: "An end user with this email address already exists in this project."
+      invitation_already_accepted: "This end user has already accepted their invitation."
+      already_group_member: "%{email} is already in %{group}."
+      already_assigned: "%{principal} already has access to %{app}."
+      passkeys_need_custom_domain: "Passkeys work on the project's custom domain, and from its apps' allowed origins."
+      passkey_already_saved: "This passkey is already saved."
+      certificate_already_waiting: "A new certificate is already waiting to be activated."
+      certificate_not_next: "Only a new certificate can be activated."
+      active_certificate: "The active certificate can't be removed. Activate another one first."
+      disabled_by_administrator: "This user has been disabled. Ask an administrator to re-enable it."
+      provider_sign_in_failed: "Signing in with %{provider} was cancelled or failed."
+      verify_email_before_provider: "Confirm your email address, or sign in with your password, before signing in with %{provider}."
+      email_outside_provider_domains: "%{provider} can only sign in addresses at %{domains}."
+      saml_response_not_valid: "The sign-in response from %{provider} isn't valid."
+      saml_response_unrequested: "The sign-in response from %{provider} answers a request that wasn't made from this sign-in."
+      saml_response_transient_name_id: "The sign-in response from %{provider} uses a temporary (transient) NameID; set it to email or persistent."
+      saml_response_reused: "The sign-in response from %{provider} was already used."
+      saml_response_unreadable: "The sign-in response from %{provider} couldn't be read."

@@ -20,6 +20,6 @@ class ProjectMembership < ApplicationRecord
   def user_belongs_to_project_account
     return if user.nil? || project.nil? || user.account_id == project.account_id
 
-    errors.add(:user, "must belong to the project's account")
+    errors.add(:user, :other_account)
   end
 end

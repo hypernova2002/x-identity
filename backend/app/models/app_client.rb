@@ -102,24 +102,24 @@ class AppClient < ApplicationRecord
   def machine_apps_are_confidential_and_browserless
     return unless machine?
 
-    errors.add(:client_type, "must be confidential for machine-to-machine apps") unless client_type_confidential?
+    errors.add(:client_type, :machine_app_not_confidential) unless client_type_confidential?
     { allowed_origins: allowed_origins, redirect_uris: redirect_uris, post_logout_redirect_uris: post_logout_redirect_uris }.each do |field, values|
-      errors.add(field, "aren't used by machine-to-machine apps") if values.present?
+      errors.add(field, :not_for_machine_apps) if values.present?
     end
-    errors.add(:launch_url, "isn't used by machine-to-machine apps") if launch_url.present?
+    errors.add(:launch_url, :not_for_machine_apps) if launch_url.present?
   end
 
   def allowed_origins_are_origins
     unless allowed_origins.is_a?(Array) && allowed_origins.size <= MAX_ORIGINS
-      return errors.add(:allowed_origins, "must be a list of at most #{MAX_ORIGINS} origins")
+      return errors.add(:allowed_origins, :invalid_origin_list, count: MAX_ORIGINS)
     end
 
     invalid = allowed_origins.reject { |origin| origin.is_a?(String) && origin.match?(ORIGIN_FORMAT) }
-    errors.add(:allowed_origins, "must look like https://app.example.com, without a path: #{invalid.join(', ')}") if invalid.any?
+    errors.add(:allowed_origins, :invalid_origins, origins: invalid) if invalid.any?
   end
 
   def launch_url_is_a_web_url
-    errors.add(:launch_url, "must be an https URL (or http://localhost)") if launch_url.present? && !WebUrl.valid?(launch_url)
+    errors.add(:launch_url, :not_web_url) if launch_url.present? && !WebUrl.valid?(launch_url)
   end
 
   def redirect_uris_are_valid
@@ -132,13 +132,12 @@ class AppClient < ApplicationRecord
 
   def validate_uri_list(attribute)
     uris = public_send(attribute)
-    return errors.add(attribute, "must be a list of at most #{MAX_REDIRECT_URIS} URIs") unless uris.is_a?(Array) && uris.size <= MAX_REDIRECT_URIS
+    return errors.add(attribute, :invalid_redirect_uri_list, count: MAX_REDIRECT_URIS) unless uris.is_a?(Array) && uris.size <= MAX_REDIRECT_URIS
 
     invalid = uris.reject { |uri| uri.is_a?(String) && valid_redirect_uri?(uri) }
     return if invalid.empty?
 
-    errors.add(attribute, "must be https URLs, http://localhost URLs or app schemes like com.example.app:/callback, " \
-      "without a fragment: #{invalid.join(', ')}")
+    errors.add(attribute, :invalid_redirect_uris, uris: invalid)
   end
 
   # Native apps use their own scheme (RFC 8252); browsers need https, except on the loopback interface.

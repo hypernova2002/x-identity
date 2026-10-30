@@ -43,7 +43,7 @@ RSpec.describe "Every request model" do
       end
 
       it "rejects unknown fields" do
-        expect(request_model.error_details(unexpected_field: "x")).to include(field: "unexpected_field", message: "is not allowed")
+        expect(request_model.error_details(unexpected_field: "x")).to include(include(field: "unexpected_field", code: "not_allowed"))
       end
 
       it "has its own spec" do
