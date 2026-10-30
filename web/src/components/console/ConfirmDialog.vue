@@ -29,7 +29,7 @@ const visible = defineModel<boolean>('visible', { required: true })
     </div>
     <BaseAlert v-if="error" variant="danger">{{ error.message }}</BaseAlert>
     <template #footer>
-      <BaseButton label="Cancel" variant="secondary" @click="visible = false" />
+      <BaseButton :label="$t('common.actions.cancel')" variant="secondary" @click="visible = false" />
       <BaseButton :label="confirmLabel" :variant="danger ? 'danger' : 'primary'" :loading="loading" @click="emit('confirm')" />
     </template>
   </BaseDialog>

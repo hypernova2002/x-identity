@@ -21,7 +21,7 @@ export function useAsync<T>(fn: () => Promise<T>) {
       if (call === latest) data.value = result
     } catch (caught) {
       if (call === latest) {
-        error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 'Something unexpected happened. Try again.', 0)
+        error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 0)
       }
     } finally {
       if (call === latest) loading.value = false

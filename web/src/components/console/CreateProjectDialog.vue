@@ -22,8 +22,8 @@ function openProject(project: Project) {
 </script>
 
 <template>
-  <BaseDialog v-if="account" v-model:visible="visible" title="Create project">
-    <p class="text-sm text-text-muted">A project is a separate directory of end users, with its own applications, settings and members.</p>
+  <BaseDialog v-if="account" v-model:visible="visible" :title="$t('common.createProject.title')">
+    <p class="text-sm text-text-muted">{{ $t('common.createProject.description') }}</p>
     <CreateProjectForm :account-uid="account.uid" @created="openProject" />
   </BaseDialog>
 </template>

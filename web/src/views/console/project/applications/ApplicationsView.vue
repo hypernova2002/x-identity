@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -23,29 +24,31 @@ import { formatDateTime } from '@/utils/format'
 import { appClientTypeOptions, yesNoOptions } from '@/utils/options'
 import { emptySamlAppDraft, samlAppInputFrom, withMetadata, type SamlAppDraft } from '@/utils/samlApps'
 
+const { t } = useI18n()
+
 const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
 const typeOptions: SelectOption<'oidc' | 'machine' | 'saml'>[] = [
-  { label: 'OpenID Connect / API', value: 'oidc' },
-  { label: 'Machine-to-machine', value: 'machine' },
-  { label: 'SAML', value: 'saml' },
+  { label: t('project.applications.openidConnectApi'), value: 'oidc' },
+  { label: t('project.applications.machineToMachine'), value: 'machine' },
+  { label: t('project.applications.saml'), value: 'saml' },
 ]
 const newKindOptions: SelectOption<'oidc' | 'saml' | 'machine'>[] = [
-  { label: 'OpenID Connect or API client: your own apps, using hosted login, an OIDC library or the sign-in API', value: 'oidc' },
-  { label: 'SAML application: apps that only support SAML 2.0, such as many SaaS tools', value: 'saml' },
-  { label: 'Machine-to-machine: a service or job that calls your APIs with its own credentials, no user involved', value: 'machine' },
+  { label: t('project.applications.openidConnectOrApiClient'), value: 'oidc' },
+  { label: t('project.applications.samlApplicationAppsThatOnly'), value: 'saml' },
+  { label: t('project.applications.machineToMachineAService'), value: 'machine' },
 ]
 
 const columns: DataTableColumn[] = [
-  { key: 'name', label: 'Application', sortKey: 'name' },
-  { key: 'app_type', label: 'Type', sortKey: 'type' },
-  { key: 'enabled', label: 'Status' },
-  { key: 'created_at', label: 'Created', sortKey: 'created_at' },
+  { key: 'name', label: t('project.applications.application'), sortKey: 'name' },
+  { key: 'app_type', label: t('project.applications.type'), sortKey: 'type' },
+  { key: 'enabled', label: t('project.applications.status') },
+  { key: 'created_at', label: t('project.applications.created'), sortKey: 'created_at' },
 ]
 const filters: DataTableFilter[] = [
-  { type: 'select', key: 'kind_eq', label: 'Type', options: typeOptions },
-  { type: 'select', key: 'enabled_eq', label: 'Enabled', options: yesNoOptions },
+  { type: 'select', key: 'kind_eq', label: t('project.applications.type'), options: typeOptions },
+  { type: 'select', key: 'enabled_eq', label: t('project.applications.enabled'), options: yesNoOptions },
 ]
 
 const list = useListView((params) => projectAdminService.listApplications(accountUid.value, project.value!.uid, params), {
@@ -99,10 +102,10 @@ const createClient = useAsyncAction(async () => {
 
 const stats = useAsync(() => projectAdminService.applicationStats(accountUid.value, project.value!.uid))
 const statCards = computed(() => [
-  { label: 'Applications', value: stats.data.value?.total },
-  { label: 'OpenID Connect', value: stats.data.value?.oidc },
-  { label: 'SAML', value: stats.data.value?.saml },
-  { label: 'Machine-to-machine', value: stats.data.value?.machine },
+  { label: t('project.applications.applications'), value: stats.data.value?.total },
+  { label: t('project.applications.openidConnect'), value: stats.data.value?.oidc },
+  { label: t('project.applications.saml'), value: stats.data.value?.saml },
+  { label: t('project.applications.machineToMachine'), value: stats.data.value?.machine },
 ])
 
 function reloadAll() {
@@ -129,18 +132,18 @@ const createSamlApp = useAsyncAction(async () => {
 <template>
   <RoutePageHeader>
     <template v-if="access.developer" #actions>
-      <BaseButton label="Add application" @click="startAdding" />
+      <BaseButton :label="$t('project.applications.addApplication')" @click="startAdding" />
     </template>
   </RoutePageHeader>
 
-  <StatCards label="Application counts" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
+  <StatCards :label="$t('project.applications.applicationCounts')" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
 
   <BaseDataTable
     storage-key="applications"
     v-model:state="listState"
-    caption="Applications"
-    search-placeholder="Search applications…"
-    search-label="Search by name or ID"
+    :caption="$t('project.applications.applications')"
+    :search-placeholder="$t('project.applications.searchApplications')"
+    :search-label="$t('project.applications.searchByNameOrId')"
     :columns="columns"
     :filters="filters"
     :rows="list.rows.value"
@@ -149,7 +152,7 @@ const createSamlApp = useAsyncAction(async () => {
     :per-page="list.perPage.value"
     :loading="list.loading.value"
     :error="list.error.value"
-    empty-message="No applications yet. Add one for each app that signs this project's end users in."
+    :empty-message="$t('project.applications.noApplicationsYetAddOne')"
     @reload="reloadAll"
   >
     <template #cell-name="{ row }">
@@ -157,34 +160,34 @@ const createSamlApp = useAsyncAction(async () => {
       <code class="block font-mono text-xs break-all text-text-muted">{{ row.uid }}</code>
     </template>
     <template #cell-app_type="{ row }">
-      <StatusBadge tone="info" :label="row.app_type === 'saml_app' ? 'SAML' : row.machine ? 'Machine-to-machine' : 'OpenID Connect / API'" />
+      <StatusBadge tone="info" :label="row.app_type === 'saml_app' ? $t('project.applications.saml') : row.machine ? $t('project.applications.machineToMachine') : $t('project.applications.openidConnectApi')" />
       <span class="mt-1 block text-xs break-all text-text-muted">
         {{
           row.app_type === 'saml_app'
             ? row.entity_id
             : row.machine
-              ? 'Gets tokens for your APIs'
+              ? $t('project.applications.getsTokensForYourApis')
               : row.client_type === 'public'
-                ? 'Public client (no secret)'
-                : 'Confidential client'
+                ? $t('project.applications.publicClientNoSecret')
+                : $t('project.applications.confidentialClient')
         }}
       </span>
     </template>
     <template #cell-enabled="{ row }">
-      <StatusBadge :tone="row.enabled ? 'success' : 'neutral'" :label="row.enabled ? 'Enabled' : 'Disabled'" />
+      <StatusBadge :tone="row.enabled ? 'success' : 'neutral'" :label="row.enabled ? $t('project.applications.enabled') : $t('project.applications.disabled')" />
     </template>
     <template #cell-created_at="{ row }"><span class="text-xs">{{ formatDateTime(row.created_at) }}</span></template>
   </BaseDataTable>
 
-  <p class="text-sm text-text-muted">
-    External systems that end users sign in <em>with</em> (Google, Apple, companies' identity providers) are configured under
-    <RouterLink :to="{ name: 'project-identity-providers', params: { projectUid: project?.uid } }" class="font-medium text-primary underline">
-      Identity providers</RouterLink>, not here.
-  </p>
+  <i18n-t keypath="project.applications.identityProvidersNote" tag="p" class="text-sm text-text-muted">
+    <template #signInWith><em>{{ $t('project.applications.with') }}</em></template>
+    <template #link><RouterLink :to="{ name: 'project-identity-providers', params: { projectUid: project?.uid } }" class="font-medium text-primary underline">
+      {{ $t('project.applications.identityProviders') }}</RouterLink></template>
+  </i18n-t>
 
-  <BaseDialog v-model:visible="addOpen" title="Add application">
+  <BaseDialog v-model:visible="addOpen" :title="$t('project.applications.addApplication')">
     <template v-if="step === 'kind'">
-      <BaseSelect v-model="newKind" label="What kind of application?" :options="newKindOptions" />
+      <BaseSelect v-model="newKind" :label="$t('project.applications.whatKindOfApplication')" :options="newKindOptions" />
     </template>
 
     <form v-else-if="step === 'oidc' || step === 'machine'" id="create-client" class="flex flex-col gap-4" novalidate @submit.prevent="createClient.run()">
@@ -193,22 +196,22 @@ const createSamlApp = useAsyncAction(async () => {
       </BaseAlert>
       <BaseInput
         v-model="clientName"
-        label="Name"
+        :label="$t('project.applications.name')"
         required
-        :hint="step === 'machine' ? 'For example Billing job or Inventory sync.' : 'For example Web shop or iOS app.'"
+        :hint="step === 'machine' ? $t('project.applications.forExampleBillingJobOr') : $t('project.applications.forExampleWebShopOr')"
         :error="createClient.error.value?.fieldError('name')"
       />
       <p v-if="step === 'machine'" class="text-xs text-text-muted">
-        It gets a client secret. Next, give it access to your APIs; it can't get tokens until it has some.
+        {{ $t('project.applications.itGetsAClientSecret') }}
       </p>
       <BaseSelect
         v-if="step === 'oidc'"
         v-model="clientType"
-        label="Client type"
+        :label="$t('project.applications.clientType')"
         :options="appClientTypeOptions"
-        hint="Public for browser and mobile apps; confidential for server-side apps that can keep a secret. It can't be changed later."
+        :hint="$t('project.applications.publicForBrowserAndMobile')"
       />
-      <p v-if="step === 'oidc'" class="text-xs text-text-muted">Next, add its redirect URIs and give users access. Nobody can sign in until it's assigned.</p>
+      <p v-if="step === 'oidc'" class="text-xs text-text-muted">{{ $t('project.applications.nextAddItsRedirectUris') }}</p>
     </form>
 
     <SamlAppForm
@@ -223,27 +226,27 @@ const createSamlApp = useAsyncAction(async () => {
     />
 
     <template #footer>
-      <BaseButton label="Cancel" variant="secondary" @click="addOpen = false" />
-      <BaseButton v-if="step === 'kind'" label="Continue" @click="step = newKind" />
-      <BaseButton v-else-if="step === 'oidc' || step === 'machine'" label="Create client" type="submit" form="create-client" :loading="createClient.loading.value" />
-      <BaseButton v-else label="Add SAML application" type="submit" form="create-saml-app" :loading="createSamlApp.loading.value" />
+      <BaseButton :label="$t('project.applications.cancel')" variant="secondary" @click="addOpen = false" />
+      <BaseButton v-if="step === 'kind'" :label="$t('project.applications.continue')" @click="step = newKind" />
+      <BaseButton v-else-if="step === 'oidc' || step === 'machine'" :label="$t('project.applications.createClient')" type="submit" form="create-client" :loading="createClient.loading.value" />
+      <BaseButton v-else :label="$t('project.applications.addSamlApplication')" type="submit" form="create-saml-app" :loading="createSamlApp.loading.value" />
     </template>
   </BaseDialog>
 
-  <BaseDialog :visible="created !== null" title="Copy the client secret" @update:visible="(open: boolean) => !open && (created = null)">
+  <BaseDialog :visible="created !== null" :title="$t('project.applications.copyTheClientSecret')" @update:visible="(open: boolean) => !open && (created = null)">
     <dl v-if="created" class="grid gap-2 text-sm">
-      <dt class="font-medium">Client ID</dt>
+      <dt class="font-medium">{{ $t('project.applications.clientId') }}</dt>
       <dd><code class="font-mono text-xs break-all">{{ created.uid }}</code></dd>
-      <dt class="font-medium">Client secret</dt>
+      <dt class="font-medium">{{ $t('project.applications.clientSecret') }}</dt>
       <dd><code class="font-mono text-xs break-all">{{ created.client_secret }}</code></dd>
     </dl>
-    <BaseAlert variant="warning" title="It won't be shown again">
-      Keep it on your server only; never put it in a browser or mobile app. You can rotate it later.
+    <BaseAlert variant="warning" :title="$t('project.applications.itWonTBeShown')">
+      {{ $t('project.applications.keepItOnYourServer') }}
     </BaseAlert>
     <template #footer>
       <BaseButton
         v-if="created"
-        label="I've copied it"
+        :label="$t('project.applications.iVeCopiedIt')"
         @click="
           router.push(
             created.machine

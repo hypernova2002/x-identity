@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -21,19 +22,21 @@ const props = withDefaults(
     signOut?: (session: DeviceSession) => Promise<unknown>
     /** Signs out everything but the current device; offered when given. */
     signOutOthers?: () => Promise<unknown>
-    /** Whose devices these are, for messages: "you" or e.g. "casey@shop.test". */
+    /** Whose devices these are, for messages, e.g. "casey@shop.test"; the signed-in user's own when unset. */
     owner?: string
   }>(),
-  { signOut: undefined, signOutOthers: undefined, owner: 'you' },
+  { signOut: undefined, signOutOthers: undefined, owner: undefined },
 )
 
-const columns: DataTableColumn[] = [
-  { key: 'device', label: 'Device' },
-  { key: 'location', label: 'Approximate location' },
-  { key: 'created_at', label: 'Signed in', sortKey: 'created_at', sortKind: 'date' },
-  { key: 'last_seen_at', label: 'Last active', sortKey: 'last_seen_at', sortKind: 'date' },
-  { key: 'actions', label: 'Actions', srOnly: true },
-]
+const { t } = useI18n()
+
+const columns = computed<DataTableColumn[]>(() => [
+  { key: 'device', label: t('security.devices.columns.device') },
+  { key: 'location', label: t('security.devices.columns.location') },
+  { key: 'created_at', label: t('security.devices.columns.signedIn'), sortKey: 'created_at', sortKind: 'date' },
+  { key: 'last_seen_at', label: t('security.devices.columns.lastActive'), sortKey: 'last_seen_at', sortKind: 'date' },
+  { key: 'actions', label: t('security.devices.columns.actions'), srOnly: true },
+])
 
 const list = useListView(props.fetchPage, { defaultSort: '-last_seen_at', storageKey: 'device-sessions' })
 const listState = list.state
@@ -45,14 +48,14 @@ const notice = ref<string | null>(null)
 const signOutOne = useAsyncAction(async (session: DeviceSession) => {
   await props.signOut?.(session)
   pending.value = null
-  notice.value = `${deviceLabel(session)} was signed out.`
+  notice.value = t('security.devices.signedOut', { device: deviceLabel(session) })
   await list.reload()
 })
 
 const signOutRest = useAsyncAction(async () => {
   await props.signOutOthers?.()
   othersPending.value = false
-  notice.value = 'Every other device was signed out.'
+  notice.value = t('security.devices.othersSignedOut')
   await list.reload()
 })
 
@@ -65,9 +68,9 @@ defineExpose({ reload: list.reload })
   <BaseDataTable
     storage-key="device-sessions"
     v-model:state="listState"
-    caption="Signed-in devices"
-    search-placeholder="Search devices…"
-    search-label="Search by device, IP address or place"
+    :caption="t('security.devices.caption')"
+    :search-placeholder="t('security.devices.searchPlaceholder')"
+    :search-label="t('security.devices.searchLabel')"
     :columns="columns"
     :rows="list.rows.value"
     :row-key="(session) => session.uid"
@@ -75,22 +78,22 @@ defineExpose({ reload: list.reload })
     :per-page="list.perPage.value"
     :loading="list.loading.value"
     :error="list.error.value"
-    :empty-message="owner === 'you' ? 'You aren\'t signed in on any other device.' : `${owner} isn't signed in on any device.`"
+    :empty-message="owner ? t('security.devices.emptyOther', { owner }) : t('security.devices.emptyYou')"
     stacked
     @reload="list.reload"
   >
     <template v-if="signOutOthers" #actions>
-      <BaseButton label="Sign out all other devices" variant="secondary" @click="othersPending = true" />
+      <BaseButton :label="t('security.devices.signOutOthers')" variant="secondary" @click="othersPending = true" />
     </template>
     <template #cell-device="{ row }">
       <span class="flex flex-wrap items-center gap-2">
         <span class="font-medium">{{ deviceLabel(row) }}</span>
-        <StatusBadge v-if="row.current" tone="info" label="This device" />
+        <StatusBadge v-if="row.current" tone="info" :label="t('security.devices.thisDevice')" />
       </span>
       <span class="block text-xs text-text-muted">{{ signInMethods(row.amr) }}</span>
     </template>
     <template #cell-location="{ row }">
-      <span>{{ formatLocation(row.location) ?? 'Unknown' }}</span>
+      <span>{{ formatLocation(row.location) ?? t('security.devices.unknown') }}</span>
       <code v-if="row.ip" class="block font-mono text-xs text-text-muted">{{ row.ip }}</code>
     </template>
     <template #cell-created_at="{ row }"><span class="text-xs">{{ formatDateTime(row.created_at) }}</span></template>
@@ -100,47 +103,46 @@ defineExpose({ reload: list.reload })
         <BaseButton
           v-if="signOut && !row.current"
           class="whitespace-nowrap"
-          label="Sign out"
+          :label="t('security.devices.signOut')"
           variant="ghost"
           size="sm"
-          :aria-label="`Sign out ${deviceLabel(row)}`"
+          :aria-label="t('security.devices.signOutLabel', { device: deviceLabel(row) })"
           @click="pending = row"
         />
       </div>
     </template>
   </BaseDataTable>
 
-  <p class="text-xs text-text-muted">
-    Locations are approximate, worked out from IP addresses with
-    <a href="https://db-ip.com" target="_blank" rel="noopener" class="underline">IP Geolocation by DB-IP</a>. A device stays listed until it signs
-    out or its session ends.
-  </p>
+  <i18n-t keypath="security.devices.locationNote" tag="p" class="text-xs text-text-muted">
+    <template #link>
+      <a href="https://db-ip.com" target="_blank" rel="noopener" class="underline">{{ t('security.devices.locationLink') }}</a>
+    </template>
+  </i18n-t>
 
   <ConfirmDialog
     :visible="pending !== null"
-    title="Sign out this device?"
-    confirm-label="Sign out device"
+    :title="t('security.devices.signOutTitle')"
+    :confirm-label="t('security.devices.signOutConfirm')"
     danger
     :loading="signOutOne.loading.value"
     :error="signOutOne.error.value"
     @update:visible="(open: boolean) => !open && (pending = null)"
     @confirm="pending && signOutOne.run(pending)"
   >
-    <p class="text-sm">
-      <strong>{{ pending ? deviceLabel(pending) : '' }}</strong> will need to sign in again. Apps on it stop being able to renew their
-      sign-in; anything already signed in keeps working for a few minutes, until its access token expires.
-    </p>
+    <i18n-t keypath="security.devices.signOutDescription" tag="p" class="text-sm">
+      <template #device><strong>{{ pending ? deviceLabel(pending) : '' }}</strong></template>
+    </i18n-t>
   </ConfirmDialog>
 
   <ConfirmDialog
     v-model:visible="othersPending"
-    title="Sign out all other devices?"
-    confirm-label="Sign out other devices"
+    :title="t('security.devices.signOutOthersTitle')"
+    :confirm-label="t('security.devices.signOutOthersConfirm')"
     danger
     :loading="signOutRest.loading.value"
     :error="signOutRest.error.value"
     @confirm="signOutRest.run()"
   >
-    <p class="text-sm">Every device except this one will need to sign in again. Access tokens they already have expire within a few minutes.</p>
+    <p class="text-sm">{{ t('security.devices.signOutOthersDescription') }}</p>
   </ConfirmDialog>
 </template>

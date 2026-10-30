@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, provide, ref, watch, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -12,6 +13,8 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectAdminService } from '@/services/project'
 import type { AppClient } from '@/types/api'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const { accountUid, project } = useProjectContext()
@@ -30,18 +33,18 @@ const tabs = computed<RouteTab[]>(() => {
   const params = { projectUid: project.value?.uid, clientUid: clientUid.value }
   const shown = client.value?.machine
     ? [
-        ['Overview', 'project-app-client'],
-        ['Credentials', 'project-app-client-credentials'],
-        ['API access', 'project-app-client-api-access'],
-        ['Activity', 'project-app-client-activity'],
+        [t('project.appClient.overview'), 'project-app-client'],
+        [t('project.appClient.credentials'), 'project-app-client-credentials'],
+        [t('project.appClient.apiAccess'), 'project-app-client-api-access'],
+        [t('project.appClient.activity'), 'project-app-client-activity'],
       ]
     : [
-        ['Overview', 'project-app-client'],
-        ['Sign-in', 'project-app-client-sign-in'],
-        ['Access', 'project-app-client-access'],
-        ['Tokens & claims', 'project-app-client-tokens'],
-        ['Credentials', 'project-app-client-credentials'],
-        ['Activity', 'project-app-client-activity'],
+        [t('project.appClient.overview'), 'project-app-client'],
+        [t('project.appClient.signIn'), 'project-app-client-sign-in'],
+        [t('project.appClient.access'), 'project-app-client-access'],
+        [t('project.appClient.tokensClaims'), 'project-app-client-tokens'],
+        [t('project.appClient.credentials'), 'project-app-client-credentials'],
+        [t('project.appClient.activity'), 'project-app-client-activity'],
       ]
   return shown.map(([label, name]) => ({ label: label!, name: name!, to: { name: name!, params } }))
 })
@@ -52,34 +55,34 @@ watch(clientUid, () => load.run(), { immediate: true })
 <template>
   <PageBreadcrumbs
     :items="[
-      { label: 'Applications', to: { name: 'project-applications', params: { projectUid: project?.uid } } },
-      { label: client?.name ?? 'Application' },
+      { label: $t('project.appClient.applications'), to: { name: 'project-applications', params: { projectUid: project?.uid } } },
+      { label: client?.name ?? $t('project.appClient.application') },
     ]"
   />
 
-  <BaseAlert v-if="load.error.value?.code === 'not_found'" variant="danger" title="Application not found">
-    It may have been deleted.
+  <BaseAlert v-if="load.error.value?.code === 'not_found'" variant="danger" :title="$t('project.appClient.applicationNotFound')">
+    {{ $t('project.appClient.itMayHaveBeenDeleted') }}
   </BaseAlert>
   <BaseAlert v-else-if="load.error.value" variant="danger">{{ load.error.value.message }}</BaseAlert>
-  <p v-else-if="!client" class="text-sm text-text-muted" role="status">Loading application…</p>
+  <p v-else-if="!client" class="text-sm text-text-muted" role="status">{{ $t('project.appClient.loadingApplication') }}</p>
 
   <template v-if="client">
     <PageHeader
       :title="client.name"
       :description="
         client.machine
-          ? 'A machine-to-machine app: a service that gets access tokens for your APIs with its own credentials, with no user involved.'
-          : 'An OpenID Connect or API client: your own app, signing users in through hosted login, an OIDC library or the sign-in API.'
+          ? $t('project.appClient.aMachineToMachineApp')
+          : $t('project.appClient.anOpenidConnectOrApi')
       "
     >
       <template #actions>
-        <StatusBadge v-if="client.machine" tone="info" label="Machine-to-machine" />
-        <StatusBadge v-else tone="info" label="OpenID Connect / API" />
-        <StatusBadge v-if="!client.machine" tone="neutral" :label="client.client_type === 'public' ? 'Public client' : 'Confidential client'" />
-        <StatusBadge :tone="client.enabled ? 'success' : 'neutral'" :label="client.enabled ? 'Enabled' : 'Disabled'" />
+        <StatusBadge v-if="client.machine" tone="info" :label="$t('project.appClient.machineToMachine')" />
+        <StatusBadge v-else tone="info" :label="$t('project.appClient.openidConnectApi')" />
+        <StatusBadge v-if="!client.machine" tone="neutral" :label="client.client_type === 'public' ? $t('project.appClient.publicClient') : $t('project.appClient.confidentialClient')" />
+        <StatusBadge :tone="client.enabled ? 'success' : 'neutral'" :label="client.enabled ? $t('project.appClient.enabled') : $t('project.appClient.disabled')" />
       </template>
     </PageHeader>
-    <RouteTabs label="Application sections" :tabs="tabs" />
+    <RouteTabs :label="$t('project.appClient.applicationSections')" :tabs="tabs" />
     <RouterView />
   </template>
 </template>

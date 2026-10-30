@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n'
 import type { SelectOption } from '@/components/base/types'
 import type { SamlAppInput } from '@/services/project'
 import type { SamlApp, SamlAppMetadata, SamlNameIdFormat } from '@/types/api'
@@ -27,20 +28,15 @@ export interface SamlAppDraft {
   enabled: boolean
 }
 
-export const attributeSourceOptions: SelectOption<AttributeSourceChoice>[] = [
-  { label: 'Email', value: 'email' },
-  { label: 'Email verified (true/false)', value: 'email_verified' },
-  { label: 'Name', value: 'name' },
-  { label: 'User ID', value: 'uid' },
-  { label: 'Groups (one value per group)', value: 'groups' },
-  { label: 'Custom attribute…', value: 'custom' },
-]
+// Labels are read when this module loads: the locale is chosen once, at startup.
+export const attributeSourceOptions: SelectOption<AttributeSourceChoice>[] = (
+  ['email', 'email_verified', 'name', 'uid', 'groups', 'custom'] as const
+).map((value) => ({ label: i18n.global.t(`project.samlOptions.attributeSource.${value}`), value }))
 
-export const nameIdFormatOptions: SelectOption<SamlNameIdFormat>[] = [
-  { label: 'Email address', value: 'email' },
-  { label: 'Persistent (the user ID)', value: 'persistent' },
-  { label: 'Unspecified (email address)', value: 'unspecified' },
-]
+export const nameIdFormatOptions: SelectOption<SamlNameIdFormat>[] = (['email', 'persistent', 'unspecified'] as const).map((value) => ({
+  label: i18n.global.t(`project.samlOptions.nameIdFormat.${value}`),
+  value,
+}))
 
 export function emptySamlAppDraft(): SamlAppDraft {
   return {

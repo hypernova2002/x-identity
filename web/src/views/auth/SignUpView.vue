@@ -46,33 +46,33 @@ const { loading, error, run } = useAsyncAction(async () => {
 </script>
 
 <template>
-  <BaseCard title="Create your account" description="Set up an account for your organisation. You'll be its owner.">
+  <BaseCard :title="$t('auth.signUp.title')" :description="$t('auth.signUp.description')">
     <form class="flex flex-col gap-4" novalidate @submit.prevent="run()">
       <BaseAlert v-if="error && error.details.length === 0" variant="danger">{{ error.message }}</BaseAlert>
-      <BaseInput v-model="accountName" label="Organisation name" required :error="error?.fieldError('account_name')" />
+      <BaseInput v-model="accountName" :label="$t('auth.signUp.organisationName')" required :error="error?.fieldError('account_name')" />
       <BaseInput
         v-model="slug"
-        label="Account alias"
+        :label="$t('auth.fields.accountAlias')"
         required
-        hint="Used in your sign-in URL. Lowercase letters, numbers and hyphens."
+        :hint="$t('auth.signUp.aliasHint')"
         :error="error?.fieldError('slug')"
         @update:model-value="slugEdited = true"
       />
-      <BaseInput v-model="name" label="Your name" autocomplete="name" required :error="error?.fieldError('name')" />
-      <BaseInput v-model="email" label="Email" type="email" autocomplete="email" required :error="error?.fieldError('email')" />
+      <BaseInput v-model="name" :label="$t('auth.fields.yourName')" autocomplete="name" required :error="error?.fieldError('name')" />
+      <BaseInput v-model="email" :label="$t('auth.fields.email')" type="email" autocomplete="email" required :error="error?.fieldError('email')" />
       <BaseInput
         v-model="password"
-        label="Password"
+        :label="$t('auth.fields.password')"
         type="password"
         autocomplete="new-password"
         required
-        hint="At least 12 characters."
+        :hint="$t('auth.signUp.passwordHint')"
         :error="error?.fieldError('password')"
       />
-      <BaseButton type="submit" label="Create account" :loading="loading" />
+      <BaseButton type="submit" :label="$t('auth.signUp.submit')" :loading="loading" />
       <p class="text-sm text-text-muted">
-        Already have an account?
-        <RouterLink to="/sign-in" class="font-medium text-primary underline hover:text-primary-hover">Sign in</RouterLink>
+        {{ $t('auth.signUp.haveAccount') }}
+        <RouterLink to="/sign-in" class="font-medium text-primary underline hover:text-primary-hover">{{ $t('auth.signUp.signIn') }}</RouterLink>
       </p>
     </form>
   </BaseCard>

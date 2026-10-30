@@ -71,9 +71,9 @@ export function useOidcCodeFlow(options: CodeFlowOptions) {
   /** Finishes the sign-in when the browser comes back with a code or an error. */
   const complete = useAsyncAction(async (returned: CodeFlowReturn): Promise<{ clientId: string; tokens: TokenSet }> => {
     const pending = recall()
-    if (returned.error) throw new ApiError(returned.error, returned.errorDescription || returned.error, 0)
+    if (returned.error) throw new ApiError(returned.error, 0)
     if (!pending || !returned.code || returned.state !== pending.state) {
-      throw new ApiError('invalid_state', "This response doesn't match a sign-in started here. Start again.", 0)
+      throw new ApiError('invalid_state', 0, { reason: 'unmatched_sign_in' })
     }
 
     const tokens = await oidcService.exchangeCode(pending.issuer, {

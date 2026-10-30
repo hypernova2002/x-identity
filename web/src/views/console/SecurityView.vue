@@ -119,23 +119,23 @@ const regenerateCodes = useAsyncAction(async () => {
 </script>
 
 <template>
-  <PageHeader title="My security" description="Your profile, password, email address, multi-factor authentication and signed-in devices." />
+  <PageHeader :title="$t('console.security.title')" :description="$t('console.security.description')" />
 
-  <BaseCard title="Profile">
+  <BaseCard :title="$t('console.security.profile')">
     <form class="flex flex-col gap-4" novalidate @submit.prevent="saveProfile.run()">
-      <BaseAlert v-if="profileSaved" variant="success">Profile saved.</BaseAlert>
-      <BaseInput v-model="name" label="Name" autocomplete="name" required :error="saveProfile.error.value?.fieldError('name')" />
-      <BaseButton type="submit" label="Save" :loading="saveProfile.loading.value" class="self-start" />
+      <BaseAlert v-if="profileSaved" variant="success">{{ $t('console.security.profileSaved') }}</BaseAlert>
+      <BaseInput v-model="name" :label="$t('console.security.name')" autocomplete="name" required :error="saveProfile.error.value?.fieldError('name')" />
+      <BaseButton type="submit" :label="$t('common.actions.save')" :loading="saveProfile.loading.value" class="self-start" />
     </form>
   </BaseCard>
 
-  <BaseCard title="Password" description="Changing your password signs you out of every other session.">
+  <BaseCard :title="$t('console.security.password')" :description="$t('console.security.passwordDescription')">
     <form class="flex flex-col gap-4" novalidate @submit.prevent="changePassword.run()">
-      <BaseAlert v-if="passwordChanged" variant="success">Password changed. Your other sessions have been signed out.</BaseAlert>
+      <BaseAlert v-if="passwordChanged" variant="success">{{ $t('console.security.passwordChanged') }}</BaseAlert>
       <input type="text" :value="me?.email" autocomplete="username" class="sr-only" tabindex="-1" aria-hidden="true" readonly />
       <BaseInput
         v-model="currentPassword"
-        label="Current password"
+        :label="$t('console.security.currentPassword')"
         type="password"
         autocomplete="current-password"
         required
@@ -143,20 +143,20 @@ const regenerateCodes = useAsyncAction(async () => {
       />
       <BaseInput
         v-model="newPassword"
-        label="New password"
+        :label="$t('console.security.newPassword')"
         type="password"
         autocomplete="new-password"
         required
         :error="changePassword.error.value?.fieldError('new_password')"
       />
-      <BaseButton type="submit" label="Change password" :loading="changePassword.loading.value" class="self-start" />
+      <BaseButton type="submit" :label="$t('console.security.changePassword')" :loading="changePassword.loading.value" class="self-start" />
     </form>
   </BaseCard>
 
-  <BaseCard title="Email address" :description="`You sign in with ${me?.email ?? 'your email'}. It changes only after you confirm the new address.`">
+  <BaseCard :title="$t('console.security.email')" :description="$t('console.security.emailDescription', { email: me?.email ?? $t('console.security.yourEmail') })">
     <form class="flex flex-col gap-4" novalidate @submit.prevent="requestEmailChange.run()">
-      <BaseAlert v-if="emailRequested" variant="success" title="Check your inbox">
-        If {{ emailRequested }} can be used, we've sent a confirmation link to it. The link expires in 1 hour.
+      <BaseAlert v-if="emailRequested" variant="success" :title="$t('console.security.emailSentTitle')">
+        {{ $t('console.security.emailSent', { email: emailRequested }) }}
       </BaseAlert>
       <BaseAlert
         v-if="requestEmailChange.error.value && requestEmailChange.error.value.details.length === 0"
@@ -166,7 +166,7 @@ const regenerateCodes = useAsyncAction(async () => {
       </BaseAlert>
       <BaseInput
         v-model="newEmail"
-        label="New email"
+        :label="$t('console.security.newEmail')"
         type="email"
         autocomplete="email"
         required
@@ -174,7 +174,7 @@ const regenerateCodes = useAsyncAction(async () => {
       />
       <BaseInput
         v-model="emailPassword"
-        label="Current password"
+        :label="$t('console.security.currentPassword')"
         type="password"
         autocomplete="current-password"
         required
@@ -183,18 +183,18 @@ const regenerateCodes = useAsyncAction(async () => {
       <BaseInput
         v-if="me?.mfa_enabled"
         v-model="emailOtp"
-        label="Verification code"
+        :label="$t('console.security.verificationCode')"
         autocomplete="one-time-code"
         inputmode="numeric"
         required
       />
-      <BaseButton type="submit" label="Change email" :loading="requestEmailChange.loading.value" class="self-start" />
+      <BaseButton type="submit" :label="$t('console.security.changeEmail')" :loading="requestEmailChange.loading.value" class="self-start" />
     </form>
   </BaseCard>
 
   <BaseCard
-    title="Multi-factor authentication"
-    :description="me?.mfa_enabled ? 'On. You enter a code from your authenticator app when you sign in.' : 'Off. Add an authenticator app to protect your account.'"
+    :title="$t('console.security.mfa')"
+    :description="me?.mfa_enabled ? $t('console.security.mfaOn') : $t('console.security.mfaOff')"
   >
     <RecoveryCodesList v-if="recoveryCodes.length > 0" :codes="recoveryCodes" />
 
@@ -202,7 +202,7 @@ const regenerateCodes = useAsyncAction(async () => {
       <BaseAlert v-if="startOtp.error.value" variant="danger">{{ startOtp.error.value.message }}</BaseAlert>
       <BaseButton
         v-if="!enrollment"
-        label="Set up multi-factor authentication"
+        :label="$t('console.security.setUpMfa')"
         :loading="startOtp.loading.value"
         class="self-start"
         @click="startOtp.run()"
@@ -211,10 +211,10 @@ const regenerateCodes = useAsyncAction(async () => {
       <form v-else class="flex flex-col gap-4" novalidate @submit.prevent="confirmOtp.run()">
         <OtpSetup :enrollment="enrollment" />
         <BaseAlert v-if="confirmOtp.error.value" variant="danger">{{ confirmOtp.error.value.message }}</BaseAlert>
-        <BaseInput v-model="enrollmentCode" label="Verification code" autocomplete="one-time-code" inputmode="numeric" required />
+        <BaseInput v-model="enrollmentCode" :label="$t('console.security.verificationCode')" autocomplete="one-time-code" inputmode="numeric" required />
         <div class="flex gap-2">
-          <BaseButton type="submit" label="Turn on MFA" :loading="confirmOtp.loading.value" />
-          <BaseButton label="Cancel" variant="secondary" @click="enrollment = null" />
+          <BaseButton type="submit" :label="$t('console.security.turnOnMfa')" :loading="confirmOtp.loading.value" />
+          <BaseButton :label="$t('common.actions.cancel')" variant="secondary" @click="enrollment = null" />
         </div>
       </form>
     </template>
@@ -226,30 +226,30 @@ const regenerateCodes = useAsyncAction(async () => {
       </BaseAlert>
       <BaseInput
         v-model="mfaCode"
-        label="Verification code"
-        hint="Needed to get new recovery codes or turn MFA off."
+        :label="$t('console.security.verificationCode')"
+        :hint="$t('console.security.codeHint')"
         autocomplete="one-time-code"
         inputmode="numeric"
         required
       />
       <BaseInput
         v-model="disablePassword"
-        label="Current password"
+        :label="$t('console.security.currentPassword')"
         type="password"
         autocomplete="current-password"
-        hint="Only needed to turn MFA off."
+        :hint="$t('console.security.passwordHint')"
         :error="disableOtp.error.value?.fieldError('current_password')"
       />
       <div class="flex flex-wrap gap-2">
-        <BaseButton type="submit" label="Get new recovery codes" variant="secondary" :loading="regenerateCodes.loading.value" />
-        <BaseButton label="Turn off MFA" variant="danger" :loading="disableOtp.loading.value" @click="disableOtp.run()" />
+        <BaseButton type="submit" :label="$t('console.security.newCodes')" variant="secondary" :loading="regenerateCodes.loading.value" />
+        <BaseButton :label="$t('console.security.turnOffMfa')" variant="danger" :loading="disableOtp.loading.value" @click="disableOtp.run()" />
       </div>
     </form>
   </BaseCard>
 
   <PasskeysCard v-if="account" :available="me?.passkeys_available ?? false" v-bind="passkeyApi" @reauthenticate="signInAgain" />
 
-  <BaseCard v-if="account" title="Where you're signed in" description="Devices signed in to the console with your account. Sign out any you don't recognise, then change your password.">
+  <BaseCard v-if="account" :title="$t('console.security.devices')" :description="$t('console.security.devicesDescription')">
     <DeviceSessionTable :fetch-page="fetchSessions" :sign-out="signOutSession" :sign-out-others="signOutOtherSessions" />
   </BaseCard>
 </template>

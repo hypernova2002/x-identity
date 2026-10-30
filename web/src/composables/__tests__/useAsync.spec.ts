@@ -39,7 +39,7 @@ describe('useAsync', () => {
 
   it('reports failures as API errors', async () => {
     const { error, reload } = useAsync(async () => {
-      throw new ApiError('not_found', 'Gone', 404)
+      throw new ApiError('not_found', 404)
     })
 
     await reload()

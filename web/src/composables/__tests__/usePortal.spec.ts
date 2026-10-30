@@ -55,7 +55,7 @@ describe('usePortal', () => {
 
   it('signs in again when the stored token has expired', async () => {
     sessionStorage.setItem('x-identity:portal:proj_1', JSON.stringify({ accessToken: 'old', email: 'casey@shop.test' }))
-    vi.mocked(portalService.apps).mockRejectedValue(new ApiError('invalid_token', 'Expired.', 401))
+    vi.mocked(portalService.apps).mockRejectedValue(new ApiError('invalid_token', 401))
 
     await usePortal('proj_1', navigate).open.run('acct_1', null)
 

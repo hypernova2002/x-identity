@@ -76,7 +76,7 @@ describe('PasskeysCard', () => {
 
   it('asks the user to sign in again when the last sign-in is too old', async () => {
     const options = vi.fn<Options>(async () => {
-      throw new ApiError('reauthentication_required', 'Sign in again to continue.', 403)
+      throw new ApiError('reauthentication_required', 403)
     })
     const wrapper = mountCard({ options })
     await flushPromises()

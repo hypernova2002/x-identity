@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 import AccountLookupState from '@/components/auth/AccountLookupState.vue'
 import RecoveryCodesList from '@/components/auth/RecoveryCodesList.vue'
@@ -36,21 +37,23 @@ const passkeyPrompt = usePasskeyPrompt()
 const passkeysOffered = computed(() => Boolean(account.value?.passkeys) && passkeysSupported())
 const offersPasskeyAnswer = computed(() => passkeysSupported() && (challenge.value?.mfa_methods ?? []).includes('passkey'))
 
+const { t } = useI18n()
+
 const heading = computed(() => {
-  if (recoveryCodes.value.length > 0) return 'Multi-factor authentication is on'
+  if (recoveryCodes.value.length > 0) return t('signIn.headings.mfaOn')
   switch (challenge.value?.challenge) {
     case 'otp':
-      return 'Enter your verification code'
+      return t('signIn.headings.otp')
     case 'passkey':
-      return "Confirm it's you"
+      return t('signIn.headings.passkey')
     case 'passkey_setup':
-      return 'Create a passkey'
+      return t('signIn.headings.passkeySetup')
     case 'new_password':
-      return 'Choose a new password'
+      return t('signIn.headings.newPassword')
     case 'mfa_setup':
-      return 'Set up multi-factor authentication'
+      return t('signIn.headings.mfaSetup')
     default:
-      return account.value ? `Sign in to ${account.value.name}` : 'Sign in'
+      return account.value ? t('signIn.signInTo', { name: account.value.name }) : t('signIn.signIn')
   }
 })
 
@@ -106,7 +109,7 @@ watch(
     try {
       await passkeySignIn(true)
     } catch (caught) {
-      signInWithPasskey.error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 'Something unexpected happened. Try again.', 0)
+      signInWithPasskey.error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 0)
     }
   },
   { immediate: true },
@@ -171,27 +174,27 @@ const challengeExpired = computed(() => answer.error.value?.code === 'invalid_ch
     <template v-if="account">
       <div v-if="completedTokens" class="flex flex-col gap-4">
         <RecoveryCodesList :codes="recoveryCodes" />
-        <BaseButton label="I've saved my codes" @click="finish(completedTokens)" />
+        <BaseButton :label="t('signIn.savedCodes')" @click="finish(completedTokens)" />
       </div>
 
       <form v-else-if="!challenge" class="flex flex-col gap-4" novalidate @submit.prevent="signIn.run()">
         <BaseAlert v-if="signIn.error.value" variant="danger">{{ signIn.error.value.message }}</BaseAlert>
-        <BaseInput v-model="email" label="Email" type="email" :autocomplete="account.passkeys ? 'username webauthn' : 'username'" required />
-        <BaseInput v-model="password" label="Password" type="password" autocomplete="current-password" required />
-        <BaseButton type="submit" label="Sign in" :loading="signIn.loading.value" />
+        <BaseInput v-model="email" :label="t('signIn.email')" type="email" :autocomplete="account.passkeys ? 'username webauthn' : 'username'" required />
+        <BaseInput v-model="password" :label="t('signIn.password')" type="password" autocomplete="current-password" required />
+        <BaseButton type="submit" :label="t('signIn.signIn')" :loading="signIn.loading.value" />
         <template v-if="passkeysOffered">
           <BaseAlert v-if="signInWithPasskey.error.value" variant="danger">{{ signInWithPasskey.error.value.message }}</BaseAlert>
           <BaseAlert v-else-if="passkeyPrompt.error.value" variant="danger">{{ passkeyPrompt.error.value }}</BaseAlert>
-          <BaseButton label="Sign in with a passkey" variant="secondary" :loading="signInWithPasskey.loading.value" @click="signInWithPasskey.run()" />
+          <BaseButton :label="t('signIn.withPasskey')" variant="secondary" :loading="signInWithPasskey.loading.value" @click="signInWithPasskey.run()" />
         </template>
         <div class="flex flex-wrap justify-between gap-2 text-sm">
           <RouterLink
             :to="{ name: 'forgot-password', params: { slug } }"
             class="font-medium text-primary underline hover:text-primary-hover"
           >
-            Forgot your password?
+            {{ t('signIn.forgotPassword') }}
           </RouterLink>
-          <RouterLink to="/sign-in" class="text-text-muted underline hover:text-text">Use a different account</RouterLink>
+          <RouterLink to="/sign-in" class="text-text-muted underline hover:text-text">{{ t('signIn.differentAccount') }}</RouterLink>
         </div>
       </form>
 
@@ -206,28 +209,25 @@ const challengeExpired = computed(() => answer.error.value?.code === 'invalid_ch
         <BaseAlert v-else-if="passkeyPrompt.error.value" variant="danger">{{ passkeyPrompt.error.value }}</BaseAlert>
 
         <template v-if="challenge.challenge === 'passkey_setup'">
-          <p class="text-sm text-text-muted">
-            Your account needs a passkey to sign in. Create one now: your device asks for your fingerprint, face or PIN, and you'll use it to sign
-            in from now on.
-          </p>
-          <p v-if="!passkeysSupported()" class="text-sm text-text-muted">This browser doesn't support passkeys. Try another browser or device.</p>
+          <p class="text-sm text-text-muted">{{ t('signIn.challenges.passkeySetup') }}</p>
+          <p v-if="!passkeysSupported()" class="text-sm text-text-muted">{{ t('signIn.challenges.noPasskeys') }}</p>
         </template>
 
         <template v-else-if="challenge.challenge === 'passkey'">
-          <p class="text-sm text-text-muted">Confirm it's you with your passkey: your fingerprint, face or device PIN.</p>
-          <p v-if="!offersPasskeyAnswer" class="text-sm text-text-muted">This browser doesn't support passkeys. Try another browser or device.</p>
+          <p class="text-sm text-text-muted">{{ t('signIn.challenges.passkey') }}</p>
+          <p v-if="!offersPasskeyAnswer" class="text-sm text-text-muted">{{ t('signIn.challenges.noPasskeys') }}</p>
         </template>
 
         <template v-else-if="challenge.challenge === 'otp'">
-          <p class="text-sm text-text-muted">Enter the code from your authenticator app, or one of your recovery codes.</p>
-          <BaseInput v-model="code" label="Verification code" autocomplete="one-time-code" inputmode="numeric" required />
+          <p class="text-sm text-text-muted">{{ t('signIn.challenges.otp') }}</p>
+          <BaseInput v-model="code" :label="t('signIn.verificationCode')" autocomplete="one-time-code" inputmode="numeric" required />
         </template>
 
         <template v-else-if="challenge.challenge === 'new_password'">
-          <p class="text-sm text-text-muted">Your password has expired. Choose a new one to continue.</p>
+          <p class="text-sm text-text-muted">{{ t('signIn.challenges.newPassword') }}</p>
           <BaseInput
             v-model="newPassword"
-            label="New password"
+            :label="t('signIn.newPassword')"
             type="password"
             autocomplete="new-password"
             required
@@ -236,39 +236,39 @@ const challengeExpired = computed(() => answer.error.value?.code === 'invalid_ch
         </template>
 
         <template v-else-if="challenge.challenge === 'mfa_setup'">
-          <p class="text-sm text-text-muted">Your account requires multi-factor authentication.</p>
+          <p class="text-sm text-text-muted">{{ t('signIn.challenges.mfaSetup') }}</p>
           <OtpSetup v-if="enrollment" :enrollment="enrollment" />
-          <BaseInput v-model="code" label="Verification code" autocomplete="one-time-code" inputmode="numeric" required />
+          <BaseInput v-model="code" :label="t('signIn.verificationCode')" autocomplete="one-time-code" inputmode="numeric" required />
         </template>
 
         <div class="flex flex-wrap gap-2">
           <template v-if="!challengeExpired">
             <BaseButton
               v-if="challenge.challenge === 'passkey_setup'"
-              label="Create a passkey"
+              :label="t('signIn.createPasskey')"
               :disabled="!passkeysSupported()"
               :loading="answerWithPasskey.loading.value"
               @click="answerWithPasskey.run()"
             />
             <BaseButton
               v-else-if="challenge.challenge === 'passkey'"
-              label="Use your passkey"
+              :label="t('signIn.usePasskey')"
               :disabled="!offersPasskeyAnswer"
               :loading="answerWithPasskey.loading.value"
               @click="answerWithPasskey.run()"
             />
             <template v-else>
-              <BaseButton type="submit" label="Continue" :loading="answer.loading.value" />
+              <BaseButton type="submit" :label="t('signIn.continue')" :loading="answer.loading.value" />
               <BaseButton
                 v-if="offersPasskeyAnswer"
-                label="Use your passkey instead"
+                :label="t('signIn.usePasskeyInstead')"
                 variant="secondary"
                 :loading="answerWithPasskey.loading.value"
                 @click="answerWithPasskey.run()"
               />
             </template>
           </template>
-          <BaseButton label="Start over" variant="secondary" @click="startOver" />
+          <BaseButton :label="t('signIn.startOver')" variant="secondary" @click="startOver" />
         </div>
       </form>
     </template>

@@ -106,7 +106,7 @@ describe('useTestSignIn', () => {
   })
 
   it('reports the API error code when sign-in is refused', async () => {
-    vi.mocked(endUserAuthService.signIn).mockRejectedValue(new ApiError('user_disabled', 'This user is disabled.', 403))
+    vi.mocked(endUserAuthService.signIn).mockRejectedValue(new ApiError('user_disabled', 403))
     const flow = useTestSignIn()
 
     await flow.signIn.run(project, client, 'dee@example.com', 'secret-password')

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
 
 import BaseActionMenu, { type ActionMenuItem } from '@/components/base/BaseActionMenu.vue'
@@ -28,6 +29,8 @@ import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttribute
 import { formatDateTime } from '@/utils/format'
 import { userStatusOptions } from '@/utils/options'
 
+const { t } = useI18n()
+
 const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
 
@@ -36,36 +39,36 @@ const lookups = useProjectLookups()
 const notice = ref<string | null>(null)
 
 const filters = computed<DataTableFilter[]>(() => [
-  { type: 'select', key: 'status_eq', label: 'Status', options: userStatusOptions },
-  { type: 'lookup', key: 'in_group', label: 'Group', search: lookups.searchGroups, resolveLabel: lookups.groupName, seeAll: lookups.allGroups.value },
+  { type: 'select', key: 'status_eq', label: t('project.projectEndUsers.status'), options: userStatusOptions },
+  { type: 'lookup', key: 'in_group', label: t('project.projectEndUsers.group'), search: lookups.searchGroups, resolveLabel: lookups.groupName, seeAll: lookups.allGroups.value },
   {
     type: 'select',
     key: 'with_verified_email',
-    label: 'Email',
+    label: t('project.projectEndUsers.email'),
     options: [
-      { label: 'Verified', value: 'true' },
-      { label: 'Not verified', value: 'false' },
+      { label: t('project.projectEndUsers.verified'), value: 'true' },
+      { label: t('project.projectEndUsers.notVerified'), value: 'false' },
     ],
   },
   {
     type: 'select',
     key: 'with_mfa',
-    label: 'MFA',
+    label: t('project.projectEndUsers.mfa'),
     options: [
-      { label: 'On', value: 'true' },
-      { label: 'Off', value: 'false' },
+      { label: t('project.projectEndUsers.on'), value: 'true' },
+      { label: t('project.projectEndUsers.off'), value: 'false' },
     ],
   },
-  { type: 'select', key: 'invitation_pending', label: 'Invitation', options: [{ label: 'Pending', value: 'true' }] },
+  { type: 'select', key: 'invitation_pending', label: t('project.projectEndUsers.invitation'), options: [{ label: t('project.projectEndUsers.pending'), value: 'true' }] },
 ])
 
 const columns: DataTableColumn[] = [
-  { key: 'email', label: 'End user', sortKey: 'email' },
-  { key: 'status', label: 'Status', sortKey: 'status' },
-  { key: 'mfa_enabled', label: 'MFA' },
-  { key: 'groups', label: 'Groups' },
-  { key: 'last_sign_in_at', label: 'Last sign-in', sortKey: 'last_sign_in_at' },
-  { key: 'actions', label: 'Actions', srOnly: true },
+  { key: 'email', label: t('project.projectEndUsers.endUser'), sortKey: 'email' },
+  { key: 'status', label: t('project.projectEndUsers.status'), sortKey: 'status' },
+  { key: 'mfa_enabled', label: t('project.projectEndUsers.mfa') },
+  { key: 'groups', label: t('project.projectEndUsers.groups') },
+  { key: 'last_sign_in_at', label: t('project.projectEndUsers.lastSignIn'), sortKey: 'last_sign_in_at' },
+  { key: 'actions', label: t('project.projectEndUsers.actions'), srOnly: true },
 ]
 
 const list = useListView((params) => projectAdminService.listEndUsers(accountUid.value, project.value!.uid, params), {
@@ -78,11 +81,11 @@ const listState = list.state
 
 const stats = useAsync(() => projectAdminService.endUserStats(accountUid.value, project.value!.uid))
 const statCards = computed(() => [
-  { label: 'End users', value: stats.data.value?.total },
-  { label: 'Active', value: stats.data.value?.active },
-  { label: 'Disabled', value: stats.data.value?.disabled },
-  { label: 'Invitation pending', value: stats.data.value?.invitation_pending },
-  { label: 'Signed in, last 30 days', value: stats.data.value?.signed_in_recently },
+  { label: t('project.projectEndUsers.endUsers'), value: stats.data.value?.total },
+  { label: t('project.projectEndUsers.active'), value: stats.data.value?.active },
+  { label: t('project.projectEndUsers.disabled'), value: stats.data.value?.disabled },
+  { label: t('project.projectEndUsers.invitationPending'), value: stats.data.value?.invitation_pending },
+  { label: t('project.projectEndUsers.signedInLastDays'), value: stats.data.value?.signed_in_recently },
 ])
 
 function reloadAll() {
@@ -107,13 +110,13 @@ const actions = useEndUserActions(
 
 function menuItems(endUser: EndUser): ActionMenuItem[] {
   return [
-    ...(endUser.invitation_pending ? [{ label: 'Resend invitation', action: () => actions.request('resend_invitation', endUser) }] : []),
-    { label: 'Sign out everywhere', action: () => actions.request('sign_out', endUser) },
-    ...(endUser.mfa_enabled ? [{ label: 'Reset MFA', danger: true, action: () => actions.request('reset_mfa', endUser) }] : []),
+    ...(endUser.invitation_pending ? [{ label: t('project.projectEndUsers.resendInvitation'), action: () => actions.request('resend_invitation', endUser) }] : []),
+    { label: t('project.projectEndUsers.signOutEverywhere'), action: () => actions.request('sign_out', endUser) },
+    ...(endUser.mfa_enabled ? [{ label: t('project.projectEndUsers.resetMfa'), danger: true, action: () => actions.request('reset_mfa', endUser) }] : []),
     endUser.status === 'active'
-      ? { label: 'Disable', danger: true, action: () => actions.request('disable', endUser) }
-      : { label: 'Enable', action: () => actions.request('enable', endUser) },
-    { label: 'Delete', danger: true, action: () => actions.request('delete', endUser) },
+      ? { label: t('project.projectEndUsers.disable'), danger: true, action: () => actions.request('disable', endUser) }
+      : { label: t('project.projectEndUsers.enable'), action: () => actions.request('enable', endUser) },
+    { label: t('project.projectEndUsers.delete'), danger: true, action: () => actions.request('delete', endUser) },
   ]
 }
 
@@ -148,11 +151,11 @@ onMounted(() => {
 <template>
   <RoutePageHeader>
     <template v-if="access.developer" #actions>
-      <BaseButton label="Create end user" @click="createOpen = true" />
+      <BaseButton :label="$t('project.projectEndUsers.createEndUser')" @click="createOpen = true" />
     </template>
   </RoutePageHeader>
 
-  <StatCards label="End user counts" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
+  <StatCards :label="$t('project.projectEndUsers.endUserCounts')" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
 
   <BaseCard>
     <BaseAlert v-if="notice" variant="success">{{ notice }}</BaseAlert>
@@ -161,9 +164,9 @@ onMounted(() => {
     <BaseDataTable
       storage-key="end-users"
       v-model:state="listState"
-      caption="End users"
-      search-placeholder="Search end users…"
-      search-label="Search by email, name or ID"
+      :caption="$t('project.projectEndUsers.endUsers')"
+      :search-placeholder="$t('project.projectEndUsers.searchEndUsers')"
+      :search-label="$t('project.projectEndUsers.searchByEmailNameOr')"
       :columns="columns"
       :filters="filters"
       :rows="list.rows.value"
@@ -173,7 +176,7 @@ onMounted(() => {
       :capped="list.capped.value"
       :loading="list.loading.value"
       :error="list.error.value"
-      empty-message="No end users yet. They appear here once they sign up, sign in with an identity provider, or you create them."
+      :empty-message="$t('project.projectEndUsers.noEndUsersYetThey')"
       @reload="reloadAll"
       @count-exactly="list.countExactly"
     >
@@ -184,27 +187,27 @@ onMounted(() => {
       </template>
       <template #cell-status="{ row }">
         <span class="flex flex-wrap gap-1">
-          <StatusBadge :tone="row.status === 'active' ? 'success' : 'danger'" :label="row.status === 'active' ? 'Active' : 'Disabled'" />
-          <StatusBadge v-if="row.invitation_pending" tone="info" label="Invitation pending" />
-          <StatusBadge v-else-if="!row.email_verified" tone="warning" label="Email not verified" />
+          <StatusBadge :tone="row.status === 'active' ? 'success' : 'danger'" :label="row.status === 'active' ? $t('project.projectEndUsers.active') : $t('project.projectEndUsers.disabled')" />
+          <StatusBadge v-if="row.invitation_pending" tone="info" :label="$t('project.projectEndUsers.invitationPending')" />
+          <StatusBadge v-else-if="!row.email_verified" tone="warning" :label="$t('project.projectEndUsers.emailNotVerified')" />
         </span>
       </template>
       <template #cell-mfa_enabled="{ row }">
-        <StatusBadge :tone="row.mfa_enabled ? 'success' : 'neutral'" :label="row.mfa_enabled ? 'On' : 'Off'" />
+        <StatusBadge :tone="row.mfa_enabled ? 'success' : 'neutral'" :label="row.mfa_enabled ? $t('project.projectEndUsers.on') : $t('project.projectEndUsers.off')" />
       </template>
       <template #cell-groups="{ row }">
-        <span v-if="row.groups.length === 0" class="text-text-muted">None</span>
+        <span v-if="row.groups.length === 0" class="text-text-muted">{{ $t('project.projectEndUsers.none') }}</span>
         <span v-else class="text-xs">
           {{ row.groups.slice(0, 2).map((group) => group.name).join(', ') }}<template v-if="row.groups.length > 2"> +{{ row.groups.length - 2 }}</template>
         </span>
       </template>
       <template #cell-last_sign_in_at="{ row }">
-        <span class="text-xs">{{ row.last_sign_in_at ? formatDateTime(row.last_sign_in_at) : 'Never' }}</span>
+        <span class="text-xs">{{ row.last_sign_in_at ? formatDateTime(row.last_sign_in_at) : $t('project.projectEndUsers.never') }}</span>
       </template>
       <template #cell-actions="{ row }">
         <div class="flex items-center justify-end gap-2">
-          <RouterLink :to="userLink(row)" class="text-sm font-medium text-primary underline">View</RouterLink>
-          <BaseActionMenu v-if="access.developer" :items="menuItems(row)" :label="`More actions for ${row.email}`" />
+          <RouterLink :to="userLink(row)" class="text-sm font-medium text-primary underline">{{ $t('project.projectEndUsers.view') }}</RouterLink>
+          <BaseActionMenu v-if="access.developer" :items="menuItems(row)" :label="$t('project.projectEndUsers.moreActionsFor', { email: row.email })" />
         </div>
       </template>
     </BaseDataTable>
@@ -218,21 +221,21 @@ onMounted(() => {
     @cancel="actions.pending.value = null"
   />
 
-  <BaseDialog v-model:visible="createOpen" title="Create end user">
+  <BaseDialog v-model:visible="createOpen" :title="$t('project.projectEndUsers.createEndUser')">
     <form id="create-end-user" class="flex flex-col gap-4" novalidate @submit.prevent="create.run()">
       <BaseAlert v-if="create.error.value && create.error.value.details.length === 0" variant="danger">{{ create.error.value.message }}</BaseAlert>
-      <BaseInput v-model="newEmail" label="Email" type="email" required :error="create.error.value?.fieldError('email')" />
-      <BaseInput v-model="newName" label="Name" :error="create.error.value?.fieldError('name')" />
+      <BaseInput v-model="newEmail" :label="$t('project.projectEndUsers.email')" type="email" required :error="create.error.value?.fieldError('email')" />
+      <BaseInput v-model="newName" :label="$t('project.projectEndUsers.name')" :error="create.error.value?.fieldError('name')" />
       <CustomAttributeFields v-model="newAttributes" :definitions="definitions" :error="create.error.value" />
       <BaseCheckbox
         v-model="sendInvitation"
-        label="Email an invitation to set a password"
-        hint="The invitation contains a code and, if configured, a link to your app. New users join groups set to take them automatically."
+        :label="$t('project.projectEndUsers.emailAnInvitationToSet')"
+        :hint="$t('project.projectEndUsers.theInvitationContainsACode')"
       />
     </form>
     <template #footer>
-      <BaseButton label="Cancel" variant="secondary" @click="createOpen = false" />
-      <BaseButton label="Create" type="submit" form="create-end-user" :loading="create.loading.value" />
+      <BaseButton :label="$t('project.projectEndUsers.cancel')" variant="secondary" @click="createOpen = false" />
+      <BaseButton :label="$t('project.projectEndUsers.create')" type="submit" form="create-end-user" :loading="create.loading.value" />
     </template>
   </BaseDialog>
 </template>

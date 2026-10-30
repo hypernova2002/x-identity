@@ -81,6 +81,6 @@ const passThrough = computed(() => ({
       :pt="passThrough"
     />
     <p v-if="hint" :id="hintId" class="text-xs text-text-muted">{{ hint }}</p>
-    <p v-if="error" :id="errorId" class="text-xs font-medium text-danger">Error: {{ error }}</p>
+    <p v-if="error" :id="errorId" class="text-xs font-medium text-danger">{{ $t('base.field.error', { message: error }) }}</p>
   </div>
 </template>

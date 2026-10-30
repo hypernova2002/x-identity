@@ -5,9 +5,9 @@ import { authService } from '@/services/auth'
 
 <template>
   <TokenConfirmation
-    title="Verify your email"
-    success-title="Email verified"
-    success-message="Thanks for confirming your email address."
+    :title="$t('auth.verifyEmail.title')"
+    :success-title="$t('auth.verifyEmail.successTitle')"
+    :success-message="$t('auth.verifyEmail.successMessage')"
     :confirm="authService.confirmEmail"
   />
 </template>

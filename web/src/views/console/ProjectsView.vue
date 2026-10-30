@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
@@ -19,6 +20,7 @@ import { useSessionStore } from '@/stores/session'
 import type { DeletedProject } from '@/types/api'
 import { formatDateTime, formatDuration } from '@/utils/format'
 
+const { t } = useI18n()
 const route = useRoute()
 const { account, isAccountAdmin } = storeToRefs(useSessionStore())
 const projectStore = useProjectStore()
@@ -26,12 +28,12 @@ const projectStore = useProjectStore()
 const createOpen = ref(route.query.create === '1')
 
 const columns: DataTableColumn[] = [
-  { key: 'name', label: 'Name', sortKey: 'name' },
-  { key: 'created_at', label: 'Created', sortKey: 'created_at' },
+  { key: 'name', label: t('console.projects.columns.name'), sortKey: 'name' },
+  { key: 'created_at', label: t('console.projects.columns.created'), sortKey: 'created_at' },
 ]
 const filters: DataTableFilter[] = [
-  { type: 'date', key: 'created_at_gteq', label: 'Created from' },
-  { type: 'date', key: 'created_at_lteq', label: 'Created to' },
+  { type: 'date', key: 'created_at_gteq', label: t('console.projects.filters.createdFrom') },
+  { type: 'date', key: 'created_at_lteq', label: t('console.projects.filters.createdTo') },
 ]
 
 const { state, rows, total, perPage, loading, error, reload } = useListView((params) => projectService.list(account.value!.uid, params), {
@@ -66,18 +68,18 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageHeader title="Projects" description="Each project is a separate directory of end users, with its own applications, settings and members.">
+  <PageHeader :title="t('console.projects.title')" :description="t('console.projects.description')">
     <template v-if="isAccountAdmin" #actions>
-      <BaseButton label="Create project" @click="createOpen = true" />
+      <BaseButton :label="t('console.projects.create')" @click="createOpen = true" />
     </template>
   </PageHeader>
 
   <BaseDataTable
     storage-key="projects"
     v-model:state="state"
-    caption="Projects"
-    search-placeholder="Search projects…"
-    search-label="Search by name"
+    :caption="t('console.projects.caption')"
+    :search-placeholder="t('console.projects.searchPlaceholder')"
+    :search-label="t('console.projects.searchLabel')"
     :columns="columns"
     :filters="filters"
     :rows="rows"
@@ -86,7 +88,7 @@ onMounted(() => {
     :per-page="perPage"
     :loading="loading"
     :error="error"
-    empty-message="No projects yet."
+    :empty-message="t('console.projects.empty')"
     @reload="reload"
   >
     <template #cell-name="{ row }">
@@ -96,20 +98,20 @@ onMounted(() => {
     </template>
     <template #cell-created_at="{ row }">{{ formatDateTime(row.created_at) }}</template>
     <template #empty>
-      <span v-if="isAccountAdmin">No projects yet. Create one for each environment, such as Production and Staging.</span>
-      <span v-else>You haven't been added to any projects yet. Ask an account admin to add you.</span>
+      <span v-if="isAccountAdmin">{{ t('console.projects.emptyAdmin') }}</span>
+      <span v-else>{{ t('console.projects.emptyMember') }}</span>
     </template>
   </BaseDataTable>
 
   <BaseCard
     v-if="isAccountAdmin && (deleted.data.value?.length || deleted.error.value || restored)"
-    title="Scheduled for deletion"
-    description="Deleted projects can be restored until their data is permanently deleted, 24 hours after they were deleted."
+    :title="t('console.projects.deletedTitle')"
+    :description="t('console.projects.deletedDescription')"
   >
-    <BaseAlert v-if="restored" variant="success">{{ restored }} restored.</BaseAlert>
+    <BaseAlert v-if="restored" variant="success">{{ t('console.projects.restored', { name: restored }) }}</BaseAlert>
     <BaseAlert v-if="deleted.error.value" variant="danger">
-      We couldn't load deleted projects. {{ deleted.error.value.message }}
-      <BaseButton label="Retry" variant="secondary" size="sm" @click="deleted.reload()" />
+      {{ t('console.projects.deletedLoadFailed', { message: deleted.error.value.message }) }}
+      <BaseButton :label="t('console.projects.retry')" variant="secondary" size="sm" @click="deleted.reload()" />
     </BaseAlert>
     <BaseAlert v-if="restore.error.value" variant="danger">{{ restore.error.value.message }}</BaseAlert>
     <ul v-if="deleted.data.value?.length" class="flex flex-col divide-y divide-border">
@@ -117,11 +119,11 @@ onMounted(() => {
         <div class="flex flex-col gap-1">
           <span class="font-medium">{{ deletedProject.name }}</span>
           <span class="text-sm text-text-muted">
-            Deleted {{ formatDateTime(deletedProject.deleted_at) }} · permanently deleted in {{ timeLeft(deletedProject) }}
+            {{ t('console.projects.deletedAt', { date: formatDateTime(deletedProject.deleted_at), time: timeLeft(deletedProject) }) }}
           </span>
         </div>
         <BaseButton
-          label="Restore"
+          :label="t('console.projects.restore')"
           variant="secondary"
           :loading="restoringUid === deletedProject.uid"
           :disabled="restoringUid !== null"

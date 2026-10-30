@@ -49,7 +49,7 @@ const passThrough = computed(() => ({
   <div class="flex flex-col gap-2">
     <label :for="id" class="text-sm font-medium">
       {{ label }}
-      <span v-if="required" class="text-text-muted">(required)</span>
+      <span v-if="required" class="text-text-muted">{{ $t('base.field.required') }}</span>
     </label>
     <Textarea
       :id="id"
@@ -64,7 +64,7 @@ const passThrough = computed(() => ({
     />
     <p v-if="hint" :id="hintId" class="text-xs text-text-muted">{{ hint }}</p>
     <p v-if="error" :id="errorId" class="text-xs font-medium text-danger">
-      Error: {{ error }}
+      {{ $t('base.field.error', { message: error }) }}
     </p>
   </div>
 </template>

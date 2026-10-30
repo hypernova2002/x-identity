@@ -24,25 +24,25 @@ const { loading, error, run } = useAsyncAction(async () => {
 </script>
 
 <template>
-  <BaseCard title="Reset your password">
+  <BaseCard :title="$t('auth.forgotPassword.title')">
     <AccountLookupState :loading="accountLoading" :error="accountError" />
 
     <template v-if="account">
-      <BaseAlert v-if="sent" variant="success" title="Check your email">
-        If {{ email }} belongs to a user in {{ account.name }}, we've sent a link to reset the password. It expires in 1 hour.
+      <BaseAlert v-if="sent" variant="success" :title="$t('auth.forgotPassword.sentTitle')">
+        {{ $t('auth.forgotPassword.sent', { email, account: account.name }) }}
       </BaseAlert>
 
       <form v-else class="flex flex-col gap-4" novalidate @submit.prevent="run()">
         <BaseAlert v-if="error" variant="danger">{{ error.message }}</BaseAlert>
-        <BaseInput v-model="email" label="Email" type="email" autocomplete="email" required />
-        <BaseButton type="submit" label="Send reset link" :loading="loading" />
+        <BaseInput v-model="email" :label="$t('auth.fields.email')" type="email" autocomplete="email" required />
+        <BaseButton type="submit" :label="$t('auth.forgotPassword.submit')" :loading="loading" />
       </form>
 
       <RouterLink
         :to="{ name: 'sign-in', params: { slug } }"
         class="text-sm font-medium text-primary underline hover:text-primary-hover"
       >
-        Back to sign in
+        {{ $t('auth.backToSignIn') }}
       </RouterLink>
     </template>
   </BaseCard>

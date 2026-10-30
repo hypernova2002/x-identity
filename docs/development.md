@@ -134,3 +134,9 @@ changes.
   emails are enqueued after the transaction commits.
 - The frontend reaches the API through `web/src/services/`; design tokens are in
   `web/src/assets/tokens.css`, and feature code uses the wrappers in `web/src/components/base/`.
+- Frontend text is in `web/src/locales/<locale>/`, through vue-i18n (`$t` in templates, `<i18n-t>`
+  for sentences with links or markup, `i18n.global.t` outside components). The locale comes from
+  the browser's languages, falling back to English; to add one, add its messages and list it in
+  `SUPPORTED_LOCALES` (`web/src/i18n/index.ts`). `ApiError` builds its message from the error's
+  code, reason and details (`errors` messages), never from the API's English. ESLint's
+  `vue/no-bare-strings-in-template` rejects untranslated text in templates.

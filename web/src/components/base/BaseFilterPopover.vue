@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import Popover from 'openvue/popover'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from './BaseButton.vue'
 
@@ -11,7 +12,9 @@ const props = defineProps<{
 
 const popover = ref<InstanceType<typeof Popover> | null>(null)
 
-const label = computed(() => (props.activeCount > 0 ? `More filters (${props.activeCount})` : 'More filters'))
+const { t } = useI18n()
+
+const label = computed(() => (props.activeCount > 0 ? t('base.filters.moreActive', { count: props.activeCount }) : t('base.filters.more')))
 
 const passThrough = {
   root: { class: 'z-50 mt-1 rounded-md border border-border bg-bg shadow-md' },
@@ -21,7 +24,7 @@ const passThrough = {
 
 <template>
   <BaseButton :label="label" variant="secondary" aria-haspopup="dialog" @click="(event: MouseEvent) => popover?.toggle(event)" />
-  <Popover ref="popover" :pt="passThrough" role="dialog" aria-label="More filters">
+  <Popover ref="popover" :pt="passThrough" role="dialog" :aria-label="$t('base.filters.more')">
     <slot />
   </Popover>
 </template>

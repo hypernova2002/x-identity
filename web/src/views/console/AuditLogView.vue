@@ -16,8 +16,8 @@ function fetchPage(params: ListParams) {
 
 <template>
   <PageHeader
-    title="Audit log"
-    description="Account-level activity, newest first. Each project has its own log for its end users and settings."
+    :title="$t('console.auditLog.title')"
+    :description="$t('console.auditLog.description')"
   />
   <AuditLogPanel v-if="account" :fetch-page="fetchPage" />
 </template>

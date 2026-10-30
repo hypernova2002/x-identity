@@ -18,8 +18,8 @@ const passThrough = {
       </div>
       <p class="p-4 text-sm">{{ message.message }}</p>
       <div class="flex flex-wrap justify-end gap-2 border-t border-border p-4">
-        <BaseButton :label="message.rejectLabel ?? 'Cancel'" variant="secondary" @click="rejectCallback" />
-        <BaseButton :label="message.acceptLabel ?? 'Confirm'" :variant="message.acceptProps?.danger ? 'danger' : 'primary'" @click="acceptCallback" />
+        <BaseButton :label="message.rejectLabel ?? $t('base.confirm.cancel')" variant="secondary" @click="rejectCallback" />
+        <BaseButton :label="message.acceptLabel ?? $t('base.confirm.confirm')" :variant="message.acceptProps?.danger ? 'danger' : 'primary'" @click="acceptCallback" />
       </div>
     </template>
   </ConfirmDialog>

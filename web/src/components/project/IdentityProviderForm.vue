@@ -30,7 +30,7 @@ const draft = defineModel<IdentityProviderDraft>({ required: true })
   <form :id="formId" class="flex flex-col gap-4" novalidate @submit.prevent="emit('submit')">
     <BaseAlert v-if="error && error.details.length === 0" variant="danger">{{ error.message }}</BaseAlert>
 
-    <BaseInput v-model="draft.name" label="Name" required hint="Shown to end users, e.g. on sign-in buttons." :error="error?.fieldError('name')" />
+    <BaseInput v-model="draft.name" :label="$t('project.identityProviderForm.name')" required :hint="$t('project.identityProviderForm.shownToEndUsersE')" :error="error?.fieldError('name')" />
 
     <SamlProviderFields
       v-if="draft.kind === 'saml'"
@@ -45,47 +45,47 @@ const draft = defineModel<IdentityProviderDraft>({ required: true })
     <BaseInput
       v-if="draft.kind === 'oidc'"
       v-model="draft.discoveryUrl"
-      label="Issuer or discovery URL"
+      :label="$t('project.identityProviderForm.issuerOrDiscoveryUrl')"
       type="url"
       required
-      hint="For example https://login.example.com. Its /.well-known/openid-configuration is loaded when you save."
+      :hint="$t('project.identityProviderForm.forExampleHttpsLoginExample')"
       :error="error?.fieldError('discovery_url')"
     />
 
     <BaseInput
       v-model="draft.clientId"
-      :label="draft.kind === 'apple' ? 'Services ID' : 'Client ID'"
+      :label="draft.kind === 'apple' ? $t('project.identityProviderForm.servicesId') : $t('project.identityProviderForm.clientId')"
       required
-      :hint="draft.kind === 'apple' ? 'The identifier of the Services ID you created for web sign-in.' : 'From the provider\'s app registration.'"
+      :hint="draft.kind === 'apple' ? $t('project.identityProviderForm.theIdentifierOfTheServices') : $t('project.identityProviderForm.fromTheProviderSApp')"
       :error="error?.fieldError('client_id')"
     />
 
     <BaseInput
       v-if="draft.kind !== 'apple'"
       v-model="draft.clientSecret"
-      label="Client secret"
+      :label="$t('project.identityProviderForm.clientSecret')"
       type="password"
       autocomplete="off"
       :required="!existing"
-      :hint="existing?.client_secret_set ? 'A secret is saved. Leave blank to keep it.' : undefined"
+      :hint="existing?.client_secret_set ? $t('project.identityProviderForm.aSecretIsSavedLeave') : undefined"
       :error="error?.fieldError('client_secret')"
     />
 
     <template v-if="draft.kind === 'apple'">
       <div class="grid gap-4 sm:grid-cols-2">
-        <BaseInput v-model="draft.appleTeamId" label="Team ID" required :error="error?.fieldError('apple_team_id')" />
-        <BaseInput v-model="draft.appleKeyId" label="Key ID" required :error="error?.fieldError('apple_key_id')" />
+        <BaseInput v-model="draft.appleTeamId" :label="$t('project.identityProviderForm.teamId')" required :error="error?.fieldError('apple_team_id')" />
+        <BaseInput v-model="draft.appleKeyId" :label="$t('project.identityProviderForm.keyId')" required :error="error?.fieldError('apple_key_id')" />
       </div>
       <BaseTextarea
         v-model="draft.applePrivateKey"
-        label="Private key (.p8)"
+        :label="$t('project.identityProviderForm.privateKeyP8')"
         monospace
         :rows="5"
         :required="!existing"
         :hint="
           existing?.apple_private_key_set
-            ? 'A key is saved. Paste a new one to replace it.'
-            : 'Paste the whole file, from -----BEGIN PRIVATE KEY----- to -----END PRIVATE KEY-----.'
+            ? $t('project.identityProviderForm.aKeyIsSavedPaste')
+            : $t('project.identityProviderForm.pasteTheWholeFileFrom')
         "
         :error="error?.fieldError('apple_private_key')"
       />
@@ -94,18 +94,18 @@ const draft = defineModel<IdentityProviderDraft>({ required: true })
     <BaseInput
       v-else
       v-model="draft.scopes"
-      label="Scopes"
-      hint="Separated by spaces. Must include openid; email is needed to match and create users."
+      :label="$t('project.identityProviderForm.scopes')"
+      :hint="$t('project.identityProviderForm.separatedBySpacesMustInclude')"
       :error="error?.fieldError('scopes')"
     />
 
     <BaseInput
       v-model="draft.additionalAudiences"
-      label="Native app client IDs"
+      :label="$t('project.identityProviderForm.nativeAppClientIds')"
       :hint="
         draft.kind === 'apple'
-          ? 'Optional. Your iOS app\'s bundle ID, so it can sign in with ID tokens from Sign in with Apple. Separate several with commas.'
-          : 'Optional. iOS or Android client IDs whose ID tokens your native apps send directly. Separate several with commas.'
+          ? $t('project.identityProviderForm.optionalYourIosAppS')
+          : $t('project.identityProviderForm.optionalIosOrAndroidClient')
       "
       :error="error?.fieldError('additional_audiences')"
     />
@@ -113,8 +113,8 @@ const draft = defineModel<IdentityProviderDraft>({ required: true })
 
     <BaseCheckbox
       v-model="draft.createUsers"
-      label="Create users on their first sign-in"
-      hint="Even when self sign-up is off. When off, only existing or invited users can sign in with this provider unless self sign-up is on."
+      :label="$t('project.identityProviderForm.createUsersOnTheirFirst')"
+      :hint="$t('project.identityProviderForm.evenWhenSelfSignUp')"
     />
   </form>
 </template>

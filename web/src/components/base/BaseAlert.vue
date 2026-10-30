@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Message from 'openvue/message'
+import { useI18n } from 'vue-i18n'
 
 type AlertVariant = 'info' | 'success' | 'warning' | 'danger'
 
@@ -16,12 +17,7 @@ const props = withDefaults(
 
 const severity = { info: 'info', success: 'success', warning: 'warn', danger: 'error' } as const
 
-const prefix: Record<AlertVariant, string> = {
-  info: 'Note',
-  success: 'Done',
-  warning: 'Warning',
-  danger: 'Error',
-}
+const { t } = useI18n()
 
 const borderClasses: Record<AlertVariant, string> = {
   info: 'border-info',
@@ -39,7 +35,7 @@ const passThrough = computed(() => ({
 
 <template>
   <Message :severity="severity[variant]" :pt="passThrough">
-    <p class="font-semibold">{{ title ?? prefix[variant] }}</p>
+    <p class="font-semibold">{{ title ?? t(`base.alert.${variant}`) }}</p>
     <div class="text-text"><slot /></div>
   </Message>
 </template>

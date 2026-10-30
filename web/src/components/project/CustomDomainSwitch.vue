@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -7,6 +8,8 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import ConfirmDialog from '@/components/console/ConfirmDialog.vue'
 import type { ApiError } from '@/services/http'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   /** A SAML app, or a SAML identity provider: who has to update their settings after a switch. */
@@ -28,12 +31,18 @@ const emit = defineEmits<{
 const confirmOpen = ref(false)
 
 const usesDomain = computed(() => props.onCustomDomain && props.domain !== null)
-const target = computed(() => (usesDomain.value ? 'the standard URLs' : props.domain))
-const urls = computed(() => (props.kind === 'app' ? 'entity ID, sign-on and logout URLs' : 'service provider entity ID, ACS and logout URLs'))
+/** The domain the URLs move to, or null for the standard URLs. */
+const target = computed(() => (usesDomain.value ? null : props.domain))
+const urlsChange = computed(() => {
+  const kind = props.kind === 'app' ? 'app' : 'provider'
+  return target.value
+    ? t(`project.customDomainSwitch.${kind}UrlsChangeToDomain`, { domain: target.value })
+    : t(`project.customDomainSwitch.${kind}UrlsChangeToStandard`)
+})
 const followUp = computed(() =>
   props.kind === 'app'
-    ? `Sign-ins to ${props.name} fail until it has the new details: re-import the metadata in ${props.name}, or update its settings.`
-    : `Sign-ins through ${props.name} fail until it has the new details: send the new metadata URL to its identity provider admin.`,
+    ? t('project.customDomainSwitch.signInsToFailUntil', { name: props.name })
+    : t('project.customDomainSwitch.signInsThroughFailUntil', { name: props.name }),
 )
 
 function confirm() {
@@ -44,21 +53,26 @@ defineExpose({ close: () => (confirmOpen.value = false) })
 </script>
 
 <template>
-  <BaseCard title="Domain">
+  <BaseCard :title="$t('project.customDomainSwitch.domain')">
     <p class="text-sm">
-      <template v-if="usesDomain">Uses the project's custom domain, <strong>{{ domain }}</strong>.</template>
+      <i18n-t v-if="usesDomain" keypath="project.customDomainSwitch.usesTheProjectSCustom">
+        <template #domain><strong>{{ domain }}</strong></template>
+      </i18n-t>
       <template v-else-if="onCustomDomain">
-        Set to use the project's custom domain, but the project has no verified domain, so it uses the standard URLs.
+        {{ $t('project.customDomainSwitch.setToUseTheProject') }}
       </template>
-      <template v-else>Uses the project's standard URLs.</template>
+      <template v-else>{{ $t('project.customDomainSwitch.usesTheProjectSStandard') }}</template>
     </p>
     <p v-if="!domain && !onCustomDomain" class="text-sm text-text-muted">
-      To use your own domain, add one in
-      <RouterLink :to="{ name: 'project-domain', params: { projectUid } }" class="font-medium text-primary underline">Project settings › Custom domain</RouterLink>.
+      <i18n-t keypath="project.customDomainSwitch.toUseYourOwnDomain">
+        <template #link>
+          <RouterLink :to="{ name: 'project-domain', params: { projectUid } }" class="font-medium text-primary underline">{{ $t('project.customDomainSwitch.projectSettingsCustomDomain') }}</RouterLink>
+        </template>
+      </i18n-t>
     </p>
     <BaseButton
       v-if="canChange && (domain || onCustomDomain)"
-      :label="usesDomain || !domain ? 'Switch to the standard URLs' : `Switch to ${domain}`"
+      :label="usesDomain || !domain ? $t('project.customDomainSwitch.switchToTheStandardUrls') : $t('project.customDomainSwitch.switchTo', { domain })"
       variant="secondary"
       class="self-start"
       @click="confirmOpen = true"
@@ -67,14 +81,14 @@ defineExpose({ close: () => (confirmOpen.value = false) })
 
   <ConfirmDialog
     v-model:visible="confirmOpen"
-    :title="`Switch ${name} to ${target ?? 'the standard URLs'}?`"
-    confirm-label="Switch"
+    :title="target ? $t('project.customDomainSwitch.switchToDomainTitle', { name, domain: target }) : $t('project.customDomainSwitch.switchToStandardTitle', { name })"
+    :confirm-label="$t('project.customDomainSwitch.switch')"
     :loading="saving"
     :error="error"
     @confirm="confirm"
   >
-    <BaseAlert variant="warning" title="The other side needs updating">
-      The {{ urls }} change to {{ target ?? 'the standard URLs' }}'s. {{ followUp }}
+    <BaseAlert variant="warning" :title="$t('project.customDomainSwitch.theOtherSideNeedsUpdating')">
+      {{ urlsChange }} {{ followUp }}
     </BaseAlert>
   </ConfirmDialog>
 </template>

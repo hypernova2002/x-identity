@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRouter } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -12,6 +13,8 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProjectContext } from '@/composables/useProjectContext'
 import { projectAdminService } from '@/services/project'
 import { formatDateTime } from '@/utils/format'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const { accountUid, project, access } = useProjectContext()
@@ -30,8 +33,8 @@ const checks = computed(() => (client.value.machine ? machineChecks.value : sign
 const machineChecks = computed(() => [
   {
     done: (grantCount.value ?? 0) > 0,
-    label: 'Can get tokens for an API',
-    detail: grantCount.value === null ? 'Checking…' : grantCount.value > 0 ? `Has access to ${grantCount.value} API(s).` : 'No API access yet.',
+    label: t('project.appClientOverview.canGetTokensForAn'),
+    detail: grantCount.value === null ? t('project.appClientOverview.checking') : grantCount.value > 0 ? t('project.appClientOverview.hasAccessToApiS', { grantCountValue: grantCount.value }) : t('project.appClientOverview.noApiAccessYet'),
     to: 'project-app-client-api-access',
   },
 ])
@@ -39,26 +42,26 @@ const machineChecks = computed(() => [
 const signInChecks = computed(() => [
   {
     done: (assignmentCount.value ?? 0) > 0,
-    label: 'People can sign in',
-    detail: assignmentCount.value === null ? 'Checking…' : assignmentCount.value > 0 ? `Assigned to ${assignmentCount.value} group(s) or user(s).` : 'Nobody is assigned yet.',
+    label: t('project.appClientOverview.peopleCanSignIn'),
+    detail: assignmentCount.value === null ? t('project.appClientOverview.checking') : assignmentCount.value > 0 ? t('project.appClientOverview.assignedToGroupSOr', { assignmentCountValue: assignmentCount.value }) : t('project.appClientOverview.nobodyIsAssignedYet'),
     to: 'project-app-client-access',
   },
   {
     done: client.value.redirect_uris.length > 0,
-    label: 'Redirect URIs',
-    detail: client.value.redirect_uris.length > 0 ? `${client.value.redirect_uris.length} registered.` : 'Needed for hosted login and identity provider sign-in.',
+    label: t('project.appClientOverview.redirectUris'),
+    detail: client.value.redirect_uris.length > 0 ? t('project.appClientOverview.registered', { redirectUrisLength: client.value.redirect_uris.length }) : t('project.appClientOverview.neededForHostedLoginAnd'),
     to: 'project-app-client-sign-in',
   },
   {
     done: client.value.allowed_origins.length > 0,
-    label: 'Allowed origins',
-    detail: client.value.allowed_origins.length > 0 ? client.value.allowed_origins.join(', ') : 'Needed when a browser app calls the API directly.',
+    label: t('project.appClientOverview.allowedOrigins'),
+    detail: client.value.allowed_origins.length > 0 ? client.value.allowed_origins.join(', ') : t('project.appClientOverview.neededWhenABrowserApp'),
     to: 'project-app-client-sign-in',
   },
   {
     done: client.value.launch_url !== null,
-    label: 'Listed in the app portal',
-    detail: client.value.launch_url ?? 'Optional: add a launch URL to list it in the portal.',
+    label: t('project.appClientOverview.listedInTheAppPortal'),
+    detail: client.value.launch_url ?? t('project.appClientOverview.optionalAddALaunchUrl'),
     to: 'project-app-client-sign-in',
   },
 ])
@@ -85,21 +88,21 @@ onMounted(() => loadAssignments.run())
 </script>
 
 <template>
-  <BaseCard title="Summary">
+  <BaseCard :title="$t('project.appClientOverview.summary')">
     <dl class="grid gap-2 text-sm sm:grid-cols-[max-content_1fr]">
-      <dt class="font-medium">Client ID</dt>
+      <dt class="font-medium">{{ $t('project.appClientOverview.clientId') }}</dt>
       <dd class="font-mono text-xs break-all">{{ client.uid }}</dd>
-      <dt class="font-medium">Client type</dt>
-      <dd v-if="client.machine">Machine-to-machine: a service with a secret, getting tokens for your APIs</dd>
-      <dd v-else>{{ client.client_type === 'public' ? 'Public: browser or mobile app, no secret' : 'Confidential: server-side app with a secret' }}</dd>
-      <dt class="font-medium">Created</dt>
+      <dt class="font-medium">{{ $t('project.appClientOverview.clientType') }}</dt>
+      <dd v-if="client.machine">{{ $t('project.appClientOverview.machineToMachineAService') }}</dd>
+      <dd v-else>{{ client.client_type === 'public' ? $t('project.appClientOverview.publicBrowserOrMobileApp') : $t('project.appClientOverview.confidentialServerSideAppWith') }}</dd>
+      <dt class="font-medium">{{ $t('project.appClientOverview.created') }}</dt>
       <dd>{{ formatDateTime(client.created_at) }}</dd>
-      <dt class="font-medium">Last changed</dt>
+      <dt class="font-medium">{{ $t('project.appClientOverview.lastChanged') }}</dt>
       <dd>{{ formatDateTime(client.updated_at) }}</dd>
     </dl>
   </BaseCard>
 
-  <BaseCard title="Configuration status">
+  <BaseCard :title="$t('project.appClientOverview.configurationStatus')">
     <BaseAlert v-if="loadAssignments.error.value" variant="danger">{{ loadAssignments.error.value.message }}</BaseAlert>
     <ul class="flex flex-col divide-y divide-border">
       <li v-for="check in checks" :key="check.label" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
@@ -108,50 +111,46 @@ onMounted(() => loadAssignments.run())
           <span class="text-xs break-all text-text-muted">{{ check.detail }}</span>
         </span>
         <span class="flex items-center gap-2">
-          <StatusBadge :tone="check.done ? 'success' : 'neutral'" :label="check.done ? 'Set' : 'Not set'" />
-          <RouterLink :to="{ name: check.to, params }" class="text-sm font-medium text-primary underline">Review</RouterLink>
+          <StatusBadge :tone="check.done ? 'success' : 'neutral'" :label="check.done ? $t('project.appClientOverview.set') : $t('project.appClientOverview.notSet')" />
+          <RouterLink :to="{ name: check.to, params }" class="text-sm font-medium text-primary underline">{{ $t('project.appClientOverview.review') }}</RouterLink>
         </span>
       </li>
     </ul>
   </BaseCard>
 
-  <BaseCard v-if="!client.machine" title="Try it">
-    <p class="text-sm">Sign an end user in through this client to check the setup, step through challenges and inspect the tokens.</p>
+  <BaseCard v-if="!client.machine" :title="$t('project.appClientOverview.tryIt')">
+    <p class="text-sm">{{ $t('project.appClientOverview.signAnEndUserIn') }}</p>
     <RouterLink
       :to="{ name: 'project-test-sign-in', params: { projectUid: project?.uid }, query: { client: client.uid } }"
       class="self-start text-sm font-medium text-primary underline"
     >
-      Test sign-in with {{ client.name }}
+      {{ $t('project.appClientOverview.testSignInWith', { name: client.name }) }}
     </RouterLink>
   </BaseCard>
 
-  <BaseCard v-if="access.developer" title="Manage">
+  <BaseCard v-if="access.developer" :title="$t('project.appClientOverview.manage')">
     <BaseAlert v-if="toggle.error.value" variant="danger">{{ toggle.error.value.message }}</BaseAlert>
     <div class="flex flex-wrap gap-2">
-      <BaseButton v-if="client.enabled" label="Disable" variant="secondary" @click="disableOpen = true" />
-      <BaseButton v-else label="Enable" variant="secondary" :loading="toggle.loading.value" @click="toggle.run()" />
-      <BaseButton label="Delete application" variant="danger" @click="deleteOpen = true" />
+      <BaseButton v-if="client.enabled" :label="$t('project.appClientOverview.disable')" variant="secondary" @click="disableOpen = true" />
+      <BaseButton v-else :label="$t('project.appClientOverview.enable')" variant="secondary" :loading="toggle.loading.value" @click="toggle.run()" />
+      <BaseButton :label="$t('project.appClientOverview.deleteApplication')" variant="danger" @click="deleteOpen = true" />
     </div>
   </BaseCard>
 
-  <ConfirmDialog v-model:visible="disableOpen" title="Disable this client?" confirm-label="Disable" danger :loading="toggle.loading.value" :error="toggle.error.value" @confirm="toggle.run()">
-    <p v-if="client.machine">
-      <strong>{{ client.name }}</strong> can't get new tokens while it's disabled. Tokens it already has keep working until they expire.
-      You can enable it again later.
-    </p>
-    <p v-else>
-      Nobody can sign in through <strong>{{ client.name }}</strong> while it's disabled, and everyone currently signed in through it is
-      signed out. You can enable it again later.
-    </p>
+  <ConfirmDialog v-model:visible="disableOpen" :title="$t('project.appClientOverview.disableThisClient')" :confirm-label="$t('project.appClientOverview.disable')" danger :loading="toggle.loading.value" :error="toggle.error.value" @confirm="toggle.run()">
+    <i18n-t keypath="project.appClientOverview.disableMachineDescription" tag="p" v-if="client.machine">
+      <template #name><strong>{{ client.name }}</strong></template>
+    </i18n-t>
+    <i18n-t keypath="project.appClientOverview.disableDescription" tag="p" v-else>
+      <template #name><strong>{{ client.name }}</strong></template>
+    </i18n-t>
   </ConfirmDialog>
-  <ConfirmDialog v-model:visible="deleteOpen" title="Delete this client?" confirm-label="Delete application" danger :loading="destroy.loading.value" :error="destroy.error.value" @confirm="destroy.run()">
-    <p v-if="client.machine">
-      <strong>{{ client.name }}</strong> can't get new tokens, and its API access is removed. Tokens it already has keep working until they
-      expire. This can't be undone.
-    </p>
-    <p v-else>
-      Apps using <strong>{{ client.name }}</strong> stop being able to sign end users in, and everyone signed in through it is signed
-      out. Its access assignments are removed. This can't be undone.
-    </p>
+  <ConfirmDialog v-model:visible="deleteOpen" :title="$t('project.appClientOverview.deleteThisClient')" :confirm-label="$t('project.appClientOverview.deleteApplication')" danger :loading="destroy.loading.value" :error="destroy.error.value" @confirm="destroy.run()">
+    <i18n-t keypath="project.appClientOverview.deleteMachineDescription" tag="p" v-if="client.machine">
+      <template #name><strong>{{ client.name }}</strong></template>
+    </i18n-t>
+    <i18n-t keypath="project.appClientOverview.deleteDescription" tag="p" v-else>
+      <template #name><strong>{{ client.name }}</strong></template>
+    </i18n-t>
   </ConfirmDialog>
 </template>

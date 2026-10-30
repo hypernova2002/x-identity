@@ -3,7 +3,7 @@ import BaseCard from '@/components/base/BaseCard.vue'
 </script>
 
 <template>
-  <BaseCard title="You're signed out">
-    <p class="text-sm text-text-muted">You can close this page, or go back to the app to sign in again.</p>
+  <BaseCard :title="$t('hosted.signedOut.title')">
+    <p class="text-sm text-text-muted">{{ $t('hosted.signedOut.description') }}</p>
   </BaseCard>
 </template>

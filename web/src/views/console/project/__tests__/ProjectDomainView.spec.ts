@@ -31,6 +31,7 @@ const domain = (changes: Partial<ProjectDomain> = {}): ProjectDomain => ({
   verified_at: null,
   last_checked_at: null,
   check_error: null,
+  check_error_params: {},
   dns_missing_since: null,
   certificate_status: 'external',
   verify_until: '2026-10-28T12:00:00Z',
@@ -96,7 +97,7 @@ describe('ProjectDomainView', () => {
 
   it('warns when a verified domain loses its DNS records', async () => {
     vi.mocked(projectAdminService.listDomains).mockResolvedValue([
-      domain({ status: 'verified', verified_at: '2026-10-20T12:00:00Z', dns_missing_since: '2026-10-25T10:00:00Z', check_error: 'No CNAME record for login.acme.com was found.' }),
+      domain({ status: 'verified', verified_at: '2026-10-20T12:00:00Z', dns_missing_since: '2026-10-25T10:00:00Z', check_error: 'missing_cname', check_error_params: { hostname: 'login.acme.com' } }),
     ])
     const wrapper = await mountView()
 

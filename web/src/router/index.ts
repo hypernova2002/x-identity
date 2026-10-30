@@ -9,8 +9,9 @@ declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     requiresAdmin?: boolean
+    /** The page's title, as a message key. */
     title?: string
-    /** Shown under the title by the project layout. */
+    /** Shown under the title by the project layout, as a message key. */
     description?: string
     /** Which sidebar entry is current, including on detail pages below it. */
     navItem?: string

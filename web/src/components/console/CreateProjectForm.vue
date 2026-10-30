@@ -31,11 +31,11 @@ const { loading, error, run } = useAsyncAction(async () => {
     <BaseAlert v-if="error && error.details.length === 0" variant="danger">{{ error.message }}</BaseAlert>
     <BaseInput
       v-model="name"
-      label="Project name"
+      :label="$t('common.createProject.name')"
       required
-      hint="For example Production, Staging or Development."
+      :hint="$t('common.createProject.nameHint')"
       :error="error?.fieldError('name')"
     />
-    <BaseButton type="submit" :label="submitLabel ?? 'Create project'" :loading="loading" class="self-start" />
+    <BaseButton type="submit" :label="submitLabel ?? $t('common.createProject.submit')" :loading="loading" class="self-start" />
   </form>
 </template>

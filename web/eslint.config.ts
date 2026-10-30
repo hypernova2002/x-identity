@@ -25,5 +25,46 @@ export default defineConfigWithVueTs(
     files: ['src/**/__tests__/*'],
   },
 
+  {
+    name: 'app/translated-text',
+    files: ['src/**/*.vue'],
+    rules: {
+      // Text goes through vue-i18n. Besides the rule's defaults, this checks the props our components
+      // take text in, and allows the symbols used as icons.
+      'vue/no-bare-strings-in-template': [
+        'error',
+        {
+          allowlist: ['(', ')', ',', '.', '&', '+', '-', '=', '*', '/', '#', '%', '!', '?', ':', '[', ']', '{', '}', '<', '>', '·', '•', '‐', '–', '—', '−', '|', '←', '→', '⌄', '✓'],
+          attributes: {
+            '/.+/': [
+              'title',
+              'aria-label',
+              'aria-placeholder',
+              'aria-roledescription',
+              'aria-valuetext',
+              'label',
+              'hint',
+              'description',
+              'caption',
+              'placeholder',
+              'empty-message',
+              'no-matches-message',
+              'confirm-label',
+              'search-label',
+              'search-placeholder',
+              'success-title',
+              'success-message',
+              'submit-label',
+              'button-label',
+              'any-label',
+              'email-verification-hint',
+            ],
+            img: ['alt'],
+          },
+        },
+      ],
+    },
+  },
+
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 )

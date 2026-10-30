@@ -20,7 +20,7 @@ const value = defineModel<string>({ required: true })
     v-if="filter.type === 'select'"
     v-model="value"
     :label="filter.label"
-    :options="[{ label: filter.anyLabel ?? 'Any', value: '' }, ...filter.options]"
+    :options="[{ label: filter.anyLabel ?? $t('base.filters.any'), value: '' }, ...filter.options]"
     :append-to="appendTo"
   />
   <BaseSearchSelect
@@ -31,7 +31,7 @@ const value = defineModel<string>({ required: true })
     :resolve-label="filter.resolveLabel"
     :see-all="filter.seeAll"
     :append-to="appendTo"
-    placeholder="Any"
+    :placeholder="$t('base.filters.any')"
   />
   <BaseInput v-else-if="filter.type === 'date'" v-model="value" :label="filter.label" type="date" />
   <BaseInput v-else v-model="value" :label="filter.label" type="search" />

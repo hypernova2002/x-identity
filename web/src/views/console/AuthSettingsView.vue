@@ -25,14 +25,14 @@ function save(changes: Partial<AuthConfiguration>) {
 
 <template>
   <PageHeader
-    title="Console sign-in settings"
-    description="How console users sign in to this account. Each project's end users have their own settings, under the project's Authentication. Changes apply from each user's next sign-in or token refresh."
+    :title="$t('console.authSettings.title')"
+    :description="$t('console.authSettings.description')"
   />
   <AuthConfigurationForm
     v-if="account"
     v-model:dirty="dirty"
     :load="load"
     :save="save"
-    email-verification-hint="Off by default while the console is being tested."
+    :email-verification-hint="$t('console.authSettings.emailVerificationHint')"
   />
 </template>

@@ -50,28 +50,25 @@ watch(
     <BaseAlert v-if="passkeyError" variant="danger">{{ passkeyError }}</BaseAlert>
 
     <template v-if="challenge.challenge === 'passkey_setup'">
-      <p class="text-sm text-text-muted">
-        Signing in here needs a passkey. Create one now: your device asks for your fingerprint, face or PIN, and you'll use it to sign in from
-        now on.
-      </p>
-      <p v-if="!supportsPasskeys" class="text-sm text-text-muted">This browser doesn't support passkeys. Try another browser or device.</p>
+      <p class="text-sm text-text-muted">{{ $t('signIn.challenges.hostedPasskeySetup') }}</p>
+      <p v-if="!supportsPasskeys" class="text-sm text-text-muted">{{ $t('signIn.challenges.noPasskeys') }}</p>
     </template>
 
     <template v-else-if="challenge.challenge === 'passkey'">
-      <p class="text-sm text-text-muted">Confirm it's you with your passkey: your fingerprint, face or device PIN.</p>
-      <p v-if="!offersPasskey" class="text-sm text-text-muted">This browser doesn't support passkeys. Try another browser or device.</p>
+      <p class="text-sm text-text-muted">{{ $t('signIn.challenges.passkey') }}</p>
+      <p v-if="!offersPasskey" class="text-sm text-text-muted">{{ $t('signIn.challenges.noPasskeys') }}</p>
     </template>
 
     <template v-else-if="challenge.challenge === 'otp'">
-      <p class="text-sm text-text-muted">Enter the code from your authenticator app or security token, or one of your recovery codes.</p>
-      <BaseInput v-model="code" label="Verification code" autocomplete="one-time-code" required :error="error?.fieldError('code')" />
+      <p class="text-sm text-text-muted">{{ $t('signIn.challenges.hostedOtp') }}</p>
+      <BaseInput v-model="code" :label="$t('signIn.verificationCode')" autocomplete="one-time-code" required :error="error?.fieldError('code')" />
     </template>
 
     <template v-else-if="challenge.challenge === 'new_password'">
-      <p class="text-sm text-text-muted">Your password has expired. Choose a new one to continue.</p>
+      <p class="text-sm text-text-muted">{{ $t('signIn.challenges.newPassword') }}</p>
       <BaseInput
         v-model="newPassword"
-        label="New password"
+        :label="$t('signIn.newPassword')"
         type="password"
         autocomplete="new-password"
         required
@@ -80,11 +77,11 @@ watch(
     </template>
 
     <template v-else-if="challenge.challenge === 'mfa_setup'">
-      <p class="text-sm text-text-muted">Multi-factor authentication is required. Set it up to continue.</p>
+      <p class="text-sm text-text-muted">{{ $t('signIn.challenges.hostedMfaSetup') }}</p>
       <OtpSetup v-if="enrollment" :enrollment="enrollment" />
       <BaseInput
         v-model="code"
-        label="Verification code"
+        :label="$t('signIn.verificationCode')"
         autocomplete="one-time-code"
         inputmode="numeric"
         required
@@ -96,18 +93,18 @@ watch(
       <template v-if="error?.code !== 'invalid_challenge'">
         <BaseButton
           v-if="challenge.challenge === 'passkey_setup'"
-          label="Create a passkey"
+          :label="$t('signIn.createPasskey')"
           :disabled="!supportsPasskeys"
           :loading="passkeyLoading"
           @click="emit('passkey')"
         />
-        <BaseButton v-else-if="challenge.challenge === 'passkey'" label="Use your passkey" :disabled="!offersPasskey" :loading="passkeyLoading" @click="emit('passkey')" />
+        <BaseButton v-else-if="challenge.challenge === 'passkey'" :label="$t('signIn.usePasskey')" :disabled="!offersPasskey" :loading="passkeyLoading" @click="emit('passkey')" />
         <template v-else>
-          <BaseButton type="submit" label="Continue" :loading="loading" />
-          <BaseButton v-if="offersPasskey" label="Use your passkey instead" variant="secondary" :loading="passkeyLoading" @click="emit('passkey')" />
+          <BaseButton type="submit" :label="$t('signIn.continue')" :loading="loading" />
+          <BaseButton v-if="offersPasskey" :label="$t('signIn.usePasskeyInstead')" variant="secondary" :loading="passkeyLoading" @click="emit('passkey')" />
         </template>
       </template>
-      <BaseButton label="Start over" variant="secondary" @click="emit('startOver')" />
+      <BaseButton :label="$t('signIn.startOver')" variant="secondary" @click="emit('startOver')" />
     </div>
   </form>
 </template>

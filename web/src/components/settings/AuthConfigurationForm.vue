@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -57,6 +58,8 @@ const props = withDefaults(
   { readonly: false, showEmailCodeLimits: false, forProject: false, customDomain: null, sections: () => ['sign-in', 'mfa', 'policies', 'tokens', 'signing'] },
 )
 
+const { t } = useI18n()
+
 /** Whether the form has changes that aren't saved yet. */
 const dirty = defineModel<boolean>('dirty', { default: false })
 
@@ -68,11 +71,11 @@ const passkeysWarning = computed(() => {
   if (passkeys.value === 'off') return null
   if (props.forProject && !props.customDomain) {
     return passkeys.value === 'required'
-      ? "Required needs the project's verified custom domain, which passkeys belong to. Add one in Project settings › Custom domain."
-      : "Passkeys can't be used until the project has a verified custom domain, which passkeys belong to."
+      ? t('settings.authConfiguration.customDomainRequired')
+      : t('settings.authConfiguration.customDomainNeeded')
   }
   if (passkeys.value === 'required' && mfaRequirement.value === 'off') {
-    return "Required needs multi-factor authentication to be optional or required: sign-ins where passkeys can't be used require MFA instead."
+    return t('settings.authConfiguration.mfaNeeded')
   }
   return null
 })
@@ -199,156 +202,151 @@ onMounted(() => load.run())
 </script>
 
 <template>
-  <p v-if="load.loading.value" class="text-sm text-text-muted" role="status">Loading settings…</p>
-  <BaseAlert v-else-if="load.error.value" variant="danger">We couldn't load the settings. {{ load.error.value.message }}</BaseAlert>
+  <p v-if="load.loading.value" class="text-sm text-text-muted" role="status">{{ $t('settings.authConfiguration.loadingSettings') }}</p>
+  <BaseAlert v-else-if="load.error.value" variant="danger">{{ $t('settings.authConfiguration.loadFailed', { message: load.error.value.message }) }}</BaseAlert>
 
   <form v-else class="flex flex-col gap-6" novalidate @submit.prevent="save.run()">
-    <BaseAlert v-if="readonly" variant="info">Only project and account admins can change these settings.</BaseAlert>
+    <BaseAlert v-if="readonly" variant="info">{{ $t('settings.authConfiguration.onlyProjectAndAccountAdmins') }}</BaseAlert>
     <fieldset :disabled="readonly" class="contents">
-    <BaseAlert v-if="saved" variant="success">Settings saved.</BaseAlert>
+    <BaseAlert v-if="saved" variant="success">{{ $t('settings.authConfiguration.settingsSaved') }}</BaseAlert>
     <BaseAlert v-if="save.error.value" variant="danger">
-      {{ save.error.value.message }} Check the highlighted fields.
+      {{ $t('settings.authConfiguration.saveFailed', { message: save.error.value.message }) }}
     </BaseAlert>
 
     <template v-if="shown('sign-in')">
-      <BaseCard title="Email verification">
+      <BaseCard :title="$t('settings.authConfiguration.emailVerification')">
         <BaseCheckbox
           v-model="flags.require_email_verification"
-          label="Require a verified email before signing in"
+          :label="$t('settings.authConfiguration.requireAVerifiedEmailBefore')"
           :hint="emailVerificationHint"
         />
       </BaseCard>
 
       <BaseCard
         v-if="showEmailCodeLimits"
-        title="Email codes"
-        description="Limits on wrong 6-digit codes from confirmation, password reset and invitation emails. Codes never disable a user; once a limit is reached, codes are refused until the window has passed."
+        :title="$t('settings.authConfiguration.emailCodes')"
+        :description="$t('settings.authConfiguration.limitsOnWrongDigitCodes')"
       >
         <details class="group rounded-md border border-border">
           <summary class="cursor-pointer px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary">
-            Advanced: guessing limits
+            {{ $t('settings.authConfiguration.advancedGuessingLimits') }}
           </summary>
           <div class="grid gap-4 border-t border-border p-3 sm:grid-cols-2">
             <BaseInput
               v-model="numbers.email_code_max_attempts"
-              label="Wrong guesses per code"
+              :label="$t('settings.authConfiguration.wrongGuessesPerCode')"
               type="number"
-              hint="3–10. The code then stops working."
+              :hint="$t('settings.authConfiguration.theCodeThenStopsWorking')"
               :error="save.error.value?.fieldError('email_code_max_attempts')"
             />
             <BaseInput
               v-model="numbers.email_code_max_failures_per_email"
-              label="Wrong codes per address"
+              :label="$t('settings.authConfiguration.wrongCodesPerAddress')"
               type="number"
-              hint="3–100 within the window, across every code sent to the address."
+              :hint="$t('settings.authConfiguration.withinTheWindowAcrossEvery')"
               :error="save.error.value?.fieldError('email_code_max_failures_per_email')"
             />
             <BaseInput
               v-model="numbers.email_code_max_failures_per_code"
-              label="Tries of the same code"
+              :label="$t('settings.authConfiguration.triesOfTheSameCode')"
               type="number"
-              hint="2–100 within the window, across all addresses. Stops one guess being tried on many accounts."
+              :hint="$t('settings.authConfiguration.withinTheWindowAcrossAll')"
               :error="save.error.value?.fieldError('email_code_max_failures_per_code')"
             />
             <BaseInput
               v-model="numbers.email_code_failure_window_seconds"
-              label="Window (seconds)"
+              :label="$t('settings.authConfiguration.windowSeconds')"
               type="number"
-              :hint="durationHint('email_code_failure_window_seconds', '300–86400 seconds.')"
+              :hint="durationHint('email_code_failure_window_seconds', $t('settings.authConfiguration.ranges.seconds300To86400'))"
               :error="save.error.value?.fieldError('email_code_failure_window_seconds')"
             />
           </div>
         </details>
       </BaseCard>
 
-      <BaseCard title="Passkeys">
+      <BaseCard :title="$t('settings.authConfiguration.passkeys')">
         <BaseSelect
           v-model="passkeys"
-          label="Passkeys"
+          :label="$t('settings.authConfiguration.passkeys')"
           :options="passkeysOptions"
           :hint="
-            forProject
-              ? 'Users add passkeys from the app portal, and sign in with them on hosted login and in your apps\' own screens. Needs the project\'s custom domain, which passkeys belong to. Required: every sign-in where passkeys work must use one, and users without one create it as they sign in; elsewhere MFA is required instead, so MFA can\'t be off.'
-              : 'Console users add passkeys on My security, and sign in with them. A passkey counts as multi-factor authentication. Required: every sign-in must use one, and users without one create it as they sign in; MFA can\'t be off.'
+            forProject ? $t('settings.authConfiguration.passkeysProjectHint') : $t('settings.authConfiguration.passkeysConsoleHint')
           "
           :error="save.error.value?.fieldError('passkeys')"
         />
         <BaseAlert v-if="passkeysWarning" variant="warning">{{ passkeysWarning }}</BaseAlert>
               <BaseCheckbox
           v-model="flags.passwordless_after_passkey"
-          label="No passwords once a user has a passkey"
+          :label="$t('settings.authConfiguration.noPasswordsOnceAUser')"
           :disabled="passkeys === 'off'"
           :hint="
-            passkeys === 'off'
-              ? 'Turn passkeys on first.'
-              : 'Users with a passkey that works where they sign in must use it there; a correct password is refused. Where their passkey can\'t be used (e.g. an app without allowed origins), the password still works. Lost the passkey? Resetting the password by email lets them sign in for an hour to add a new one.'
+            passkeys === 'off' ? $t('settings.authConfiguration.passkeysOffFirst') : $t('settings.authConfiguration.passwordlessHint')
           "
         />
         <p v-if="save.error.value?.fieldError('passwordless_after_passkey')" class="text-xs font-medium text-danger">
-          Error: {{ save.error.value?.fieldError('passwordless_after_passkey') }}
+          {{ $t('base.field.error', { message: save.error.value?.fieldError('passwordless_after_passkey') }) }}
         </p>
       </BaseCard>
     </template>
 
-    <BaseCard v-if="shown('mfa')" title="Multi-factor authentication policy">
+    <BaseCard v-if="shown('mfa')" :title="$t('settings.authConfiguration.multiFactorAuthenticationPolicy')">
       <BaseSelect
         v-model="mfaRequirement"
-        label="Requirement"
+        :label="$t('settings.authConfiguration.requirement')"
         :options="mfaRequirementOptions"
-        hint="When required, users without an authenticator are asked to set one up at their next sign-in."
+        :hint="$t('settings.authConfiguration.whenRequiredUsersWithoutAn')"
         :error="save.error.value?.fieldError('mfa_requirement')"
       />
       <BaseSelect
         v-model="otpMethod"
-        label="Method"
+        :label="$t('settings.authConfiguration.method')"
         :options="otpMethodOptions"
-        hint="Everyone sets up this method. Users who already set up the other one keep using it."
+        :hint="$t('settings.authConfiguration.everyoneSetsUpThisMethod')"
         :error="save.error.value?.fieldError('otp_method')"
       />
       <div class="grid gap-4 sm:grid-cols-2">
         <BaseInput
           v-model="numbers.otp_digits"
-          label="Code length (digits)"
+          :label="$t('settings.authConfiguration.codeLengthDigits')"
           type="number"
-          hint="6–10. Applies to new setups only."
+          :hint="$t('settings.authConfiguration.appliesToNewSetupsOnly')"
           :error="save.error.value?.fieldError('otp_digits')"
         />
         <BaseInput
           v-model="numbers.otp_step_seconds"
-          label="Code lifetime (seconds)"
+          :label="$t('settings.authConfiguration.codeLifetimeSeconds')"
           type="number"
-          :hint="durationHint('otp_step_seconds', '30–900 seconds.', 'Time-based codes only; applies to new setups only.')"
+          :hint="durationHint('otp_step_seconds', $t('settings.authConfiguration.ranges.seconds30To900'), $t('settings.authConfiguration.notes.timeBasedOnly'))"
           :error="save.error.value?.fieldError('otp_step_seconds')"
         />
       </div>
-      <BaseAlert v-if="unusualOtpFormat" variant="warning" title="Check your users' apps">
-        Google Authenticator and Microsoft Authenticator only support 6-digit codes that change every 30 seconds. With other
-        values they may show codes that never work.
+      <BaseAlert v-if="unusualOtpFormat" variant="warning" :title="$t('settings.authConfiguration.checkYourUsersApps')">
+        {{ $t('settings.authConfiguration.googleAuthenticatorAndMicrosoftAuthenticator') }}
       </BaseAlert>
       <BaseInput
         v-model="numbers.mfa_max_failed_attempts"
-        label="Wrong codes before the user is disabled"
+        :label="$t('settings.authConfiguration.wrongCodesBeforeTheUser')"
         type="number"
-        hint="3–20 consecutive wrong authenticator or recovery codes. Admins can re-enable disabled users."
+        :hint="$t('settings.authConfiguration.consecutiveWrongAuthenticatorOrRecovery')"
         :error="save.error.value?.fieldError('mfa_max_failed_attempts')"
       />
       <details class="rounded-md border border-border">
         <summary class="cursor-pointer px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary">
-          Advanced: code tolerance
+          {{ $t('settings.authConfiguration.advancedCodeTolerance') }}
         </summary>
         <div class="grid gap-4 border-t border-border p-3 sm:grid-cols-2">
           <BaseInput
             v-model="numbers.otp_drift_steps"
-            label="Clock drift allowed (steps)"
+            :label="$t('settings.authConfiguration.clockDriftAllowedSteps')"
             type="number"
-            hint="0–2 codes either side of the current one, for clocks that are slightly off."
+            :hint="$t('settings.authConfiguration.codesEitherSideOfThe')"
             :error="save.error.value?.fieldError('otp_drift_steps')"
           />
           <BaseInput
             v-model="numbers.otp_hotp_look_ahead"
-            label="Hardware token look-ahead"
+            :label="$t('settings.authConfiguration.hardwareTokenLookAhead')"
             type="number"
-            hint="1–20 codes ahead, for tokens pressed without signing in."
+            :hint="$t('settings.authConfiguration.codesAheadForTokensPressed')"
             :error="save.error.value?.fieldError('otp_hotp_look_ahead')"
           />
         </div>
@@ -356,137 +354,136 @@ onMounted(() => load.run())
     </BaseCard>
 
     <template v-if="shown('policies')">
-      <BaseCard title="Password rules">
+      <BaseCard :title="$t('settings.authConfiguration.passwordRules')">
         <div class="grid gap-4 sm:grid-cols-2">
           <BaseInput
             v-model="numbers.password_min_length"
-            label="Minimum length"
+            :label="$t('settings.authConfiguration.minimumLength')"
             type="number"
-            hint="8–128 characters."
+            :hint="$t('settings.authConfiguration.characters')"
             :error="save.error.value?.fieldError('password_min_length')"
           />
           <BaseInput
             v-model="numbers.password_max_age_seconds"
-            label="Maximum age (seconds)"
+            :label="$t('settings.authConfiguration.maximumAgeSeconds')"
             type="number"
-            :hint="durationHint('password_max_age_seconds', '1 to 365 days.', 'Leave empty to never expire passwords.')"
+            :hint="durationHint('password_max_age_seconds', $t('settings.authConfiguration.ranges.days1To365'), $t('settings.authConfiguration.notes.neverExpire'))"
             :error="save.error.value?.fieldError('password_max_age_seconds')"
           />
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
-          <BaseCheckbox v-model="flags.password_require_uppercase" label="Require an uppercase letter" />
-          <BaseCheckbox v-model="flags.password_require_lowercase" label="Require a lowercase letter" />
-          <BaseCheckbox v-model="flags.password_require_number" label="Require a number" />
-          <BaseCheckbox v-model="flags.password_require_symbol" label="Require a symbol" />
+          <BaseCheckbox v-model="flags.password_require_uppercase" :label="$t('settings.authConfiguration.requireAnUppercaseLetter')" />
+          <BaseCheckbox v-model="flags.password_require_lowercase" :label="$t('settings.authConfiguration.requireALowercaseLetter')" />
+          <BaseCheckbox v-model="flags.password_require_number" :label="$t('settings.authConfiguration.requireANumber')" />
+          <BaseCheckbox v-model="flags.password_require_symbol" :label="$t('settings.authConfiguration.requireASymbol')" />
         </div>
       </BaseCard>
 
-      <BaseCard title="Lockout" description="Locks an email address after repeated failed sign-in or verification attempts.">
+      <BaseCard :title="$t('settings.authConfiguration.lockout')" :description="$t('settings.authConfiguration.locksAnEmailAddressAfter')">
         <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput
             v-model="numbers.lockout_threshold"
-            label="Failed attempts"
+            :label="$t('settings.authConfiguration.failedAttempts')"
             type="number"
-            hint="3–100."
+            :hint="$t('settings.authConfiguration.lockoutThresholdRange')"
             :error="save.error.value?.fieldError('lockout_threshold')"
           />
           <BaseInput
             v-model="numbers.lockout_window_seconds"
-            label="Within (seconds)"
+            :label="$t('settings.authConfiguration.withinSeconds')"
             type="number"
-            :hint="durationHint('lockout_window_seconds', '60–86400 seconds.')"
+            :hint="durationHint('lockout_window_seconds', $t('settings.authConfiguration.ranges.seconds60To86400'))"
             :error="save.error.value?.fieldError('lockout_window_seconds')"
           />
           <BaseInput
             v-model="numbers.lockout_duration_seconds"
-            label="Lock for (seconds)"
+            :label="$t('settings.authConfiguration.lockForSeconds')"
             type="number"
-            :hint="durationHint('lockout_duration_seconds', '60–86400 seconds.')"
+            :hint="durationHint('lockout_duration_seconds', $t('settings.authConfiguration.ranges.seconds60To86400'))"
             :error="save.error.value?.fieldError('lockout_duration_seconds')"
           />
         </div>
       </BaseCard>
 
-      <BaseCard title="Sign-in alerts">
+      <BaseCard :title="$t('settings.authConfiguration.signInAlerts')">
         <BaseCheckbox
           v-model="flags.notify_new_devices"
-          label="Email users about sign-ins from new devices"
-          hint="Sent when someone signs in with a device and country not used in the last 90 days, with the device, approximate location and time, and how to sign it out. Never sent for a user's first sign-in."
+          :label="$t('settings.authConfiguration.emailUsersAboutSignIns')"
+          :hint="$t('settings.authConfiguration.sentWhenSomeoneSignsIn')"
         />
       </BaseCard>
     </template>
 
-    <BaseCard v-if="shown('tokens')" title="Sessions and tokens">
+    <BaseCard v-if="shown('tokens')" :title="$t('settings.authConfiguration.sessionsAndTokens')">
       <div class="grid gap-4 sm:grid-cols-2">
         <BaseInput
           v-model="numbers.access_token_ttl_seconds"
-          label="Access token lifetime (seconds)"
+          :label="$t('settings.authConfiguration.accessTokenLifetimeSeconds')"
           type="number"
-          :hint="durationHint('access_token_ttl_seconds', '300–3600 seconds.')"
+          :hint="durationHint('access_token_ttl_seconds', $t('settings.authConfiguration.ranges.seconds300To3600'))"
           :error="save.error.value?.fieldError('access_token_ttl_seconds')"
         />
         <BaseInput
           v-model="numbers.refresh_token_ttl_seconds"
-          label="Session lifetime (seconds)"
+          :label="$t('settings.authConfiguration.sessionLifetimeSeconds')"
           type="number"
-          :hint="durationHint('refresh_token_ttl_seconds', '1 to 365 days.', 'Refresh tokens stop working after this; users sign in again.')"
+          :hint="durationHint('refresh_token_ttl_seconds', $t('settings.authConfiguration.ranges.days1To365'), $t('settings.authConfiguration.notes.refreshTokensStop'))"
           :error="save.error.value?.fieldError('refresh_token_ttl_seconds')"
         />
         <BaseInput
           v-model="numbers.session_idle_timeout_seconds"
-          label="Idle timeout (seconds)"
+          :label="$t('settings.authConfiguration.idleTimeoutSeconds')"
           type="number"
-          :hint="durationHint('session_idle_timeout_seconds', '5 minutes to 30 days.', 'Leave empty for no idle timeout.')"
+          :hint="durationHint('session_idle_timeout_seconds', $t('settings.authConfiguration.ranges.minutes5ToDays30'), $t('settings.authConfiguration.notes.noIdleTimeout'))"
           :error="save.error.value?.fieldError('session_idle_timeout_seconds')"
         />
         <BaseInput
           v-if="forProject"
           v-model="numbers.sso_session_ttl_seconds"
-          label="Hosted login session (seconds)"
+          :label="$t('settings.authConfiguration.hostedLoginSessionSeconds')"
           type="number"
-          :hint="durationHint('sso_session_ttl_seconds', '5 minutes to 30 days.', 'How long signing in on the hosted login page also signs users in to the project\'s other apps.')"
+          :hint="durationHint('sso_session_ttl_seconds', $t('settings.authConfiguration.ranges.minutes5ToDays30'), $t('settings.authConfiguration.notes.hostedSessionLength'))"
           :error="save.error.value?.fieldError('sso_session_ttl_seconds')"
         />
       </div>
       <p class="text-xs text-text-muted">
-        Refresh tokens always rotate on use; reusing an old one signs out that whole session. Logging out ends the hosted login session
-        and the user's SAML app sessions.
+        {{ $t('settings.authConfiguration.refreshTokensAlwaysRotateOn') }}
       </p>
     </BaseCard>
 
-    <BaseCard v-if="shown('tokens') && forProject" title="App clients" description="Limits for applications calling the token endpoint, and their client secrets.">
+    <BaseCard v-if="shown('tokens') && forProject" :title="$t('settings.authConfiguration.appClients')" :description="$t('settings.authConfiguration.limitsForApplicationsCallingThe')">
       <div class="grid gap-4 sm:grid-cols-2">
         <BaseInput
           v-model="numbers.token_requests_per_minute"
-          label="Token requests per client per minute"
+          :label="$t('settings.authConfiguration.tokenRequestsPerClientPer')"
           type="number"
-          hint="10–10,000. Requests over the limit get HTTP 429 until the next minute. Each app can set its own limit."
+          :hint="$t('settings.authConfiguration.requestsOverTheLimitGet')"
           :error="save.error.value?.fieldError('token_requests_per_minute')"
         />
         <BaseInput
           v-model="numbers.client_secret_rotation_overlap_seconds"
-          label="Old secrets keep working after rotation for (seconds)"
+          :label="$t('settings.authConfiguration.oldSecretsKeepWorkingAfter')"
           type="number"
-          :hint="durationHint('client_secret_rotation_overlap_seconds', '0 to 30 days.', '0 stops the old secret at once.')"
+          :hint="durationHint('client_secret_rotation_overlap_seconds', $t('settings.authConfiguration.ranges.days0To30'), $t('settings.authConfiguration.notes.zeroStopsAtOnce'))"
           :error="save.error.value?.fieldError('client_secret_rotation_overlap_seconds')"
         />
       </div>
     </BaseCard>
 
-    <BaseCard v-if="shown('signing')" title="Token signing">
+    <BaseCard v-if="shown('signing')" :title="$t('settings.authConfiguration.tokenSigning')">
       <div class="grid gap-4 sm:grid-cols-2">
         <BaseSelect
           v-model="signingAlgorithm"
-          label="Signing algorithm"
+          :label="$t('settings.authConfiguration.signingAlgorithm')"
           :options="signingAlgorithmOptions"
-          hint="Changing it creates a new key. Tokens signed with the old key stay valid until they expire."
+          :hint="$t('settings.authConfiguration.changingItCreatesANew')"
           :error="save.error.value?.fieldError('signing_algorithm')"
         />
         <BaseInput
           v-model="numbers.signing_key_rotation_seconds"
-          label="Rotate keys every (seconds)"
+          :label="$t('settings.authConfiguration.rotateKeysEverySeconds')"
           type="number"
-          :hint="durationHint('signing_key_rotation_seconds', '30 to 365 days.')"
+          :hint="durationHint('signing_key_rotation_seconds', $t('settings.authConfiguration.ranges.days30To365'))"
           :error="save.error.value?.fieldError('signing_key_rotation_seconds')"
         />
       </div>
@@ -494,9 +491,9 @@ onMounted(() => load.run())
 
     </fieldset>
     <div v-if="!readonly" class="flex flex-wrap items-center gap-2">
-      <BaseButton type="submit" label="Save changes" :loading="save.loading.value" :disabled="!dirty" />
-      <BaseButton v-if="dirty" label="Discard changes" variant="secondary" @click="discard" />
-      <span v-if="dirty" class="text-sm text-text-muted" role="status">Unsaved changes</span>
+      <BaseButton type="submit" :label="$t('settings.authConfiguration.saveChanges')" :loading="save.loading.value" :disabled="!dirty" />
+      <BaseButton v-if="dirty" :label="$t('settings.authConfiguration.discardChanges')" variant="secondary" @click="discard" />
+      <span v-if="dirty" class="text-sm text-text-muted" role="status">{{ $t('settings.authConfiguration.unsavedChanges') }}</span>
     </div>
   </form>
 </template>

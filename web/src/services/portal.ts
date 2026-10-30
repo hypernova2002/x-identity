@@ -20,10 +20,10 @@ export const portalService = {
         headers: { Accept: 'application/json', Authorization: `Bearer ${accessToken}` },
       })
     } catch {
-      throw new ApiError('network_error', "We couldn't reach the server. Check your connection and try again.", 0)
+      throw new ApiError('network_error', 0)
     }
-    if (response.status === 401) throw new ApiError('invalid_token', 'Your portal session has expired.', 401)
-    if (!response.ok) throw new ApiError('internal_error', "We couldn't load your apps. Try again.", response.status)
+    if (response.status === 401) throw new ApiError('invalid_token', 401, { reason: 'portal_session_expired' })
+    if (!response.ok) throw new ApiError('internal_error', response.status, { reason: 'apps_unavailable' })
     return (await response.json()) as PortalApp[]
   },
 

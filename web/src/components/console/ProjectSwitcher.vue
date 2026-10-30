@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 
 import BaseActionMenu, { type ActionMenuItem } from '@/components/base/BaseActionMenu.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -20,6 +21,7 @@ const props = defineProps<{
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const { projects, project, projectsLoaded, accountUid } = storeToRefs(useProjectStore())
 const { isAccountAdmin } = storeToRefs(useSessionStore())
 
@@ -61,41 +63,44 @@ const items = computed<ActionMenuItem[]>(() => [
     current: shownProject.uid === props.currentProjectUid,
     action: () => switchTo(shownProject.uid),
   })),
-  ...(shown.value.length === 0 ? [{ label: 'No projects match', disabled: true, action: () => undefined }] : []),
+  ...(shown.value.length === 0 ? [{ label: t('shell.projectSwitcher.noMatches'), disabled: true, action: () => undefined }] : []),
   {
-    label: matches.value && matches.value.total > shown.value.length ? `All projects (${matches.value.total} match)` : 'All projects',
+    label:
+      matches.value && matches.value.total > shown.value.length
+        ? t('shell.projectSwitcher.allMatching', { count: matches.value.total })
+        : t('shell.projectSwitcher.all'),
     separatorBefore: true,
     action: () => router.push({ name: 'projects', query: term.value.trim() ? { search: term.value.trim() } : {} }),
   },
-  ...(isAccountAdmin.value ? [{ label: 'Create project', action: () => (createOpen.value = true) }] : []),
+  ...(isAccountAdmin.value ? [{ label: t('shell.projectSwitcher.create'), action: () => (createOpen.value = true) }] : []),
 ])
 </script>
 
 <template>
   <div class="flex flex-col gap-1">
-    <BaseActionMenu v-if="projects.length > 0" :items="items" label="Switch project">
+    <BaseActionMenu v-if="projects.length > 0" :items="items" :label="t('shell.projectSwitcher.label')">
       <template #start>
-        <BaseInput v-model="term" label="Find a project" type="search" />
+        <BaseInput v-model="term" :label="t('shell.projectSwitcher.find')" type="search" />
       </template>
       <template #trigger="{ toggle }">
         <button
           type="button"
           aria-haspopup="menu"
-          :aria-label="`Project: ${current?.name ?? 'none selected'}. Switch project`"
+          :aria-label="t('shell.projectSwitcher.trigger', { name: current?.name ?? t('shell.projectSwitcher.noneSelected') })"
           class="flex w-full min-w-0 items-center gap-2 rounded-md border border-border bg-bg px-3 py-2 text-left hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-border"
           @click="toggle"
         >
           <span class="flex min-w-0 flex-1 flex-col">
-            <span class="text-xs text-text-muted">Project</span>
-            <span class="truncate text-sm font-semibold" :title="current?.name">{{ current?.name ?? 'Choose a project' }}</span>
+            <span class="text-xs text-text-muted">{{ t('shell.project') }}</span>
+            <span class="truncate text-sm font-semibold" :title="current?.name">{{ current?.name ?? t('shell.projectSwitcher.choose') }}</span>
           </span>
           <span aria-hidden="true" class="text-text-muted">⌄</span>
         </button>
       </template>
     </BaseActionMenu>
     <template v-else-if="projectsLoaded">
-      <p class="text-sm text-text-muted">No projects yet.</p>
-      <BaseButton v-if="isAccountAdmin" label="Create project" size="sm" class="self-start" @click="createOpen = true" />
+      <p class="text-sm text-text-muted">{{ t('shell.projectSwitcher.none') }}</p>
+      <BaseButton v-if="isAccountAdmin" :label="t('shell.projectSwitcher.create')" size="sm" class="self-start" @click="createOpen = true" />
     </template>
 
     <CreateProjectDialog v-model:visible="createOpen" />

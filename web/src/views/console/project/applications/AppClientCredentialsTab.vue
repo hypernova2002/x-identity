@@ -72,129 +72,141 @@ const revoke = useAsyncAction(async (secret: AppClientSecret) => {
 })
 
 onMounted(() => load.run())
+
+const curlExample = computed(() =>
+  [
+    `curl -X POST ${tokenEndpoint.value} \\`,
+    `  -u '${client.value.uid}:CLIENT_SECRET' \\`,
+    '  -d grant_type=client_credentials \\',
+    '  -d audience=API_IDENTIFIER \\',
+    "  -d 'scope=SCOPES'",
+  ].join('\n'),
+)
 </script>
 
 <template>
-  <BaseCard title="Client ID" description="Apps send it as client_id. It isn't secret.">
+  <BaseCard :title="$t('project.appClientCredentials.clientId')" :description="$t('project.appClientCredentials.appsSendItAsClient')">
     <code class="font-mono text-sm break-all">{{ client.uid }}</code>
   </BaseCard>
 
-  <BaseCard v-if="client.client_type === 'public'" title="No client secret">
+  <BaseCard v-if="client.client_type === 'public'" :title="$t('project.appClientCredentials.noClientSecret')">
     <p class="text-sm">
-      Public clients run in browsers and on devices, where a secret can't be kept, so they don't have one. They prove themselves
-      with PKCE, which x-identity requires for every client. The client type can't be changed; create a confidential client for a
-      server-side app.
+      {{ $t('project.appClientCredentials.publicClientsRunInBrowsers') }}
     </p>
   </BaseCard>
 
   <BaseCard
     v-else
-    title="Client secrets"
+    :title="$t('project.appClientCredentials.clientSecrets')"
     :description="
       client.machine
-        ? 'The app sends a secret with each token request. Only digests are stored, so secrets can\'t be shown again.'
-        : 'Confidential clients send a secret when redeeming codes and refreshing tokens. Only digests are stored, so secrets can\'t be shown again.'
+        ? $t('project.appClientCredentials.theAppSendsASecret')
+        : $t('project.appClientCredentials.confidentialClientsSendASecret')
     "
   >
     <BaseAlert v-if="load.error.value" variant="danger">{{ load.error.value.message }}</BaseAlert>
     <ul class="flex flex-col divide-y divide-border">
       <li v-for="secret in secrets" :key="secret.uid" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
         <span class="flex flex-col">
-          <code class="font-mono text-xs">{{ secret.last_four ? `••••${secret.last_four}` : 'Secret from before rotation overlap' }}</code>
+          <code class="font-mono text-xs">{{ secret.last_four ? `••••${secret.last_four}` : $t('project.appClientCredentials.secretFromBeforeRotationOverlap') }}</code>
           <span class="text-xs text-text-muted">
-            Created {{ formatDateTime(secret.created_at) }} · {{ secret.last_used_at ? `last used ${formatDateTime(secret.last_used_at)}` : 'not used yet' }}
+            {{
+              $t('project.appClientCredentials.secretDates', {
+                created: formatDateTime(secret.created_at),
+                used: secret.last_used_at
+                  ? $t('project.appClientCredentials.lastUsed', { date: formatDateTime(secret.last_used_at) })
+                  : $t('project.appClientCredentials.notUsedYet'),
+              })
+            }}
           </span>
         </span>
         <span class="flex items-center gap-2">
           <StatusBadge :tone="secretStatus(secret).tone" :label="secretStatus(secret).label" />
           <BaseButton
             v-if="access.developer && secret.usable && usableCount > 1"
-            label="Revoke"
+            :label="$t('project.appClientCredentials.revoke')"
             variant="ghost"
             size="sm"
-            :aria-label="`Revoke secret ending ${secret.last_four ?? ''}`"
+            :aria-label="$t('project.appClientCredentials.revokeSecretEnding', { lastFour: secret.last_four ?? '' })"
             @click="pendingRevoke = secret"
           />
         </span>
       </li>
     </ul>
     <BaseAlert v-if="usableCount > 1" variant="info">
-      More than one secret works at the moment. Once every server uses the newest one, revoke the others, or let them expire.
+      {{ $t('project.appClientCredentials.moreThanOneSecretWorks') }}
     </BaseAlert>
-    <BaseButton v-if="access.developer" label="Rotate secret" variant="secondary" class="self-start" @click="rotateOpen = true" />
-    <BaseAlert v-else variant="info">Only project admins and developers can rotate secrets.</BaseAlert>
+    <BaseButton v-if="access.developer" :label="$t('project.appClientCredentials.rotateSecret')" variant="secondary" class="self-start" @click="rotateOpen = true" />
+    <BaseAlert v-else variant="info">{{ $t('project.appClientCredentials.onlyProjectAdminsAndDevelopers') }}</BaseAlert>
   </BaseCard>
 
   <BaseCard
     v-if="client.machine"
-    title="Rate limit"
-    description="How many token requests this app may make per minute. Requests over the limit get HTTP 429 until the next minute."
+    :title="$t('project.appClientCredentials.rateLimit')"
+    :description="$t('project.appClientCredentials.howManyTokenRequestsThis')"
   >
     <form class="flex flex-col gap-3" novalidate @submit.prevent="saveLimit.run()">
-      <BaseAlert v-if="limitSaved" variant="success">Rate limit saved.</BaseAlert>
+      <BaseAlert v-if="limitSaved" variant="success">{{ $t('project.appClientCredentials.rateLimitSaved') }}</BaseAlert>
       <BaseAlert v-if="saveLimit.error.value && saveLimit.error.value.details.length === 0" variant="danger">{{ saveLimit.error.value.message }}</BaseAlert>
       <BaseCheckbox
         v-model="customLimit"
-        label="Use a custom limit for this app"
-        :hint="settings ? `Otherwise the project's limit applies: ${settings.token_requests_per_minute} per minute.` : undefined"
+        :label="$t('project.appClientCredentials.useACustomLimitFor')"
+        :hint="settings ? $t('project.appClientCredentials.otherwiseTheProjectSLimit', { tokenRequestsPerMinute: settings.token_requests_per_minute }) : undefined"
         :disabled="!access.developer"
       />
       <div v-if="customLimit" class="max-w-xs">
         <BaseInput
           v-model="limit"
-          label="Token requests per minute"
+          :label="$t('project.appClientCredentials.tokenRequestsPerMinute')"
           type="number"
-          hint="10–10,000."
+          :hint="$t('project.appClientCredentials.tokenLimitRange')"
           :disabled="!access.developer"
           :error="saveLimit.error.value?.fieldError('token_requests_per_minute')"
         />
       </div>
-      <BaseButton v-if="access.developer" type="submit" label="Save rate limit" variant="secondary" class="self-start" :loading="saveLimit.loading.value" />
+      <BaseButton v-if="access.developer" type="submit" :label="$t('project.appClientCredentials.saveRateLimit')" variant="secondary" class="self-start" :loading="saveLimit.loading.value" />
     </form>
   </BaseCard>
 
-  <BaseCard v-if="client.machine" title="Getting a token" description="With the client credentials grant, from the app's server.">
-    <pre class="overflow-x-auto rounded-md bg-bg-subtle p-3 font-mono text-xs">curl -X POST {{ tokenEndpoint }} \
-  -u '{{ client.uid }}:CLIENT_SECRET' \
-  -d grant_type=client_credentials \
-  -d audience=API_IDENTIFIER \
-  -d 'scope=SCOPES'</pre>
-    <p class="text-xs text-text-muted">
-      Leave out <code class="font-mono">audience</code> when the app can use only one API, and <code class="font-mono">scope</code> to get
-      every scope it's allowed. Request a new token shortly before the last one expires; there are no refresh tokens.
-    </p>
+  <BaseCard v-if="client.machine" :title="$t('project.appClientCredentials.gettingAToken')" :description="$t('project.appClientCredentials.withTheClientCredentialsGrant')">
+    <pre class="overflow-x-auto rounded-md bg-bg-subtle p-3 font-mono text-xs">{{ curlExample }}</pre>
+    <i18n-t keypath="project.appClientCredentials.leaveOutAudience" tag="p" class="text-xs text-text-muted">
+      <template #audience><code class="font-mono">{{ $t('project.appClientCredentials.audience') }}</code></template>
+      <template #scope><code class="font-mono">{{ $t('project.appClientCredentials.scope') }}</code></template>
+    </i18n-t>
   </BaseCard>
 
-  <ConfirmDialog v-model:visible="rotateOpen" title="Rotate the client secret?" confirm-label="Rotate secret" :loading="rotate.loading.value" :error="rotate.error.value" @confirm="rotate.run()">
-    <p v-if="overlap === 0">
-      <strong>{{ client.name }}</strong> gets a new secret, and the current one <strong>stops working at once</strong>, because this
-      project's rotation overlap is 0. Servers using it fail until they're updated.
-    </p>
-    <p v-else>
-      <strong>{{ client.name }}</strong> gets a new secret. The current one keeps working for
-      {{ overlap === null ? 'the project\'s rotation overlap' : formatDuration(overlap) }}, so you can update every server before it stops;
-      you can also revoke it sooner.
-    </p>
+  <ConfirmDialog v-model:visible="rotateOpen" :title="$t('project.appClientCredentials.rotateTheClientSecret')" :confirm-label="$t('project.appClientCredentials.rotateSecret')" :loading="rotate.loading.value" :error="rotate.error.value" @confirm="rotate.run()">
+    <i18n-t keypath="project.appClientCredentials.rotateNoOverlap" tag="p" v-if="overlap === 0">
+      <template #name><strong>{{ client.name }}</strong></template>
+      <template #atOnce><strong>{{ $t('project.appClientCredentials.stopsWorkingAtOnce') }}</strong></template>
+    </i18n-t>
+    <i18n-t v-else keypath="project.appClientCredentials.rotateWithOverlap" tag="p">
+      <template #name><strong>{{ client.name }}</strong></template>
+      <template #overlap>{{ overlap === null ? $t('project.appClientCredentials.projectOverlap') : formatDuration(overlap) }}</template>
+    </i18n-t>
   </ConfirmDialog>
 
   <ConfirmDialog
     :visible="pendingRevoke !== null"
-    title="Revoke this secret now?"
-    confirm-label="Revoke secret"
+    :title="$t('project.appClientCredentials.revokeThisSecretNow')"
+    :confirm-label="$t('project.appClientCredentials.revokeSecret')"
     danger
     :loading="revoke.loading.value"
     :error="revoke.error.value"
     @update:visible="(open: boolean) => !open && (pendingRevoke = null)"
     @confirm="pendingRevoke && revoke.run(pendingRevoke)"
   >
-    <p>Servers still using the secret ending <code class="font-mono">{{ pendingRevoke?.last_four }}</code> stop working at once.</p>
+    <i18n-t keypath="project.appClientCredentials.revokeDescription" tag="p">
+      <template #lastFour><code class="font-mono">{{ pendingRevoke?.last_four }}</code></template>
+    </i18n-t>
   </ConfirmDialog>
 
-  <BaseDialog :visible="newSecret !== null" title="Copy the new secret" @update:visible="(open: boolean) => !open && (newSecret = null)">
+  <BaseDialog :visible="newSecret !== null" :title="$t('project.appClientCredentials.copyTheNewSecret')" @update:visible="(open: boolean) => !open && (newSecret = null)">
     <code class="font-mono text-xs break-all">{{ newSecret }}</code>
-    <BaseAlert variant="warning" title="It won't be shown again">Keep it on your server only; never put it in a browser or mobile app.</BaseAlert>
+    <BaseAlert variant="warning" :title="$t('project.appClientCredentials.itWonTBeShown')">{{ $t('project.appClientCredentials.keepItOnYourServer') }}</BaseAlert>
     <template #footer>
-      <BaseButton label="I've copied it" @click="newSecret = null" />
+      <BaseButton :label="$t('project.appClientCredentials.iVeCopiedIt')" @click="newSecret = null" />
     </template>
   </BaseDialog>
 </template>

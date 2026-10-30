@@ -41,14 +41,14 @@ onMounted(() => {
       href="#main"
       class="sr-only rounded-md bg-bg px-3 py-2 text-sm font-medium text-primary focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:outline-2 focus:outline-primary"
     >
-      Skip to content
+      {{ $t('shell.skipToContent') }}
     </a>
 
     <header class="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-bg px-4">
       <button
         type="button"
         class="inline-flex size-10 items-center justify-center rounded-md text-text hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-border md:hidden"
-        aria-label="Open navigation"
+        :aria-label="$t('shell.openNavigation')"
         :aria-expanded="navigationOpen"
         @click="navigationOpen = true"
       >
@@ -61,11 +61,11 @@ onMounted(() => {
         :to="{ name: 'console-home' }"
         class="rounded-md text-base font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        x-identity
+        {{ $t('shell.productName') }}
       </RouterLink>
       <p v-if="me" class="hidden min-w-0 items-center gap-2 text-sm sm:flex">
         <span aria-hidden="true" class="text-text-disabled">/</span>
-        <span class="text-text-muted">Account</span>
+        <span class="text-text-muted">{{ $t('shell.account') }}</span>
         <span class="truncate font-medium" :title="me.account.name">{{ me.account.name }}</span>
       </p>
 
@@ -75,17 +75,17 @@ onMounted(() => {
           class="hidden h-10 items-center rounded-md px-3 text-sm font-medium text-text hover:bg-bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-border aria-[current=true]:bg-primary-subtle aria-[current=true]:text-primary-active sm:inline-flex"
           :aria-current="inAccount ? 'true' : undefined"
         >
-          Account settings
+          {{ $t('shell.accountSettings') }}
         </RouterLink>
         <UserMenu />
       </div>
     </header>
 
     <div class="flex min-h-0 flex-1">
-      <aside id="console-navigation" aria-label="Console navigation" class="hidden w-64 shrink-0 overflow-y-auto border-r border-border bg-bg-subtle md:flex">
+      <aside id="console-navigation" :aria-label="$t('shell.consoleNavigation')" class="hidden w-64 shrink-0 overflow-y-auto border-r border-border bg-bg-subtle md:flex">
         <ConsoleSidebar :current-project-uid="currentProjectUid" />
       </aside>
-      <BaseDrawer v-model:visible="navigationOpen" :title="inAccount ? 'Account' : 'Project'">
+      <BaseDrawer v-model:visible="navigationOpen" :title="inAccount ? $t('shell.account') : $t('shell.project')">
         <ConsoleSidebar :current-project-uid="currentProjectUid" />
       </BaseDrawer>
 

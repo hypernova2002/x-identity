@@ -9,7 +9,7 @@ const route = useRoute()
 </script>
 
 <template>
-  <PageHeader :title="route.meta.title ?? ''" :description="route.meta.description">
+  <PageHeader :title="route.meta.title ? $t(route.meta.title) : ''" :description="route.meta.description && $t(route.meta.description)">
     <template v-if="$slots.actions" #actions>
       <slot name="actions" />
     </template>

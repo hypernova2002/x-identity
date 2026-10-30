@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute, type RouteLocationRaw } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 
 import ProjectSwitcher from '@/components/console/ProjectSwitcher.vue'
 import { useProjectStore } from '@/stores/project'
@@ -24,6 +25,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const { t } = useI18n()
 const { me, isAccountAdmin } = storeToRefs(useSessionStore())
 const { project, projects, access } = storeToRefs(useProjectStore())
 
@@ -36,42 +38,56 @@ const projectNavigation = computed<NavGroup[]>(() => {
   const item = (key: string, label: string, name: string): NavItem => ({ key, label, to: { name, params: { projectUid } } })
   const canReadAuditLog = project.value?.uid === projectUid && access.value.developer
   return [
-    { key: 'overview', label: 'Overview', items: [item('overview', 'Overview', 'project')] },
+    { key: 'overview', label: t('shell.nav.overview'), items: [item('overview', t('shell.nav.overview'), 'project')] },
     {
       key: 'applications',
-      label: 'Applications',
-      items: [item('applications', 'Applications', 'project-applications'), item('apis', 'APIs', 'project-apis')],
+      label: t('shell.nav.applications'),
+      items: [item('applications', t('shell.nav.applications'), 'project-applications'), item('apis', t('shell.nav.apis'), 'project-apis')],
     },
     {
       key: 'directory',
-      label: 'Directory',
-      items: [item('end-users', 'End users', 'project-end-users'), item('groups', 'Groups', 'project-groups'), item('attributes', 'Attributes', 'project-attributes')],
+      label: t('shell.nav.directory'),
+      items: [
+        item('end-users', t('shell.nav.endUsers'), 'project-end-users'),
+        item('groups', t('shell.nav.groups'), 'project-groups'),
+        item('attributes', t('shell.nav.attributes'), 'project-attributes'),
+      ],
     },
     {
       key: 'authentication',
-      label: 'Authentication',
-      items: [item('authentication', 'Settings', 'project-authentication'), item('identity-providers', 'Identity providers', 'project-identity-providers')],
+      label: t('shell.nav.authentication'),
+      items: [
+        item('authentication', t('shell.nav.authenticationSettings'), 'project-authentication'),
+        item('identity-providers', t('shell.nav.identityProviders'), 'project-identity-providers'),
+      ],
     },
     {
       key: 'monitoring',
-      label: 'Monitoring & testing',
-      items: [item('test-sign-in', 'Test sign-in', 'project-test-sign-in'), ...(canReadAuditLog ? [item('audit-log', 'Audit log', 'project-audit-log')] : [])],
+      label: t('shell.nav.monitoring'),
+      items: [
+        item('test-sign-in', t('shell.nav.testSignIn'), 'project-test-sign-in'),
+        ...(canReadAuditLog ? [item('audit-log', t('shell.nav.auditLog'), 'project-audit-log')] : []),
+      ],
     },
     {
       key: 'settings',
-      label: 'Project settings',
-      items: [item('settings', 'General', 'project-settings'), item('domain', 'Custom domain', 'project-domain'), item('members', 'Members', 'project-members')],
+      label: t('shell.nav.projectSettings'),
+      items: [
+        item('settings', t('shell.nav.general'), 'project-settings'),
+        item('domain', t('shell.nav.customDomain'), 'project-domain'),
+        item('members', t('shell.nav.members'), 'project-members'),
+      ],
     },
   ]
 })
 
 const accountNavigation = computed<NavItem[]>(() => [
-  { key: 'account-projects', label: 'Projects', to: { name: 'projects' } },
+  { key: 'account-projects', label: t('shell.nav.projects'), to: { name: 'projects' } },
   ...(isAccountAdmin.value
     ? [
-        { key: 'account-users', label: 'Console users and roles', to: { name: 'users' } },
-        { key: 'account-authentication', label: 'Console sign-in', to: { name: 'auth-settings' } },
-        { key: 'account-audit-log', label: 'Audit log', to: { name: 'audit-log' } },
+        { key: 'account-users', label: t('shell.nav.consoleUsers'), to: { name: 'users' } },
+        { key: 'account-authentication', label: t('shell.nav.consoleSignIn'), to: { name: 'auth-settings' } },
+        { key: 'account-audit-log', label: t('shell.nav.auditLog'), to: { name: 'audit-log' } },
       ]
     : []),
 ])
@@ -92,10 +108,10 @@ const quietLinkClass =
   <div class="flex flex-1 flex-col gap-6 p-4">
     <template v-if="inAccount">
       <div class="flex flex-col gap-1 px-3">
-        <p class="text-xs text-text-muted">Account</p>
+        <p class="text-xs text-text-muted">{{ t('shell.account') }}</p>
         <p class="truncate text-sm font-semibold" :title="me?.account.name">{{ me?.account.name }}</p>
       </div>
-      <nav aria-label="Account">
+      <nav :aria-label="t('shell.account')">
         <ul class="flex flex-col gap-0.5">
           <li v-for="item in accountNavigation" :key="item.key">
             <RouterLink :to="item.to" :class="linkClass" :aria-current="isCurrent(item) ? 'page' : undefined">{{ item.label }}</RouterLink>
@@ -108,14 +124,14 @@ const quietLinkClass =
         :class="quietLinkClass"
         class="mt-auto truncate"
       >
-        <span aria-hidden="true">←</span> Back to {{ returnProject.name }}
+        <span aria-hidden="true">←</span> {{ t('shell.backTo', { name: returnProject.name }) }}
       </RouterLink>
     </template>
 
     <template v-else>
       <ProjectSwitcher :current-project-uid="currentProjectUid" />
 
-      <nav v-if="projectNavigation.length > 0" aria-label="Project">
+      <nav v-if="projectNavigation.length > 0" :aria-label="t('shell.project')">
         <ul class="flex flex-col gap-4">
           <li v-for="group in projectNavigation" :key="group.key">
             <RouterLink
@@ -138,7 +154,7 @@ const quietLinkClass =
         </ul>
       </nav>
 
-      <RouterLink :to="{ name: 'projects' }" :class="quietLinkClass" class="mt-auto border-t border-border pt-4">Account settings</RouterLink>
+      <RouterLink :to="{ name: 'projects' }" :class="quietLinkClass" class="mt-auto border-t border-border pt-4">{{ t('shell.accountSettings') }}</RouterLink>
     </template>
   </div>
 </template>

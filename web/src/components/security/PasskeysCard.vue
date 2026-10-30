@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -30,6 +31,8 @@ const emit = defineEmits<{
   reauthenticate: []
 }>()
 
+const { t } = useI18n()
+
 const passkeys = useAsync(props.list)
 const notice = ref<string | null>(null)
 const addError = ref<string | null>(null)
@@ -49,7 +52,7 @@ const addPasskey = useAsyncAction(async () => {
   try {
     const options = await props.options()
     const passkey = await props.add(options.registration_id, await createPasskey(options.public_key))
-    notice.value = `${passkey.name} added. You can use it to sign in.`
+    notice.value = t('security.passkeys.added', { name: passkey.name })
     await passkeys.reload()
   } catch (caught) {
     if (caught instanceof ApiError) {
@@ -86,68 +89,69 @@ onMounted(() => passkeys.reload())
 <template>
   <BaseCard
     v-if="shown"
-    title="Passkeys"
-    description="Sign in with your fingerprint, face or device PIN instead of a password. Passkeys can't be phished or reused, and count as multi-factor authentication."
+    :title="t('security.passkeys.title')"
+    :description="t('security.passkeys.description')"
   >
     <BaseAlert v-if="notice" variant="success">{{ notice }}</BaseAlert>
     <BaseAlert v-if="addError" variant="danger">
       {{ addError }}
-      <BaseButton v-if="needsSignIn" label="Sign in again" variant="ghost" size="sm" @click="emit('reauthenticate')" />
+      <BaseButton v-if="needsSignIn" :label="t('security.passkeys.signInAgain')" variant="ghost" size="sm" @click="emit('reauthenticate')" />
     </BaseAlert>
     <BaseAlert v-if="passkeys.error.value" variant="danger">
-      We couldn't load your passkeys. {{ passkeys.error.value.message }}
-      <BaseButton label="Try again" variant="ghost" size="sm" @click="passkeys.reload()" />
+      {{ t('security.passkeys.loadFailed', { message: passkeys.error.value.message }) }}
+      <BaseButton :label="t('common.actions.tryAgain')" variant="ghost" size="sm" @click="passkeys.reload()" />
     </BaseAlert>
 
-    <p v-if="passkeys.loading.value && !passkeys.data.value" class="text-sm text-text-muted" role="status">Loading…</p>
-    <p v-else-if="passkeys.data.value?.length === 0" class="text-sm text-text-muted">You haven't added a passkey yet.</p>
+    <p v-if="passkeys.loading.value && !passkeys.data.value" class="text-sm text-text-muted" role="status">{{ t('common.loading') }}</p>
+    <p v-else-if="passkeys.data.value?.length === 0" class="text-sm text-text-muted">{{ t('security.passkeys.none') }}</p>
     <ul v-else-if="passkeys.data.value" class="flex flex-col divide-y divide-border rounded-lg border border-border">
       <li v-for="passkey in passkeys.data.value" :key="passkey.uid" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
         <div class="flex min-w-0 flex-col gap-1">
           <span class="flex flex-wrap items-center gap-2">
             <span class="font-medium break-all">{{ passkey.name }}</span>
-            <StatusBadge :tone="passkey.synced ? 'info' : 'neutral'" :label="passkey.synced ? 'Synced' : 'This device or key only'" />
-            <StatusBadge v-if="passkey.domain !== here" tone="warning" :label="`Only works on ${passkey.domain}`" />
+            <StatusBadge :tone="passkey.synced ? 'info' : 'neutral'" :label="passkey.synced ? t('security.passkeys.synced') : t('security.passkeys.deviceOnly')" />
+            <StatusBadge v-if="passkey.domain !== here" tone="warning" :label="t('security.passkeys.onlyOn', { domain: passkey.domain })" />
           </span>
           <span class="text-xs text-text-muted">
-            Added {{ formatDateTime(passkey.created_at) }} · {{ passkey.last_used_at ? `Last used ${formatDateTime(passkey.last_used_at)}` : 'Not used yet' }}
+            {{ t('security.passkeys.added_at', { date: formatDateTime(passkey.created_at) }) }} ·
+            {{ passkey.last_used_at ? t('security.passkeys.lastUsed', { date: formatDateTime(passkey.last_used_at) }) : t('security.passkeys.notUsed') }}
           </span>
         </div>
         <div class="flex gap-2">
-          <BaseButton label="Rename" variant="ghost" size="sm" :aria-label="`Rename ${passkey.name}`" @click="startRename(passkey)" />
-          <BaseButton label="Remove" variant="ghost" size="sm" :aria-label="`Remove ${passkey.name}`" @click="removing = passkey" />
+          <BaseButton :label="t('security.passkeys.rename')" variant="ghost" size="sm" :aria-label="t('security.passkeys.renameLabel', { name: passkey.name })" @click="startRename(passkey)" />
+          <BaseButton :label="t('common.actions.remove')" variant="ghost" size="sm" :aria-label="t('security.passkeys.removeLabel', { name: passkey.name })" @click="removing = passkey" />
         </div>
       </li>
     </ul>
 
     <template v-if="available">
-      <BaseButton v-if="supported" label="Add a passkey" class="self-start" :loading="addPasskey.loading.value" @click="addPasskey.run()" />
-      <p v-else class="text-sm text-text-muted">This browser doesn't support passkeys. Try another browser or device.</p>
+      <BaseButton v-if="supported" :label="t('security.passkeys.add')" class="self-start" :loading="addPasskey.loading.value" @click="addPasskey.run()" />
+      <p v-else class="text-sm text-text-muted">{{ t('security.passkeys.unsupported') }}</p>
     </template>
-    <p v-else class="text-sm text-text-muted">Passkeys are turned off here. You can still remove the ones you have.</p>
+    <p v-else class="text-sm text-text-muted">{{ t('security.passkeys.off') }}</p>
   </BaseCard>
 
-  <BaseDialog :visible="renaming !== null" title="Rename passkey" @update:visible="(open: boolean) => !open && (renaming = null)">
+  <BaseDialog :visible="renaming !== null" :title="t('security.passkeys.renameTitle')" @update:visible="(open: boolean) => !open && (renaming = null)">
     <form class="flex flex-col gap-4" novalidate @submit.prevent="rename.run()">
-      <BaseInput v-model="newName" label="Name" :error="rename.error.value?.fieldError('name')" />
+      <BaseInput v-model="newName" :label="t('security.passkeys.name')" :error="rename.error.value?.fieldError('name')" />
       <BaseAlert v-if="rename.error.value && !rename.error.value.fieldError('name')" variant="danger">{{ rename.error.value.message }}</BaseAlert>
       <div class="flex justify-end gap-2">
-        <BaseButton label="Cancel" variant="secondary" @click="renaming = null" />
-        <BaseButton type="submit" label="Save" :loading="rename.loading.value" :disabled="newName.trim() === ''" />
+        <BaseButton :label="t('common.actions.cancel')" variant="secondary" @click="renaming = null" />
+        <BaseButton type="submit" :label="t('common.actions.save')" :loading="rename.loading.value" :disabled="newName.trim() === ''" />
       </div>
     </form>
   </BaseDialog>
 
   <ConfirmDialog
     :visible="removing !== null"
-    :title="`Remove ${removing?.name ?? 'passkey'}?`"
-    confirm-label="Remove passkey"
+    :title="t('security.passkeys.removeTitle', { name: removing?.name ?? t('security.passkeys.removeFallback') })"
+    :confirm-label="t('security.passkeys.removeConfirm')"
     danger
     :loading="remove.loading.value"
     :error="remove.error.value"
     @update:visible="(open: boolean) => !open && (removing = null)"
     @confirm="remove.run()"
   >
-    <p>You won't be able to sign in with it any more. Remove it from your device or password manager too.</p>
+    <p>{{ t('security.passkeys.removeDescription') }}</p>
   </ConfirmDialog>
 </template>

@@ -4,6 +4,7 @@
 // empty and error states; views supply rows, columns, filters and the list state. OpenVue's DataTable sorts and pages on the client, while
 // every list here round-trips to the server. Hiding columns only changes what's shown.
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseAlert from './BaseAlert.vue'
 import BaseButton from './BaseButton.vue'
@@ -35,6 +36,7 @@ const props = withDefaults(
     /** The total is a lower bound; offers counting exactly. */
     capped?: boolean
     searchLabel: string
+    /** Defaults to "Search". */
     searchPlaceholder?: string
     searchHint?: string
     filters?: readonly DataTableFilter[]
@@ -42,7 +44,7 @@ const props = withDefaults(
     error?: ApiError | null
     /** Shown when nothing exists yet. */
     emptyMessage: string
-    /** Shown when a search or filter matches nothing. */
+    /** Shown when a search or filter matches nothing; defaults to a generic message. */
     noMatchesMessage?: string
     /** On narrow screens, shows each row as a card of labelled fields instead of a wide table. */
     stacked?: boolean
@@ -50,12 +52,12 @@ const props = withDefaults(
     storageKey?: string
   }>(),
   {
-    searchPlaceholder: 'Search',
+    searchPlaceholder: undefined,
     searchHint: undefined,
     filters: () => [],
     loading: false,
     error: null,
-    noMatchesMessage: 'Nothing matches this search and these filters.',
+    noMatchesMessage: undefined,
     stacked: false,
     capped: false,
     storageKey: undefined,
@@ -63,6 +65,8 @@ const props = withDefaults(
 )
 
 const state = defineModel<ListState>('state', { required: true })
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   /** Refresh was pressed, or Try again after a failed load. */
@@ -156,7 +160,7 @@ function toggleSort(column: DataTableColumn) {
 
 function sortLabel(column: DataTableColumn) {
   const current = column.sortKey === sortKey.value
-  return `Sort by ${column.label}, ${current && !descending.value ? 'descending' : 'ascending'}`
+  return t('base.table.sortColumn', { column: column.label, direction: t(current && !descending.value ? 'base.table.descending' : 'base.table.ascending') })
 }
 
 const page = computed({
@@ -210,10 +214,14 @@ function removeSearch() {
 }
 
 const chips = computed(() => [
-  ...(state.value.search ? [{ key: 'search', label: `Search: ${state.value.search}`, remove: removeSearch }] : []),
+  ...(state.value.search ? [{ key: 'search', label: t('base.table.searchChip', { value: state.value.search }), remove: removeSearch }] : []),
   ...props.filters
     .filter((filter) => state.value.filters[filter.key])
-    .map((filter) => ({ key: filter.key, label: `${filter.label}: ${valueLabel(filter, state.value.filters[filter.key]!)}`, remove: () => removeFilter(filter) })),
+    .map((filter) => ({
+      key: filter.key,
+      label: t('base.table.filterChip', { filter: filter.label, value: valueLabel(filter, state.value.filters[filter.key]!) }),
+      remove: () => removeFilter(filter),
+    })),
 ])
 
 /** Stacked rows have no headers to click, so they sort with a select instead. */
@@ -221,10 +229,10 @@ const sortOptions = computed(() =>
   props.columns
     .filter((column) => column.sortKey)
     .flatMap((column) => {
-      const [ascending, descending] = column.sortKind === 'date' ? ['oldest first', 'newest first'] : ['A to Z', 'Z to A']
+      const [ascending, descending] = column.sortKind === 'date' ? [t('base.table.oldestFirst'), t('base.table.newestFirst')] : [t('base.table.aToZ'), t('base.table.zToA')]
       return [
-        { label: `${column.label}, ${descending}`, value: `-${column.sortKey}` },
-        { label: `${column.label}, ${ascending}`, value: column.sortKey! },
+        { label: t('base.table.sortOption', { column: column.label, order: descending }), value: `-${column.sortKey}` },
+        { label: t('base.table.sortOption', { column: column.label, order: ascending }), value: column.sortKey! },
       ]
     }),
 )
@@ -235,7 +243,7 @@ const sortOptions = computed(() =>
     <div class="flex flex-wrap items-end justify-between gap-3">
       <form class="flex flex-wrap items-end gap-3" role="search" :aria-label="caption" @submit.prevent="debouncedSearch.flush(search)">
         <div class="w-full sm:w-80">
-          <BaseInput v-model="search" :label="searchLabel" :placeholder="searchPlaceholder" :hint="searchHint" type="search" icon="search" />
+          <BaseInput v-model="search" :label="searchLabel" :placeholder="searchPlaceholder ?? t('base.table.search')" :hint="searchHint" type="search" icon="search" />
         </div>
         <div v-for="filter in inlineFilters" :key="filter.key" class="w-full sm:w-44">
           <BaseFilterField :filter="filter" :model-value="filterValue(filter)" @update:model-value="(value: string) => setFilterValue(filter, value)" />
@@ -251,7 +259,7 @@ const sortOptions = computed(() =>
           />
         </BaseFilterPopover>
         <div v-if="stacked && sortOptions.length > 0" class="w-full sm:hidden">
-          <BaseSelect :model-value="state.sort" label="Sort by" :options="sortOptions" @update:model-value="(value: string) => update({ sort: value })" />
+          <BaseSelect :model-value="state.sort" :label="t('base.table.sortBy')" :options="sortOptions" @update:model-value="(value: string) => update({ sort: value })" />
         </div>
       </form>
       <div v-if="$slots.actions" class="flex flex-wrap gap-2">
@@ -259,13 +267,13 @@ const sortOptions = computed(() =>
       </div>
     </div>
 
-    <ul v-if="chips.length > 0" class="flex flex-wrap items-center gap-2" aria-label="Active filters">
+    <ul v-if="chips.length > 0" class="flex flex-wrap items-center gap-2" :aria-label="t('base.table.activeFilters')">
       <li v-for="chip in chips" :key="chip.key" class="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-bg-subtle py-1 pr-1 pl-3 text-sm">
         <span class="truncate">{{ chip.label }}</span>
         <button
           type="button"
           class="rounded-full p-1 text-text-muted hover:bg-border hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          :aria-label="`Remove ${chip.label}`"
+          :aria-label="t('base.table.removeChip', { chip: chip.label })"
           @click="chip.remove"
         >
           <svg aria-hidden="true" viewBox="0 0 20 20" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -273,13 +281,13 @@ const sortOptions = computed(() =>
           </svg>
         </button>
       </li>
-      <li><BaseButton label="Clear all" variant="ghost" size="sm" @click="clearAll" /></li>
+      <li><BaseButton :label="t('base.table.clearAll')" variant="ghost" size="sm" @click="clearAll" /></li>
     </ul>
 
     <div class="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-      <div class="flex flex-wrap items-center gap-2" role="toolbar" :aria-label="`${caption} table`">
+      <div class="flex flex-wrap items-center gap-2" role="toolbar" :aria-label="t('base.table.toolbar', { caption })">
         <BaseColumnPicker v-if="pickerColumns.length > 1" v-model:hidden="hiddenColumns" :columns="pickerColumns" />
-        <BaseButton label="Refresh" variant="secondary" :disabled="loading" @click="emit('reload')">
+        <BaseButton :label="t('base.table.refresh')" variant="secondary" :disabled="loading" @click="emit('reload')">
           <template #icon>
             <svg
               aria-hidden="true"
@@ -297,11 +305,11 @@ const sortOptions = computed(() =>
             </svg>
           </template>
         </BaseButton>
-        <span aria-hidden="true" class="ml-2 text-sm text-text-muted">Rows per page</span>
+        <span aria-hidden="true" class="ml-2 text-sm text-text-muted">{{ t('base.table.rowsPerPage') }}</span>
         <div class="w-24">
           <BaseSelect
             :model-value="String(state.perPage)"
-            label="Rows per page"
+            :label="t('base.table.rowsPerPage')"
             hide-label
             :options="pageSizeOptions"
             @update:model-value="(value: string) => update({ perPage: Number(value) })"
@@ -319,16 +327,16 @@ const sortOptions = computed(() =>
       />
     </div>
 
-    <BaseAlert v-if="error" variant="danger" title="We couldn't load this list">
+    <BaseAlert v-if="error" variant="danger" :title="t('base.table.loadFailed')">
       {{ error.message }}
-      <BaseButton label="Try again" variant="ghost" size="sm" @click="emit('reload')" />
+      <BaseButton :label="t('base.table.tryAgain')" variant="ghost" size="sm" @click="emit('reload')" />
     </BaseAlert>
     <ul v-if="stacked" class="flex flex-col divide-y divide-border rounded-lg border border-border sm:hidden" :aria-label="caption" :aria-busy="loading || undefined">
-      <li v-if="loading && rows.length === 0" class="px-4 py-8 text-center text-sm text-text-muted" role="status">Loading…</li>
+      <li v-if="loading && rows.length === 0" class="px-4 py-8 text-center text-sm text-text-muted" role="status">{{ t('base.table.loading') }}</li>
       <li v-else-if="rows.length === 0 && !error" class="px-4 py-8 text-center text-sm text-text-muted">
         <template v-if="narrowed">
-          {{ noMatchesMessage }}
-          <BaseButton label="Clear filters" variant="ghost" size="sm" @click="clearAll" />
+          {{ noMatchesMessage ?? t('base.table.noMatches') }}
+          <BaseButton :label="t('base.table.clearFilters')" variant="ghost" size="sm" @click="clearAll" />
         </template>
         <slot v-else name="empty">{{ emptyMessage }}</slot>
       </li>
@@ -368,13 +376,13 @@ const sortOptions = computed(() =>
         </thead>
         <tbody>
           <tr v-if="loading && rows.length === 0">
-            <td :colspan="visibleColumns.length" class="px-4 py-8 text-center text-text-muted" role="status">Loading…</td>
+            <td :colspan="visibleColumns.length" class="px-4 py-8 text-center text-text-muted" role="status">{{ t('base.table.loading') }}</td>
           </tr>
           <tr v-else-if="rows.length === 0 && !error">
             <td :colspan="visibleColumns.length" class="px-4 py-8 text-center text-text-muted">
               <template v-if="narrowed">
-                {{ noMatchesMessage }}
-                <BaseButton label="Clear filters" variant="ghost" size="sm" @click="clearAll" />
+                {{ noMatchesMessage ?? t('base.table.noMatches') }}
+                <BaseButton :label="t('base.table.clearFilters')" variant="ghost" size="sm" @click="clearAll" />
               </template>
               <slot v-else name="empty">{{ emptyMessage }}</slot>
             </td>
@@ -393,7 +401,7 @@ const sortOptions = computed(() =>
     <BasePagination
       v-model:page="page"
       class="self-end"
-      label="Pagination, bottom"
+      :label="t('base.table.bottomPagination')"
       :total="total"
       :per-page="perPage"
       :row-count="rows.length"

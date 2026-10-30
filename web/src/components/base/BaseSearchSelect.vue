@@ -27,7 +27,7 @@ const props = withDefaults(
     /** 'self' keeps the options inside the component, e.g. within a popover that closes on outside clicks. */
     appendTo?: 'body' | 'self'
   }>(),
-  { appendTo: 'body', resolveLabel: undefined, seeAll: undefined, hideLabel: false, hint: undefined, error: undefined, placeholder: 'Type to search', disabled: false },
+  { appendTo: 'body', resolveLabel: undefined, seeAll: undefined, hideLabel: false, hint: undefined, error: undefined, placeholder: undefined, disabled: false },
 )
 
 /** The selected item's value, or '' for none. */
@@ -137,10 +137,10 @@ const passThrough = computed(() => ({
       force-selection
       complete-on-focus
       show-empty-message
-      :empty-search-message="failed ? 'We couldn\'t load the options. Try again.' : 'Nothing matches.'"
+      :empty-search-message="failed ? $t('base.searchSelect.failed') : $t('base.searchSelect.noMatches')"
       :delay="SEARCH_DELAY_MS"
       :loading="loading"
-      :placeholder="placeholder"
+      :placeholder="placeholder ?? $t('base.searchSelect.placeholder')"
       :disabled="disabled"
       :append-to="appendTo"
       :invalid="Boolean(error)"
@@ -152,12 +152,18 @@ const passThrough = computed(() => ({
     >
       <template v-if="more" #footer>
         <p class="border-t border-border px-3 py-2 text-xs text-text-muted">
-          Showing {{ suggestions.length }} of {{ total }}. Type to narrow the list<template v-if="seeAll">, or
-            <RouterLink :to="seeAll" class="font-medium text-primary underline">see them all</RouterLink></template>.
+          <i18n-t v-if="seeAll" keypath="base.searchSelect.moreWithLink">
+            <template #shown>{{ suggestions.length }}</template>
+            <template #total>{{ total }}</template>
+            <template #link>
+              <RouterLink :to="seeAll" class="font-medium text-primary underline">{{ $t('base.searchSelect.seeAll') }}</RouterLink>
+            </template>
+          </i18n-t>
+          <template v-else>{{ $t('base.searchSelect.more', { shown: suggestions.length, total }) }}</template>
         </p>
       </template>
     </AutoComplete>
     <p v-if="hint" :id="hintId" class="text-xs text-text-muted">{{ hint }}</p>
-    <p v-if="error" :id="errorId" class="text-xs font-medium text-danger">Error: {{ error }}</p>
+    <p v-if="error" :id="errorId" class="text-xs font-medium text-danger">{{ $t('base.field.error', { message: error }) }}</p>
   </div>
 </template>

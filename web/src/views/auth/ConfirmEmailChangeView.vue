@@ -5,9 +5,9 @@ import { authService } from '@/services/auth'
 
 <template>
   <TokenConfirmation
-    title="Confirm your new email"
-    success-title="Email changed"
-    success-message="Your email address has been updated, and you've been signed out everywhere. Sign in with your new address."
+    :title="$t('auth.confirmEmailChange.title')"
+    :success-title="$t('auth.confirmEmailChange.successTitle')"
+    :success-message="$t('auth.confirmEmailChange.successMessage')"
     :confirm="authService.confirmEmailChange"
   />
 </template>

@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 
 import { useAsyncAction } from './useAsyncAction'
+import { i18n } from '@/i18n'
 import { projectAdminService } from '@/services/project'
 import type { EndUser } from '@/types/api'
 
@@ -19,6 +20,7 @@ export interface EndUserActionResult {
 
 /** Admin actions on end users, shared by the directory and the end user page. */
 export function useEndUserActions(target: () => { accountUid: string; projectUid: string } | null, onDone: (result: EndUserActionResult) => void) {
+  const { t } = i18n.global
   const pending = ref<{ action: EndUserAction; endUser: EndUser } | null>(null)
 
   const perform = useAsyncAction(async (action: EndUserAction, endUser: EndUser) => {
@@ -32,25 +34,25 @@ export function useEndUserActions(target: () => { accountUid: string; projectUid
       case 'disable':
       case 'enable':
         updated = await projectAdminService.updateEndUser(...args, { status: action === 'disable' ? 'disabled' : 'active' })
-        notice = action === 'disable' ? `${endUser.email} was disabled and signed out everywhere.` : `${endUser.email} was enabled.`
+        notice = t(action === 'disable' ? 'project.endUserActions.disabled' : 'project.endUserActions.enabled', { email: endUser.email })
         break
       case 'reset_mfa':
         await projectAdminService.resetEndUserMfa(...args)
         updated = { ...endUser, mfa_enabled: false }
-        notice = `MFA was turned off for ${endUser.email}.`
+        notice = t('project.endUserActions.mfaReset', { email: endUser.email })
         break
       case 'sign_out':
         await projectAdminService.signOutEndUser(...args)
-        notice = `${endUser.email} was signed out everywhere.`
+        notice = t('project.endUserActions.signedOut', { email: endUser.email })
         break
       case 'resend_invitation':
         await projectAdminService.resendInvitation(...args)
-        notice = `A new invitation was sent to ${endUser.email}.`
+        notice = t('project.endUserActions.invitationSent', { email: endUser.email })
         break
       case 'delete':
         await projectAdminService.deleteEndUser(...args)
         updated = null
-        notice = `${endUser.email} was deleted.`
+        notice = t('project.endUserActions.deleted', { email: endUser.email })
         break
     }
     pending.value = null

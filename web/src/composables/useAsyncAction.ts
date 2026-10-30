@@ -18,7 +18,7 @@ export function useAsyncAction<Args extends unknown[], Result>(action: (...args:
       return await action(...args)
     } catch (caught) {
       error.value =
-        caught instanceof ApiError ? caught : new ApiError('internal_error', 'Something unexpected happened. Try again.', 0)
+        caught instanceof ApiError ? caught : new ApiError('internal_error', 0)
       return undefined
     } finally {
       loading.value = false

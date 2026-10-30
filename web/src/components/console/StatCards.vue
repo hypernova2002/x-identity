@@ -24,18 +24,18 @@ const emit = defineEmits<{
 
 <template>
   <section :aria-label="label" :aria-busy="loading || undefined">
-    <BaseAlert v-if="error" variant="warning" title="We couldn't load these counts">
+    <BaseAlert v-if="error" variant="warning" :title="$t('common.stats.loadFailed')">
       {{ error.message }}
-      <BaseButton label="Try again" variant="ghost" size="sm" @click="emit('retry')" />
+      <BaseButton :label="$t('common.actions.tryAgain')" variant="ghost" size="sm" @click="emit('retry')" />
     </BaseAlert>
     <dl v-else class="flex flex-wrap gap-4">
       <div v-for="card in cards" :key="card.label" class="flex min-w-40 flex-1 flex-col gap-1 rounded-lg border border-border bg-bg p-4 shadow-sm">
         <dt class="text-sm text-text-muted">{{ card.label }}</dt>
         <dd class="text-2xl font-semibold">
           <span v-if="card.value === undefined" class="inline-block h-8 w-16 animate-pulse rounded-md bg-bg-subtle motion-reduce:animate-none">
-            <span class="sr-only">Loading</span>
+            <span class="sr-only">{{ $t('common.loadingShort') }}</span>
           </span>
-          <template v-else>{{ card.value.toLocaleString() }}</template>
+          <template v-else>{{ $n(card.value) }}</template>
         </dd>
       </div>
     </dl>

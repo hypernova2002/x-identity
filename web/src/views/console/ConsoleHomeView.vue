@@ -26,6 +26,6 @@ onMounted(() => open.run())
 </script>
 
 <template>
-  <BaseAlert v-if="open.error.value" variant="danger">We couldn't load your projects. {{ open.error.value.message }}</BaseAlert>
-  <p v-else class="text-sm text-text-muted" role="status">Opening your project…</p>
+  <BaseAlert v-if="open.error.value" variant="danger">{{ $t('console.home.loadFailed', { message: open.error.value.message }) }}</BaseAlert>
+  <p v-else class="text-sm text-text-muted" role="status">{{ $t('console.home.opening') }}</p>
 </template>

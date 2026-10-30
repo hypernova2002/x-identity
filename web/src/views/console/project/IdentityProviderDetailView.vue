@@ -79,58 +79,58 @@ onMounted(() => load.run())
 <template>
   <PageBreadcrumbs
     :items="[
-      { label: 'Identity providers', to: { name: 'project-identity-providers', params: { projectUid: project?.uid } } },
-      { label: provider?.name ?? 'Identity provider' },
+      { label: $t('project.identityProviderDetail.identityProviders'), to: { name: 'project-identity-providers', params: { projectUid: project?.uid } } },
+      { label: provider?.name ?? $t('project.identityProviderDetail.identityProvider') },
     ]"
   />
 
-  <BaseAlert v-if="load.error.value?.code === 'not_found'" variant="danger" title="Identity provider not found">It may have been removed.</BaseAlert>
+  <BaseAlert v-if="load.error.value?.code === 'not_found'" variant="danger" :title="$t('project.identityProviderDetail.identityProviderNotFound')">{{ $t('project.identityProviderDetail.itMayHaveBeenRemoved') }}</BaseAlert>
   <BaseAlert v-else-if="load.error.value" variant="danger">{{ load.error.value.message }}</BaseAlert>
-  <p v-else-if="!provider" class="text-sm text-text-muted" role="status">Loading identity provider…</p>
+  <p v-else-if="!provider" class="text-sm text-text-muted" role="status">{{ $t('project.identityProviderDetail.loadingIdentityProvider') }}</p>
 
   <template v-if="provider && project">
     <PageHeader :title="provider.name" :description="kindLabel">
       <template #actions>
-        <StatusBadge :tone="provider.enabled ? 'success' : 'neutral'" :label="provider.enabled ? 'Enabled' : 'Disabled'" />
-        <BaseButton v-if="access.admin" label="Edit" @click="editor.start(provider)" />
+        <StatusBadge :tone="provider.enabled ? 'success' : 'neutral'" :label="provider.enabled ? $t('project.identityProviderDetail.enabled') : $t('project.identityProviderDetail.disabled')" />
+        <BaseButton v-if="access.admin" :label="$t('project.identityProviderDetail.edit')" @click="editor.start(provider)" />
       </template>
     </PageHeader>
 
-    <BaseCard title="Configuration">
+    <BaseCard :title="$t('project.identityProviderDetail.configuration')">
       <dl class="grid gap-2 text-sm sm:grid-cols-[max-content_1fr]">
         <template v-if="isSaml">
-          <dt class="font-medium">Identity provider entity ID</dt>
+          <dt class="font-medium">{{ $t('project.identityProviderDetail.identityProviderEntityId') }}</dt>
           <dd class="font-mono text-xs break-all">{{ provider.saml_idp_entity_id }}</dd>
-          <dt class="font-medium">Sign-on URL</dt>
+          <dt class="font-medium">{{ $t('project.identityProviderDetail.signOnUrl') }}</dt>
           <dd class="font-mono text-xs break-all">{{ provider.saml_sso_url }}</dd>
-          <dt class="font-medium">Signing certificates</dt>
+          <dt class="font-medium">{{ $t('project.identityProviderDetail.signingCertificates') }}</dt>
           <dd>{{ provider.saml_idp_certificates.length }}</dd>
-          <dt class="font-medium">NameID requested</dt>
+          <dt class="font-medium">{{ $t('project.identityProviderDetail.nameidRequested') }}</dt>
           <dd>{{ nameIdFormatOptions.find((option) => option.value === provider!.saml_name_id_format)?.label }}</dd>
-          <dt class="font-medium">Attributes</dt>
-          <dd>
-            Email: <code class="font-mono text-xs">{{ provider.saml_email_attribute ?? 'the NameID' }}</code>, name:
-            <code class="font-mono text-xs">{{ provider.saml_name_attribute ?? 'not set' }}</code>, groups:
-            <code class="font-mono text-xs">{{ provider.saml_groups_attribute ?? 'not set' }}</code>
-          </dd>
+          <dt class="font-medium">{{ $t('project.identityProviderDetail.attributes') }}</dt>
+          <i18n-t keypath="project.identityProviderDetail.attributeMapping" tag="dd">
+            <template #email><code class="font-mono text-xs">{{ provider.saml_email_attribute ?? $t('project.identityProviderDetail.theNameId') }}</code></template>
+            <template #name><code class="font-mono text-xs">{{ provider.saml_name_attribute ?? $t('project.identityProviderDetail.notSetAttribute') }}</code></template>
+            <template #groups><code class="font-mono text-xs">{{ provider.saml_groups_attribute ?? $t('project.identityProviderDetail.notSetAttribute') }}</code></template>
+          </i18n-t>
         </template>
         <template v-else>
-          <dt class="font-medium">{{ provider.kind === 'apple' ? 'Services ID' : 'Client ID' }}</dt>
+          <dt class="font-medium">{{ provider.kind === 'apple' ? $t('project.identityProviderDetail.servicesId') : $t('project.identityProviderDetail.clientId') }}</dt>
           <dd class="font-mono text-xs break-all">{{ provider.client_id }}</dd>
           <template v-if="provider.kind === 'oidc'">
-            <dt class="font-medium">Issuer</dt>
+            <dt class="font-medium">{{ $t('project.identityProviderDetail.issuer') }}</dt>
             <dd class="font-mono text-xs break-all">{{ provider.issuer }}</dd>
           </template>
-          <dt class="font-medium">Secret</dt>
+          <dt class="font-medium">{{ $t('project.identityProviderDetail.secret') }}</dt>
           <dd>
             <StatusBadge
               :tone="provider.client_secret_set || provider.apple_private_key_set ? 'success' : 'warning'"
-              :label="provider.client_secret_set || provider.apple_private_key_set ? 'Saved (write-only)' : 'Not set'"
+              :label="provider.client_secret_set || provider.apple_private_key_set ? $t('project.identityProviderDetail.savedWriteOnly') : $t('project.identityProviderDetail.notSet')"
             />
           </dd>
-          <dt class="font-medium">Native app client IDs</dt>
-          <dd>{{ provider.additional_audiences.join(', ') || 'None' }}</dd>
-          <dt class="font-medium">Callback URL to register</dt>
+          <dt class="font-medium">{{ $t('project.identityProviderDetail.nativeAppClientIds') }}</dt>
+          <dd>{{ provider.additional_audiences.join(', ') || $t('project.identityProviderDetail.none') }}</dd>
+          <dt class="font-medium">{{ $t('project.identityProviderDetail.callbackUrlToRegister') }}</dt>
           <dd class="font-mono text-xs break-all">{{ provider.callback_url }}</dd>
         </template>
       </dl>
@@ -150,51 +150,59 @@ onMounted(() => load.run())
       @change="switchDomain.run"
     />
 
-    <BaseCard v-if="isSaml" title="Service provider details" description="Give these to the company's identity provider admin, or have them import the metadata URL.">
+    <BaseCard v-if="isSaml" :title="$t('project.identityProviderDetail.serviceProviderDetails')" :description="$t('project.identityProviderDetail.giveTheseToTheCompany')">
       <dl class="grid gap-2 text-sm sm:grid-cols-[max-content_1fr]">
-        <dt class="font-medium">Metadata URL and entity ID</dt>
+        <dt class="font-medium">{{ $t('project.identityProviderDetail.metadataUrlAndEntityId') }}</dt>
         <dd class="font-mono text-xs break-all">{{ provider.sp_entity_id }}</dd>
-        <dt class="font-medium">Assertion consumer service URL</dt>
+        <dt class="font-medium">{{ $t('project.identityProviderDetail.assertionConsumerServiceUrl') }}</dt>
         <dd class="font-mono text-xs break-all">{{ provider.acs_url }}</dd>
-        <dt class="font-medium">Single logout URL</dt>
+        <dt class="font-medium">{{ $t('project.identityProviderDetail.singleLogoutUrl') }}</dt>
         <dd class="font-mono text-xs break-all">{{ provider.sp_slo_url }}</dd>
       </dl>
     </BaseCard>
 
-    <BaseCard v-if="isSaml" title="Domains and routing">
-      <p v-if="provider.domains.length === 0" class="text-sm">
-        No domains, so <strong>no email is trusted</strong> and sign-ins are refused. Add the company's email domains.
-      </p>
+    <BaseCard v-if="isSaml" :title="$t('project.identityProviderDetail.domainsAndRouting')">
+      <i18n-t keypath="project.identityProviderDetail.noDomains" tag="p" v-if="provider.domains.length === 0" class="text-sm">
+        <template #trusted><strong>{{ $t('project.identityProviderDetail.noEmailIsTrusted') }}</strong></template>
+      </i18n-t>
       <template v-else>
-        <p class="text-sm">
-          Only addresses at <strong>{{ provider.domains.join(', ') }}</strong> can sign in with this provider. People who enter one of
-          these addresses on the hosted login page are sent here instead of being asked for a password.
-        </p>
+        <i18n-t keypath="project.identityProviderDetail.domainsHelp" tag="p" class="text-sm">
+          <template #domains><strong>{{ provider.domains.join(', ') }}</strong></template>
+        </i18n-t>
       </template>
     </BaseCard>
 
-    <BaseCard title="Account linking and provisioning">
+    <BaseCard :title="$t('project.identityProviderDetail.accountLinkingAndProvisioning')">
       <ul class="flex list-disc flex-col gap-1 pl-5 text-sm">
-        <li>A user who signed in with this provider before is signed in to the same end user.</li>
-        <li v-if="isSaml">An email counts as verified only at the provider's domains; anything else is refused.</li>
-        <li v-else>The provider must say the email is verified, or the sign-in is refused.</li>
+        <li>{{ $t('project.identityProviderDetail.aUserWhoSignedIn') }}</li>
+        <li v-if="isSaml">{{ $t('project.identityProviderDetail.anEmailCountsAsVerified') }}</li>
+        <li v-else>{{ $t('project.identityProviderDetail.theProviderMustSayThe') }}</li>
         <li>
-          An existing end user with that email is linked only if their own email is verified (or they were invited and haven't set a
-          password). Otherwise they must sign in with their password first.
+          {{ $t('project.identityProviderDetail.anExistingEndUserWith') }}
         </li>
-        <li>
-          New users:
-          <strong>{{ createsUsers ? 'created on first sign-in' : 'not created' }}</strong>
-          ({{ provider.create_users ? 'this provider creates users' : project.allow_self_sign_up ? 'self sign-up is on' : 'self sign-up is off and this provider doesn\'t create users' }}).
-          New users join the groups set to take them automatically.
-        </li>
+        <i18n-t keypath="project.identityProviderDetail.newUsersCreated" tag="li">
+          <template #created>
+            <strong>{{ createsUsers ? $t('project.identityProviderDetail.createdOnFirstSignIn') : $t('project.identityProviderDetail.notCreated') }}</strong>
+          </template>
+          <template #reason>
+            {{
+              provider.create_users
+                ? $t('project.identityProviderDetail.providerCreatesUsers')
+                : project.allow_self_sign_up
+                  ? $t('project.identityProviderDetail.selfSignUpOn')
+                  : $t('project.identityProviderDetail.selfSignUpOff')
+            }}
+          </template>
+        </i18n-t>
       </ul>
     </BaseCard>
 
-    <BaseCard v-if="isSaml" title="Group mapping">
-      <p v-if="provider.group_mappings.length === 0" class="text-sm text-text-muted">No group mappings. Group memberships are managed in the console only.</p>
+    <BaseCard v-if="isSaml" :title="$t('project.identityProviderDetail.groupMapping')">
+      <p v-if="provider.group_mappings.length === 0" class="text-sm text-text-muted">{{ $t('project.identityProviderDetail.noGroupMappingsGroupMemberships') }}</p>
       <template v-else>
-        <p class="text-sm">At each sign-in, membership of these groups follows the provider's <code class="font-mono text-xs">{{ provider.saml_groups_attribute }}</code> attribute:</p>
+        <i18n-t keypath="project.identityProviderDetail.groupMappingHelp" tag="p" class="text-sm">
+          <template #attribute><code class="font-mono text-xs">{{ provider.saml_groups_attribute }}</code></template>
+        </i18n-t>
         <ul class="flex flex-col divide-y divide-border">
           <li v-for="mapping in provider.group_mappings" :key="`${mapping.value}-${mapping.group_uid}`" class="flex flex-wrap gap-2 py-2 text-sm">
             <code class="font-mono text-xs">{{ mapping.value }}</code>
@@ -207,42 +215,51 @@ onMounted(() => load.run())
       </template>
     </BaseCard>
 
-    <BaseCard v-if="isSaml" title="Single logout and IdP-initiated sign-in">
+    <BaseCard v-if="isSaml" :title="$t('project.identityProviderDetail.singleLogoutAndIdpInitiated')">
       <ul class="flex list-disc flex-col gap-1 pl-5 text-sm">
-        <li v-if="provider.saml_slo_url">Logging out also logs out at the provider ({{ provider.saml_slo_url }}).</li>
-        <li v-else>No logout URL: logging out ends the session here only.</li>
-        <li>Sign-in started from the provider's dashboard is <strong>{{ provider.allow_idp_initiated ? 'allowed' : 'not allowed' }}</strong>.</li>
+        <li v-if="provider.saml_slo_url">{{ $t('project.identityProviderDetail.logoutAtProvider', { url: provider.saml_slo_url }) }}</li>
+        <li v-else>{{ $t('project.identityProviderDetail.noLogoutUrlLoggingOut') }}</li>
+        <i18n-t keypath="project.identityProviderDetail.idpInitiated" tag="li">
+          <template #allowed>
+            <strong>{{ provider.allow_idp_initiated ? $t('project.identityProviderDetail.allowed') : $t('project.identityProviderDetail.notAllowed') }}</strong>
+          </template>
+        </i18n-t>
       </ul>
     </BaseCard>
 
-    <BaseCard title="Diagnostics">
+    <BaseCard :title="$t('project.identityProviderDetail.diagnostics')">
       <p class="text-sm">
-        Try a real sign-in: open
-        <RouterLink :to="{ name: 'project-test-sign-in', params: { projectUid: project.uid } }" class="font-medium text-primary underline">Test sign-in</RouterLink>
-        and use hosted login. {{ isSaml && provider.domains.length > 0 ? `Enter an address at ${provider.domains[0]} to be routed here.` : 'This provider\'s button is on the hosted login page.' }}
+        <i18n-t keypath="project.identityProviderDetail.tryRealSignIn">
+          <template #link>
+            <RouterLink :to="{ name: 'project-test-sign-in', params: { projectUid: project.uid } }" class="font-medium text-primary underline">
+              {{ $t('project.identityProviderDetail.testSignInLink') }}
+            </RouterLink>
+          </template>
+        </i18n-t>
+        {{ isSaml && provider.domains.length > 0 ? $t('project.identityProviderDetail.enterAnAddressAtTo', { domains: provider.domains[0] }) : $t('project.identityProviderDetail.thisProviderSButtonIs') }}
       </p>
       <template v-if="access.developer">
-        <h3 class="text-sm font-semibold">Configuration changes</h3>
+        <h3 class="text-sm font-semibold">{{ $t('project.identityProviderDetail.configurationChanges') }}</h3>
         <AuditEventList
           :fetch-page="fetchAudit"
           :filters="{ target_uid_eq: provider.uid }"
-          empty-message="No changes recorded yet."
+          :empty-message="$t('project.identityProviderDetail.noChangesRecordedYet')"
           :full-log="{ name: 'project-audit-log', params: { projectUid: project.uid }, query: { target_uid_eq: provider.uid } }"
           :limit="5"
         />
       </template>
     </BaseCard>
 
-    <BaseCard v-if="access.admin" title="Manage">
+    <BaseCard v-if="access.admin" :title="$t('project.identityProviderDetail.manage')">
       <BaseAlert v-if="toggle.error.value" variant="danger">{{ toggle.error.value.message }}</BaseAlert>
       <div class="flex flex-wrap gap-2">
-        <BaseButton v-if="provider.enabled" label="Disable" variant="secondary" @click="disableOpen = true" />
-        <BaseButton v-else label="Enable" variant="secondary" :loading="toggle.loading.value" @click="toggle.run()" />
-        <BaseButton label="Remove provider" variant="danger" @click="deleteOpen = true" />
+        <BaseButton v-if="provider.enabled" :label="$t('project.identityProviderDetail.disable')" variant="secondary" @click="disableOpen = true" />
+        <BaseButton v-else :label="$t('project.identityProviderDetail.enable')" variant="secondary" :loading="toggle.loading.value" @click="toggle.run()" />
+        <BaseButton :label="$t('project.identityProviderDetail.removeProvider')" variant="danger" @click="deleteOpen = true" />
       </div>
     </BaseCard>
 
-    <BaseDialog v-model:visible="editor.open.value" :title="`Edit ${provider.name}`">
+    <BaseDialog v-model:visible="editor.open.value" :title="$t('project.identityProviderDetail.edit2', { name: provider.name })">
       <IdentityProviderForm
         v-model="editor.draft.value"
         form-id="identity-provider-form"
@@ -254,19 +271,20 @@ onMounted(() => load.run())
         @import-metadata="(source) => editor.importMetadata.run(source)"
       />
       <template #footer>
-        <BaseButton label="Cancel" variant="secondary" @click="editor.open.value = false" />
-        <BaseButton label="Save" type="submit" form="identity-provider-form" :loading="editor.save.loading.value" />
+        <BaseButton :label="$t('project.identityProviderDetail.cancel')" variant="secondary" @click="editor.open.value = false" />
+        <BaseButton :label="$t('project.identityProviderDetail.save')" type="submit" form="identity-provider-form" :loading="editor.save.loading.value" />
       </template>
     </BaseDialog>
 
-    <ConfirmDialog v-model:visible="disableOpen" title="Disable this provider?" confirm-label="Disable" danger :loading="toggle.loading.value" :error="toggle.error.value" @confirm="toggle.run()">
-      <p>End users can't sign in with <strong>{{ provider.name }}</strong> while it's disabled. Their links to it are kept, and they can still use a password if they have one.</p>
+    <ConfirmDialog v-model:visible="disableOpen" :title="$t('project.identityProviderDetail.disableThisProvider')" :confirm-label="$t('project.identityProviderDetail.disable')" danger :loading="toggle.loading.value" :error="toggle.error.value" @confirm="toggle.run()">
+      <i18n-t keypath="project.identityProviderDetail.disableDescription" tag="p">
+        <template #name><strong>{{ provider.name }}</strong></template>
+      </i18n-t>
     </ConfirmDialog>
-    <ConfirmDialog v-model:visible="deleteOpen" title="Remove this provider?" confirm-label="Remove provider" danger :loading="destroy.loading.value" :error="destroy.error.value" @confirm="destroy.run()">
-      <p>
-        End users can no longer sign in with <strong>{{ provider.name }}</strong>, and their links to it are removed. Users without a
-        password need to reset theirs to sign in again. To keep the links, disable it instead.
-      </p>
+    <ConfirmDialog v-model:visible="deleteOpen" :title="$t('project.identityProviderDetail.removeThisProvider')" :confirm-label="$t('project.identityProviderDetail.removeProvider')" danger :loading="destroy.loading.value" :error="destroy.error.value" @confirm="destroy.run()">
+      <i18n-t keypath="project.identityProviderDetail.removeDescription" tag="p">
+        <template #name><strong>{{ provider.name }}</strong></template>
+      </i18n-t>
     </ConfirmDialog>
   </template>
 </template>

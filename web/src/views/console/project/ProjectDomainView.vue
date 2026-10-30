@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -15,6 +16,8 @@ import { useProjectContext } from '@/composables/useProjectContext'
 import { projectAdminService } from '@/services/project'
 import type { ProjectDomain, SamlConnection } from '@/types/api'
 import { formatDateTime } from '@/utils/format'
+
+const { t, te } = useI18n()
 
 const { accountUid, project, access } = useProjectContext()
 
@@ -37,10 +40,10 @@ interface ConnectionLink extends SamlConnection {
 function connections(domain: ProjectDomain): ConnectionLink[] {
   const projectUid = project.value?.uid ?? ''
   return [
-    ...domain.saml_apps.map((app) => ({ ...app, kind: 'SAML app', to: { name: 'project-saml-app-credentials', params: { projectUid, samlAppUid: app.uid } } })),
+    ...domain.saml_apps.map((app) => ({ ...app, kind: t('project.projectDomain.samlApp'), to: { name: 'project-saml-app-credentials', params: { projectUid, samlAppUid: app.uid } } })),
     ...domain.saml_identity_providers.map((provider) => ({
       ...provider,
-      kind: 'SAML identity provider',
+      kind: t('project.projectDomain.samlIdentityProvider'),
       to: { name: 'project-identity-provider', params: { projectUid, providerUid: provider.uid } },
     })),
   ]
@@ -48,11 +51,17 @@ function connections(domain: ProjectDomain): ConnectionLink[] {
 
 const onRemovedDomain = computed(() => (pendingRemoval.value ? connections(pendingRemoval.value).filter((connection) => connection.on_custom_domain) : []))
 
+/** What the last DNS check found wrong, from its code. */
+function checkError(domain: ProjectDomain): string {
+  const key = `project.projectDomain.checkErrors.${domain.check_error}`
+  return te(key) ? t(key, domain.check_error_params) : t('project.projectDomain.checkErrorUnknown')
+}
+
 function status(domain: ProjectDomain): { tone: StatusTone; label: string } {
-  if (domain.status === 'failed') return { tone: 'danger', label: 'Verification failed' }
-  if (domain.status === 'pending') return { tone: 'warning', label: 'Waiting for DNS' }
-  if (domain.dns_missing_since) return { tone: 'warning', label: 'DNS records missing' }
-  return { tone: 'success', label: 'Verified' }
+  if (domain.status === 'failed') return { tone: 'danger', label: t('project.projectDomain.verificationFailed') }
+  if (domain.status === 'pending') return { tone: 'warning', label: t('project.projectDomain.waitingForDns') }
+  if (domain.dns_missing_since) return { tone: 'warning', label: t('project.projectDomain.dnsRecordsMissing') }
+  return { tone: 'success', label: t('project.projectDomain.verified') }
 }
 
 const add = useAsyncAction(async () => {
@@ -82,13 +91,13 @@ onMounted(() => domains.reload())
 </script>
 
 <template>
-  <BaseAlert v-if="!access.admin" variant="info">Only project and account admins can change the custom domain.</BaseAlert>
-  <BaseAlert v-if="domains.error.value" variant="danger" title="We couldn't load the custom domain">
+  <BaseAlert v-if="!access.admin" variant="info">{{ $t('project.projectDomain.onlyProjectAndAccountAdmins') }}</BaseAlert>
+  <BaseAlert v-if="domains.error.value" variant="danger" :title="$t('project.projectDomain.weCouldnTLoadThe')">
     {{ domains.error.value.message }}
-    <BaseButton label="Try again" variant="ghost" size="sm" @click="domains.reload()" />
+    <BaseButton :label="$t('project.projectDomain.tryAgain')" variant="ghost" size="sm" @click="domains.reload()" />
   </BaseAlert>
   <BaseAlert v-if="check.error.value" variant="danger">{{ check.error.value.message }}</BaseAlert>
-  <p v-if="domains.loading.value && !domains.data.value" class="text-sm text-text-muted" role="status">Loading…</p>
+  <p v-if="domains.loading.value && !domains.data.value" class="text-sm text-text-muted" role="status">{{ $t('project.projectDomain.loading') }}</p>
 
   <BaseCard v-for="domain in ordered" :key="domain.uid">
     <div class="flex flex-wrap items-start justify-between gap-4">
@@ -96,33 +105,41 @@ onMounted(() => domains.reload())
         <h2 class="text-lg font-semibold break-all">{{ domain.hostname }}</h2>
         <p class="text-sm text-text-muted">
           <template v-if="domain.status === 'verified'">
-            {{ domain === current && settingUp ? 'In use until its replacement is verified.' : 'In use.' }} Verified {{ formatDateTime(domain.verified_at) }}.
+            {{
+              $t(domain === current && settingUp ? 'project.projectDomain.inUseUntilReplacedVerified' : 'project.projectDomain.inUseVerified', {
+                date: formatDateTime(domain.verified_at),
+              })
+            }}
           </template>
           <template v-else-if="domain.status === 'pending'">
-            Create the DNS records below. We check them automatically until {{ formatDateTime(domain.verify_until) }}{{ current ? `, then this domain replaces ${current.hostname}` : '' }}.
+            {{
+              current
+                ? $t('project.projectDomain.createRecordsReplacing', { date: formatDateTime(domain.verify_until), hostname: current.hostname })
+                : $t('project.projectDomain.createRecords', { date: formatDateTime(domain.verify_until) })
+            }}
           </template>
-          <template v-else>We stopped checking this domain. Fix its DNS records and check again, or remove it.</template>
+          <template v-else>{{ $t('project.projectDomain.weStoppedCheckingThisDomain') }}</template>
         </p>
       </div>
       <StatusBadge :tone="status(domain).tone" :label="status(domain).label" />
     </div>
 
-    <BaseAlert v-if="domain.status === 'verified' && domain.dns_missing_since" variant="warning" title="DNS records missing">
-      Since {{ formatDateTime(domain.dns_missing_since) }}: {{ domain.check_error }} Restore the records below so the domain keeps working.
+    <BaseAlert v-if="domain.status === 'verified' && domain.dns_missing_since" variant="warning" :title="$t('project.projectDomain.dnsRecordsMissing')">
+      {{ $t('project.projectDomain.recordsMissingSince', { date: formatDateTime(domain.dns_missing_since), problem: checkError(domain) }) }}
     </BaseAlert>
-    <BaseAlert v-else-if="domain.status === 'failed'" variant="danger" title="Verification failed">{{ domain.check_error }}</BaseAlert>
+    <BaseAlert v-else-if="domain.status === 'failed'" variant="danger" :title="$t('project.projectDomain.verificationFailed')">{{ checkError(domain) }}</BaseAlert>
     <p v-else-if="domain.status === 'pending' && domain.check_error" class="text-sm text-text-muted">
-      Last checked {{ formatDateTime(domain.last_checked_at) }}: {{ domain.check_error }}
+      {{ $t('project.projectDomain.lastChecked', { date: formatDateTime(domain.last_checked_at), problem: checkError(domain) }) }}
     </p>
 
     <div class="overflow-x-auto rounded-lg border border-border">
       <table class="w-full border-collapse text-left text-sm">
-        <caption class="sr-only">DNS records for {{ domain.hostname }}</caption>
+        <caption class="sr-only">{{ $t('project.projectDomain.recordsCaption', { hostname: domain.hostname }) }}</caption>
         <thead class="bg-bg-subtle">
           <tr>
-            <th scope="col" class="px-4 py-3 font-semibold">Type</th>
-            <th scope="col" class="px-4 py-3 font-semibold">Name</th>
-            <th scope="col" class="px-4 py-3 font-semibold">Value</th>
+            <th scope="col" class="px-4 py-3 font-semibold">{{ $t('project.projectDomain.type') }}</th>
+            <th scope="col" class="px-4 py-3 font-semibold">{{ $t('project.projectDomain.name') }}</th>
+            <th scope="col" class="px-4 py-3 font-semibold">{{ $t('project.projectDomain.value') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -131,13 +148,13 @@ onMounted(() => domains.reload())
             <td class="px-4 py-3 align-middle">
               <span class="flex items-center gap-1">
                 <code class="font-mono text-xs break-all">{{ record.name }}</code>
-                <CopyButton :value="record.name" :label="`${record.type} record name`" />
+                <CopyButton :value="record.name" :label="$t('project.projectDomain.recordName', { type: record.type })" />
               </span>
             </td>
             <td class="px-4 py-3 align-middle">
               <span class="flex items-center gap-1">
                 <code class="font-mono text-xs break-all">{{ record.value }}</code>
-                <CopyButton :value="record.value" :label="`${record.type} record value`" />
+                <CopyButton :value="record.value" :label="$t('project.projectDomain.recordValue', { type: record.type })" />
               </span>
             </td>
           </tr>
@@ -145,24 +162,21 @@ onMounted(() => domains.reload())
       </table>
     </div>
     <p class="text-xs text-text-muted">
-      Keep both records while the domain is in use. HTTPS certificates for it are set up by your x-identity operator.
+      {{ $t('project.projectDomain.keepBothRecordsWhileThe') }}
     </p>
 
     <section v-if="domain.passkey_related_origins.length > 0" class="flex flex-col gap-2" aria-labelledby="passkey-origins">
-      <h3 id="passkey-origins" class="text-sm font-semibold">Apps that can use its passkeys</h3>
-      <p class="text-sm text-text-muted">
-        Published in {{ domain.hostname }}/.well-known/webauthn, so these apps' own sign-in screens can use the passkeys end users add here. They come
-        from the apps' allowed origins.
-      </p>
+      <h3 id="passkey-origins" class="text-sm font-semibold">{{ $t('project.projectDomain.appsThatCanUseIts') }}</h3>
+      <p class="text-sm text-text-muted">{{ $t('project.projectDomain.publishedIn', { url: `${domain.hostname}/.well-known/webauthn` }) }}</p>
       <ul class="flex flex-col gap-1">
         <li v-for="origin in domain.passkey_related_origins" :key="origin"><code class="font-mono text-xs break-all">{{ origin }}</code></li>
       </ul>
     </section>
 
     <section v-if="domain.status === 'verified' && connections(domain).length > 0" class="flex flex-col gap-2" aria-labelledby="saml-connections">
-      <h3 id="saml-connections" class="text-sm font-semibold">SAML apps and identity providers</h3>
+      <h3 id="saml-connections" class="text-sm font-semibold">{{ $t('project.projectDomain.samlAppsAndIdentityProviders') }}</h3>
       <p class="text-sm text-text-muted">
-        Their entity IDs and URLs are set separately, because the other side has them saved. Switch each one on its page, then update its other side.
+        {{ $t('project.projectDomain.theirEntityIdsAndUrls') }}
       </p>
       <ul class="flex flex-col divide-y divide-border rounded-lg border border-border">
         <li v-for="connection in connections(domain)" :key="connection.uid" class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
@@ -172,7 +186,7 @@ onMounted(() => domains.reload())
           </span>
           <StatusBadge
             :tone="connection.on_custom_domain ? 'success' : 'neutral'"
-            :label="connection.on_custom_domain ? `Uses ${domain.hostname}` : 'Uses the standard URLs'"
+            :label="connection.on_custom_domain ? $t('project.projectDomain.uses', { hostname: domain.hostname }) : $t('project.projectDomain.usesTheStandardUrls')"
           />
         </li>
       </ul>
@@ -180,36 +194,39 @@ onMounted(() => domains.reload())
 
     <div v-if="access.admin" class="flex flex-wrap gap-2">
       <BaseButton
-        label="Check now"
+        :label="$t('project.projectDomain.checkNow')"
         variant="secondary"
         :loading="checkingUid === domain.uid"
         :disabled="checkingUid !== null"
         @click="check.run(domain)"
       />
-      <BaseButton label="Remove domain" variant="ghost" @click="pendingRemoval = domain" />
+      <BaseButton :label="$t('project.projectDomain.removeDomain')" variant="ghost" @click="pendingRemoval = domain" />
     </div>
   </BaseCard>
 
   <BaseCard
     v-if="access.admin && domains.data.value && !settingUp"
-    :title="current ? 'Replace the custom domain' : 'Add a custom domain'"
+    :title="current ? $t('project.projectDomain.replaceTheCustomDomain') : $t('project.projectDomain.addACustomDomain')"
     :description="
       current
-        ? `The new domain is checked while ${current.hostname} keeps working, and replaces it once verified. SAML apps and identity providers using ${current.hostname} then move to it, and need their other side updated.${current.passkey_count > 0 ? ` End users' ${current.passkey_count} passkey${current.passkey_count === 1 ? '' : 's'} belong to ${current.hostname} and stop working; they add new ones on the new domain.` : ''}`
-        : 'Use a subdomain you control. Apps keep using their current URLs until you switch them.'
+        ? [
+            $t('project.projectDomain.theNewDomainIsChecked', { hostname: current.hostname }),
+            current.passkey_count > 0 ? $t('project.projectDomain.endUserPasskeysMove', { hostname: current.hostname }, current.passkey_count) : '',
+          ].join(' ').trim()
+        : $t('project.projectDomain.useASubdomainYouControl')
     "
   >
     <form class="flex flex-wrap items-end gap-3" novalidate @submit.prevent="add.run()">
       <div class="w-full sm:w-80">
         <BaseInput
           v-model="hostname"
-          label="Domain"
-          placeholder="login.example.com"
+          :label="$t('project.projectDomain.domain')"
+          :placeholder="'login.example.com'"
           autocomplete="off"
           :error="add.error.value?.fieldError('hostname')"
         />
       </div>
-      <BaseButton type="submit" :label="current ? 'Add replacement' : 'Add domain'" :loading="add.loading.value" :disabled="hostname.trim() === ''" />
+      <BaseButton type="submit" :label="current ? $t('project.projectDomain.addReplacement') : $t('project.projectDomain.addDomain')" :loading="add.loading.value" :disabled="hostname.trim() === ''" />
     </form>
     <BaseAlert v-if="add.error.value && !add.error.value.fieldError('hostname')" variant="danger">
       {{ add.error.value.message }}
@@ -218,8 +235,8 @@ onMounted(() => domains.reload())
 
   <ConfirmDialog
     :visible="pendingRemoval !== null"
-    :title="`Remove ${pendingRemoval?.hostname ?? 'the domain'}?`"
-    confirm-label="Remove domain"
+    :title="$t('project.projectDomain.remove', { domain: pendingRemoval?.hostname ?? $t('project.projectDomain.removeFallback') })"
+    :confirm-label="$t('project.projectDomain.removeDomain')"
     danger
     :loading="remove.loading.value"
     :error="remove.error.value"
@@ -227,23 +244,21 @@ onMounted(() => domains.reload())
     @confirm="remove.run()"
   >
     <template v-if="pendingRemoval?.status === 'verified'">
-      <p>
-        Hosted login and endpoints stop being served on <strong>{{ pendingRemoval.hostname }}</strong>. Apps using it must switch back to the
-        project's standard URLs.
-      </p>
-      <BaseAlert v-if="pendingRemoval.passkey_count > 0" variant="warning" title="Passkeys stop working">
-        {{ pendingRemoval.passkey_count }} end user passkey{{ pendingRemoval.passkey_count === 1 ? '' : 's' }} belong to {{ pendingRemoval.hostname }} and can't be used
-        anywhere else. Their users sign in another way, and can add new passkeys if the project gets a custom domain again.
+      <i18n-t keypath="project.projectDomain.removeVerified" tag="p">
+        <template #hostname><strong>{{ pendingRemoval.hostname }}</strong></template>
+      </i18n-t>
+      <BaseAlert v-if="pendingRemoval.passkey_count > 0" variant="warning" :title="$t('project.projectDomain.passkeysStopWorking')">
+        {{ $t('project.projectDomain.removePasskeys', { hostname: pendingRemoval.hostname }, pendingRemoval.passkey_count) }}
       </BaseAlert>
-      <BaseAlert v-if="onRemovedDomain.length > 0" variant="warning" title="These go back to the standard URLs">
-        Sign-ins through them fail until their other side is updated with the standard URLs:
+      <BaseAlert v-if="onRemovedDomain.length > 0" variant="warning" :title="$t('project.projectDomain.theseGoBackToThe')">
+        {{ $t('project.projectDomain.signInsThroughThemFail') }}
         <ul class="mt-1 list-disc pl-5">
           <li v-for="connection in onRemovedDomain" :key="connection.uid">{{ connection.name }} ({{ connection.kind }})</li>
         </ul>
       </BaseAlert>
     </template>
-    <p v-else>
-      <strong>{{ pendingRemoval?.hostname }}</strong> stops being checked. You can add it again later.
-    </p>
+    <i18n-t v-else keypath="project.projectDomain.removeUnverified" tag="p">
+      <template #hostname><strong>{{ pendingRemoval?.hostname }}</strong></template>
+    </i18n-t>
   </ConfirmDialog>
 </template>

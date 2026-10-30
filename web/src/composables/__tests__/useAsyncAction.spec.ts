@@ -23,7 +23,7 @@ describe('useAsyncAction', () => {
   })
 
   it('keeps API errors as they are', async () => {
-    const apiError = new ApiError('forbidden', 'No.', 403)
+    const apiError = new ApiError('forbidden', 403)
     const { error, run } = useAsyncAction(async () => {
       throw apiError
     })

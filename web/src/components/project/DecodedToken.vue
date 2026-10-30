@@ -26,7 +26,7 @@ const times = computed(() => {
     <h3 class="text-sm font-semibold">{{ label }}</h3>
 
     <details class="rounded-md border border-border">
-      <summary class="cursor-pointer px-3 py-2 text-sm text-text-muted">Encoded token</summary>
+      <summary class="cursor-pointer px-3 py-2 text-sm text-text-muted">{{ $t('project.decodedToken.encodedToken') }}</summary>
       <code class="block border-t border-border bg-bg-subtle px-3 py-2 font-mono text-xs break-all">{{ token }}</code>
     </details>
 
@@ -38,10 +38,10 @@ const times = computed(() => {
         </div>
       </dl>
       <div class="grid gap-2 lg:grid-cols-2">
-        <pre class="overflow-x-auto rounded-md bg-bg-subtle p-3 font-mono text-xs" aria-label="Header">{{ JSON.stringify(decoded.header, null, 2) }}</pre>
-        <pre class="overflow-x-auto rounded-md bg-bg-subtle p-3 font-mono text-xs" aria-label="Claims">{{ JSON.stringify(decoded.payload, null, 2) }}</pre>
+        <pre class="overflow-x-auto rounded-md bg-bg-subtle p-3 font-mono text-xs" :aria-label="$t('project.decodedToken.header')">{{ JSON.stringify(decoded.header, null, 2) }}</pre>
+        <pre class="overflow-x-auto rounded-md bg-bg-subtle p-3 font-mono text-xs" :aria-label="$t('project.decodedToken.claims')">{{ JSON.stringify(decoded.payload, null, 2) }}</pre>
       </div>
     </template>
-    <p v-else class="text-xs text-text-muted">Opaque token: it has no claims to show.</p>
+    <p v-else class="text-xs text-text-muted">{{ $t('project.decodedToken.opaqueTokenItHasNo') }}</p>
   </section>
 </template>

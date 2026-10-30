@@ -40,14 +40,14 @@ function addMapping() {
 
 <template>
   <fieldset class="flex flex-col gap-3 rounded-md border border-border p-4">
-    <legend class="px-1 text-sm font-semibold">Import from the identity provider's metadata</legend>
+    <legend class="px-1 text-sm font-semibold">{{ $t('project.samlProviderFields.importFromTheIdentityProvider') }}</legend>
     <BaseAlert v-if="importError" variant="danger">
       {{ importError.fieldError('metadata') ?? importError.fieldError('metadata_url') ?? importError.message }}
     </BaseAlert>
-    <BaseInput v-model="metadataUrl" label="Metadata URL" type="url" />
-    <BaseTextarea v-model="metadataXml" label="Or paste the metadata XML" monospace :rows="3" />
+    <BaseInput v-model="metadataUrl" :label="$t('project.samlProviderFields.metadataUrl')" type="url" />
+    <BaseTextarea v-model="metadataXml" :label="$t('project.samlProviderFields.orPasteTheMetadataXml')" monospace :rows="3" />
     <BaseButton
-      label="Fill in from metadata"
+      :label="$t('project.samlProviderFields.fillInFromMetadata')"
       variant="secondary"
       class="self-start"
       :disabled="!metadataUrl.trim() && !metadataXml.trim()"
@@ -56,67 +56,67 @@ function addMapping() {
     />
   </fieldset>
 
-  <BaseInput v-model="draft.samlEntityId" label="Identity provider entity ID" required :error="error?.fieldError('saml_idp_entity_id')" />
-  <BaseInput v-model="draft.samlSsoUrl" label="Sign-on URL" type="url" required hint="HTTP-Redirect binding." :error="error?.fieldError('saml_sso_url')" />
+  <BaseInput v-model="draft.samlEntityId" :label="$t('project.samlProviderFields.identityProviderEntityId')" required :error="error?.fieldError('saml_idp_entity_id')" />
+  <BaseInput v-model="draft.samlSsoUrl" :label="$t('project.samlProviderFields.signOnUrl')" type="url" required :hint="$t('project.samlProviderFields.httpRedirectBinding')" :error="error?.fieldError('saml_sso_url')" />
   <BaseInput
     v-model="draft.samlSloUrl"
-    label="Logout URL"
+    :label="$t('project.samlProviderFields.logoutUrl')"
     type="url"
-    hint="Optional. Logging out also logs out at the identity provider."
+    :hint="$t('project.samlProviderFields.optionalLoggingOutAlsoLogs')"
     :error="error?.fieldError('saml_slo_url')"
   />
   <BaseTextarea
     v-model="draft.samlCertificates"
-    label="Signing certificates"
+    :label="$t('project.samlProviderFields.signingCertificates')"
     monospace
     :rows="5"
     required
-    hint="PEM. Paste more than one while the provider rotates its certificate."
+    :hint="$t('project.samlProviderFields.pemPasteMoreThanOne')"
     :error="error?.fieldError('saml_idp_certificates')"
   />
 
   <BaseInput
     v-model="draft.domains"
-    label="Email domains"
-    hint="Separate several with commas, e.g. acme.com. Only addresses at these domains can sign in with this provider, and people who enter one on the sign-in page are sent here."
+    :label="$t('project.samlProviderFields.emailDomains')"
+    :hint="$t('project.samlProviderFields.separateSeveralWithCommasE')"
     :error="error?.fieldError('domains')"
   />
 
   <fieldset class="flex flex-col gap-3">
-    <legend class="mb-1 text-sm font-semibold">What the provider sends</legend>
-    <BaseSelect v-model="draft.samlNameIdFormat" label="NameID to request" :options="nameIdFormatOptions" />
+    <legend class="mb-1 text-sm font-semibold">{{ $t('project.samlProviderFields.whatTheProviderSends') }}</legend>
+    <BaseSelect v-model="draft.samlNameIdFormat" :label="$t('project.samlProviderFields.nameidToRequest')" :options="nameIdFormatOptions" />
     <div class="grid gap-4 sm:grid-cols-3">
-      <BaseInput v-model="draft.samlEmailAttribute" label="Email attribute" hint="Empty: the NameID." :error="error?.fieldError('saml_email_attribute')" />
-      <BaseInput v-model="draft.samlNameAttribute" label="Name attribute" :error="error?.fieldError('saml_name_attribute')" />
-      <BaseInput v-model="draft.samlGroupsAttribute" label="Groups attribute" :error="error?.fieldError('saml_groups_attribute')" />
+      <BaseInput v-model="draft.samlEmailAttribute" :label="$t('project.samlProviderFields.emailAttribute')" :hint="$t('project.samlProviderFields.emptyTheNameid')" :error="error?.fieldError('saml_email_attribute')" />
+      <BaseInput v-model="draft.samlNameAttribute" :label="$t('project.samlProviderFields.nameAttribute')" :error="error?.fieldError('saml_name_attribute')" />
+      <BaseInput v-model="draft.samlGroupsAttribute" :label="$t('project.samlProviderFields.groupsAttribute')" :error="error?.fieldError('saml_groups_attribute')" />
     </div>
   </fieldset>
 
   <fieldset class="flex flex-col gap-3">
-    <legend class="mb-1 text-sm font-semibold">Group mappings</legend>
+    <legend class="mb-1 text-sm font-semibold">{{ $t('project.samlProviderFields.groupMappings') }}</legend>
     <p class="text-xs text-text-muted">
-      At each sign-in, membership of these project groups follows the groups attribute. Groups that aren't mapped are left alone.
+      {{ $t('project.samlProviderFields.atEachSignInMembership') }}
     </p>
     <div v-for="(mapping, index) in draft.groupMappings" :key="index" class="flex flex-wrap items-end gap-2">
-      <div class="min-w-36 flex-1"><BaseInput v-model="mapping.value" :label="`Provider group ${index + 1}`" /></div>
+      <div class="min-w-36 flex-1"><BaseInput v-model="mapping.value" :label="$t('project.samlProviderFields.providerGroup', { index: index + 1 })" /></div>
       <div class="min-w-36 flex-1">
         <BaseSearchSelect
           v-model="mapping.groupUid"
-          label="Project group"
+          :label="$t('project.samlProviderFields.projectGroup')"
           :search="lookups.searchGroups"
           :resolve-label="lookups.groupName"
           :see-all="lookups.allGroups.value"
         />
       </div>
-      <BaseButton label="Remove" variant="ghost" size="sm" @click="draft.groupMappings.splice(index, 1)" />
+      <BaseButton :label="$t('project.samlProviderFields.remove')" variant="ghost" size="sm" @click="draft.groupMappings.splice(index, 1)" />
     </div>
-    <p v-if="error?.fieldError('group_mappings')" class="text-xs font-medium text-danger">Error: {{ error.fieldError('group_mappings') }}</p>
-    <BaseButton label="Add mapping" variant="secondary" size="sm" class="self-start" @click="addMapping" />
+    <p v-if="error?.fieldError('group_mappings')" class="text-xs font-medium text-danger">{{ $t('base.field.error', { message: error.fieldError('group_mappings') }) }}</p>
+    <BaseButton :label="$t('project.samlProviderFields.addMapping')" variant="secondary" size="sm" class="self-start" @click="addMapping" />
   </fieldset>
 
   <BaseCheckbox
     v-model="draft.allowIdpInitiated"
-    label="Allow sign-in started from the identity provider"
-    hint="Users can open the app portal from their company dashboard. Off is safer if nobody needs it."
+    :label="$t('project.samlProviderFields.allowSignInStartedFrom')"
+    :hint="$t('project.samlProviderFields.usersCanOpenTheApp')"
   />
 </template>

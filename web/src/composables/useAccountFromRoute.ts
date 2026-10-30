@@ -24,7 +24,7 @@ export function useAccountFromRoute() {
       try {
         account.value = await authService.lookupAccount(value)
       } catch (caught) {
-        error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 'Something unexpected happened.', 0)
+        error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 0)
       } finally {
         loading.value = false
       }

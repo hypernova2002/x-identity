@@ -1,3 +1,5 @@
+import { i18n } from '@/i18n'
+
 /**
  * The browser side of passkeys. The API sends WebAuthn options as JSON with binary values as
  * base64url strings; the browser's WebAuthn API takes and returns ArrayBuffers.
@@ -118,10 +120,10 @@ export function assertionJSON(credential: PublicKeyCredential): PasskeyAssertion
 export function passkeyErrorMessage(caught: unknown, action: 'create' | 'sign-in' = 'create'): string | null {
   if (caught instanceof DOMException) {
     if (caught.name === 'NotAllowedError' || caught.name === 'AbortError') return null
-    if (caught.name === 'InvalidStateError' && action === 'create') return 'This device already has a passkey for your account.'
-    if (caught.name === 'SecurityError') return "Passkeys can't be used on this site's address."
+    if (caught.name === 'InvalidStateError' && action === 'create') return i18n.global.t('signIn.passkeyErrors.alreadyExists')
+    if (caught.name === 'SecurityError') return i18n.global.t('signIn.passkeyErrors.wrongSite')
   }
-  return action === 'create' ? "We couldn't create the passkey. Try again." : "We couldn't sign you in with a passkey. Try again, or use your password."
+  return action === 'create' ? i18n.global.t('signIn.passkeyErrors.createFailed') : i18n.global.t('signIn.passkeyErrors.signInFailed')
 }
 
 /** Whether the browser can offer passkeys in the email field's autofill. */

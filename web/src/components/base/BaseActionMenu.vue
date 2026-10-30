@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import Menu from 'openvue/menu'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from './BaseButton.vue'
 
@@ -15,15 +16,15 @@ export interface ActionMenuItem {
   separatorBefore?: boolean
 }
 
-const props = withDefaults(
-  defineProps<{
-    items: readonly ActionMenuItem[]
-    /** Names the menu for assistive technology, e.g. "More actions for casey@shop.test". */
-    label: string
-    buttonLabel?: string
-  }>(),
-  { buttonLabel: 'More' },
-)
+const props = defineProps<{
+  items: readonly ActionMenuItem[]
+  /** Names the menu for assistive technology, e.g. "More actions for casey@shop.test". */
+  label: string
+  /** Defaults to "More". */
+  buttonLabel?: string
+}>()
+
+const { t } = useI18n()
 
 defineSlots<{
   /** A custom trigger; call `toggle` with the click event to open the menu below it. */
@@ -67,7 +68,7 @@ const passThrough = {
 
 <template>
   <slot name="trigger" :toggle="toggle">
-    <BaseButton :label="buttonLabel" variant="ghost" size="sm" aria-haspopup="menu" :aria-label="label" @click="toggle" />
+    <BaseButton :label="buttonLabel ?? t('base.actionMenu.more')" variant="ghost" size="sm" aria-haspopup="menu" :aria-label="label" @click="toggle" />
   </slot>
   <Menu ref="menu" :model="model" popup :aria-label="label" :pt="passThrough">
     <template v-if="$slots.start" #start>
@@ -77,7 +78,7 @@ const passThrough = {
       <a v-bind="itemProps.action" class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm no-underline" :class="item.class">
         <span v-if="showsCurrent" aria-hidden="true" class="w-4 shrink-0">{{ item.current ? '✓' : '' }}</span>
         <span class="truncate">{{ item.label }}</span>
-        <span v-if="item.current" class="sr-only">(current)</span>
+        <span v-if="item.current" class="sr-only">{{ t('base.actionMenu.current') }}</span>
       </a>
     </template>
   </Menu>

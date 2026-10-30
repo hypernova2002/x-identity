@@ -4,6 +4,9 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import type { ApiError } from '@/services/http'
 import type { AttributeDefinition } from '@/types/api'
 import type { AttributeDraft } from '@/utils/customAttributes'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 defineProps<{
   definitions: readonly AttributeDefinition[]
@@ -13,15 +16,15 @@ defineProps<{
 const values = defineModel<AttributeDraft>({ required: true })
 
 function hint(definition: AttributeDefinition): string | undefined {
-  if (definition.data_type === 'date') return 'A date like 2026-01-31.'
-  if (definition.max_length) return `At most ${definition.max_length} characters.`
+  if (definition.data_type === 'date') return t('project.customAttributeFields.aDateLike')
+  if (definition.max_length) return t('project.customAttributeFields.atMostCharacters', { maxLength: definition.max_length })
   return undefined
 }
 </script>
 
 <template>
   <fieldset v-if="definitions.length > 0" class="flex flex-col gap-4">
-    <legend class="mb-2 text-sm font-semibold">Attributes</legend>
+    <legend class="mb-2 text-sm font-semibold">{{ $t('project.customAttributeFields.attributes') }}</legend>
     <template v-for="definition in definitions" :key="definition.uid">
       <BaseCheckbox
         v-if="definition.data_type === 'boolean'"

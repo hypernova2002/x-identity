@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 import BaseDataTable from '@/components/base/BaseDataTable.vue'
 import type { DataTableColumn, DataTableFilter } from '@/components/base/types'
 import { useListView } from '@/composables/useListView'
@@ -12,25 +14,27 @@ const props = defineProps<{
   showAppClient?: boolean
 }>()
 
+const { t } = useI18n()
+
 const columns: DataTableColumn[] = [
-  { key: 'occurred_at', label: 'When', sortKey: 'occurred_at' },
-  { key: 'action', label: 'Action' },
-  { key: 'actor', label: 'Actor' },
-  { key: 'target', label: 'Target' },
-  ...(props.showAppClient ? [{ key: 'app', label: 'App' }] : []),
-  { key: 'ip', label: 'IP address' },
+  { key: 'occurred_at', label: t('audit.columns.when'), sortKey: 'occurred_at' },
+  { key: 'action', label: t('audit.columns.action') },
+  { key: 'actor', label: t('audit.columns.actor') },
+  { key: 'target', label: t('audit.columns.target') },
+  ...(props.showAppClient ? [{ key: 'app', label: t('audit.columns.app') }] : []),
+  { key: 'ip', label: t('audit.columns.ip') },
 ]
 
 /** Links from users, apps and providers arrive with one of the ID filters set. */
 const filters: DataTableFilter[] = [
-  { type: 'date', key: 'occurred_at_gteq', label: 'From' },
-  { type: 'date', key: 'occurred_at_lteq', label: 'To' },
-  { type: 'text', key: 'actor_uid_eq', label: 'Actor ID' },
-  { type: 'text', key: 'target_uid_eq', label: 'Target ID' },
+  { type: 'date', key: 'occurred_at_gteq', label: t('audit.filters.from') },
+  { type: 'date', key: 'occurred_at_lteq', label: t('audit.filters.to') },
+  { type: 'text', key: 'actor_uid_eq', label: t('audit.filters.actor') },
+  { type: 'text', key: 'target_uid_eq', label: t('audit.filters.target') },
   ...(props.showAppClient
     ? [
-        { type: 'text' as const, key: 'app_client_uid_eq', label: 'App client ID' },
-        { type: 'text' as const, key: 'saml_app_uid_eq', label: 'SAML app ID' },
+        { type: 'text' as const, key: 'app_client_uid_eq', label: t('audit.filters.appClient') },
+        { type: 'text' as const, key: 'saml_app_uid_eq', label: t('audit.filters.samlApp') },
       ]
     : []),
 ]
@@ -48,9 +52,9 @@ const listState = list.state
   <BaseDataTable
     storage-key="audit-log"
     v-model:state="listState"
-    caption="Audit events"
-    search-placeholder="Search events…"
-    search-label="Action starts with"
+    :caption="t('audit.caption')"
+    :search-placeholder="t('audit.searchPlaceholder')"
+    :search-label="t('audit.searchLabel')"
     :columns="columns"
     :filters="filters"
     :rows="list.rows.value"
@@ -60,7 +64,7 @@ const listState = list.state
     :capped="list.capped.value"
     :loading="list.loading.value"
     :error="list.error.value"
-    empty-message="No events recorded yet."
+    :empty-message="t('audit.empty')"
     @reload="list.reload"
     @count-exactly="list.countExactly"
   >

@@ -36,15 +36,15 @@ watch(
 </script>
 
 <template>
-  <BaseCard title="Your apps" :description="email ? `Signed in as ${email}` : undefined">
+  <BaseCard :title="$t('hosted.portal.title')" :description="email ? $t('hosted.portal.signedInAs', { email }) : undefined">
     <AccountLookupState :loading="accountLoading" :error="accountError" />
     <BaseAlert v-if="portal.open.error.value" variant="danger">
       {{ portal.open.error.value.message }}
     </BaseAlert>
-    <p v-else-if="portal.open.loading.value" class="text-sm text-text-muted" role="status">Loading your apps…</p>
+    <p v-else-if="portal.open.loading.value" class="text-sm text-text-muted" role="status">{{ $t('hosted.portal.loading') }}</p>
 
     <template v-else-if="email !== null || apps.length > 0">
-      <p v-if="apps.length === 0" class="text-sm text-text-muted">You don't have access to any apps yet. Ask an administrator to give you access.</p>
+      <p v-if="apps.length === 0" class="text-sm text-text-muted">{{ $t('hosted.portal.noApps') }}</p>
       <ul v-else class="grid gap-2 sm:grid-cols-2">
         <li v-for="app in apps" :key="app.uid">
           <BaseButton :label="app.name" variant="secondary" class="w-full" @click="portal.launch(app)" />
@@ -53,7 +53,7 @@ watch(
     </template>
 
     <template #footer>
-      <BaseButton label="Log out" variant="ghost" @click="portal.logOut()" />
+      <BaseButton :label="$t('hosted.portal.logOut')" variant="ghost" @click="portal.logOut()" />
     </template>
   </BaseCard>
 
@@ -64,7 +64,7 @@ watch(
     @reauthenticate="portal.signInAgain()"
   />
 
-  <BaseCard v-if="accessToken && !portal.open.loading.value" title="Your devices" description="Where you're signed in. Sign out any device you don't recognise.">
+  <BaseCard v-if="accessToken && !portal.open.loading.value" :title="$t('hosted.portal.devices')" :description="$t('hosted.portal.devicesDescription')">
     <DeviceSessionTable :fetch-page="portal.fetchSessions" :sign-out="portal.signOutSession" :sign-out-others="portal.signOutOtherSessions" />
   </BaseCard>
 </template>

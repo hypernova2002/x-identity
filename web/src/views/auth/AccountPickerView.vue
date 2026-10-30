@@ -23,19 +23,19 @@ const { loading, error, run } = useAsyncAction(async () => {
 </script>
 
 <template>
-  <BaseCard title="Sign in" description="Enter your account alias to continue.">
+  <BaseCard :title="$t('auth.picker.title')" :description="$t('auth.picker.description')">
     <form class="flex flex-col gap-4" novalidate @submit.prevent="run()">
       <BaseInput
         v-model="slug"
-        label="Account alias"
+        :label="$t('auth.fields.accountAlias')"
         required
         autocomplete="organization"
-        :error="error ? (error.code === 'not_found' ? 'There is no account with this alias.' : error.message) : undefined"
+        :error="error ? (error.code === 'not_found' ? $t('auth.picker.noAccount') : error.message) : undefined"
       />
-      <BaseButton type="submit" label="Continue" :loading="loading" />
+      <BaseButton type="submit" :label="$t('common.actions.continue')" :loading="loading" />
       <p class="text-sm text-text-muted">
-        New to x-identity?
-        <RouterLink to="/sign-up" class="font-medium text-primary underline hover:text-primary-hover">Create an account</RouterLink>
+        {{ $t('auth.picker.newHere') }}
+        <RouterLink to="/sign-up" class="font-medium text-primary underline hover:text-primary-hover">{{ $t('auth.picker.createAccount') }}</RouterLink>
       </p>
     </form>
   </BaseCard>

@@ -86,12 +86,12 @@ onMounted(() => load.run())
 
 <template>
   <BaseCard
-    title="API access"
-    description="The APIs this app can get access tokens for, and the scopes it may ask for. A token request names one API; without a scope, it gets every scope allowed here."
+    :title="$t('project.appClientApiAccess.apiAccess')"
+    :description="$t('project.appClientApiAccess.theApisThisAppCan')"
   >
-    <BaseAlert v-if="load.error.value" variant="danger">We couldn't load this app's API access. {{ load.error.value.message }}</BaseAlert>
-    <p v-else-if="load.loading.value && grants.length === 0" class="text-sm text-text-muted" role="status">Loading…</p>
-    <p v-else-if="grants.length === 0" class="text-sm text-text-muted">This app can't get tokens for any API yet.</p>
+    <BaseAlert v-if="load.error.value" variant="danger">{{ $t('project.appClientApiAccess.loadFailed', { message: load.error.value.message }) }}</BaseAlert>
+    <p v-else-if="load.loading.value && grants.length === 0" class="text-sm text-text-muted" role="status">{{ $t('project.appClientApiAccess.loading') }}</p>
+    <p v-else-if="grants.length === 0" class="text-sm text-text-muted">{{ $t('project.appClientApiAccess.thisAppCanTGet') }}</p>
 
     <ul v-else class="flex flex-col divide-y divide-border">
       <li v-for="item in grants" :key="item.uid" class="flex flex-col gap-3 py-3">
@@ -100,9 +100,9 @@ onMounted(() => load.run())
             <span class="font-medium">{{ item.api_name }}</span>
             <code class="block font-mono text-xs break-all text-text-muted">{{ item.api_identifier }}</code>
           </span>
-          <BaseButton v-if="access.developer" label="Remove access" variant="ghost" size="sm" @click="pendingRevoke = item" />
+          <BaseButton v-if="access.developer" :label="$t('project.appClientApiAccess.removeAccess')" variant="ghost" size="sm" @click="pendingRevoke = item" />
         </div>
-        <p v-if="(apis[item.api_uid]?.scopes.length ?? 0) === 0" class="text-xs text-text-muted">The API defines no scopes; tokens carry none.</p>
+        <p v-if="(apis[item.api_uid]?.scopes.length ?? 0) === 0" class="text-xs text-text-muted">{{ $t('project.appClientApiAccess.theApiDefinesNoScopes') }}</p>
         <div v-else class="flex flex-wrap gap-x-6 gap-y-2">
           <BaseCheckbox
             v-for="scope in apis[item.api_uid]?.scopes ?? []"
@@ -116,7 +116,7 @@ onMounted(() => load.run())
         </div>
         <BaseButton
           v-if="access.developer && changed(item)"
-          label="Save scopes"
+          :label="$t('project.appClientApiAccess.saveScopes')"
           variant="secondary"
           size="sm"
           class="self-start"
@@ -128,19 +128,19 @@ onMounted(() => load.run())
     <BaseAlert v-if="saveScopes.error.value" variant="danger">{{ saveScopes.error.value.message }}</BaseAlert>
   </BaseCard>
 
-  <BaseCard v-if="access.developer" title="Give access to an API">
+  <BaseCard v-if="access.developer" :title="$t('project.appClientApiAccess.giveAccessToAnApi')">
     <BaseSearchSelect
       v-model="newApiUid"
-      label="API"
+      :label="$t('project.appClientApiAccess.api')"
       :search="searchUngrantedApis"
       :see-all="lookups.allApis.value"
       @update:model-value="(uid: string) => pickApi.run(uid)"
     />
-    <p class="text-xs text-text-muted">
-      APIs are defined on the <RouterLink :to="lookups.allApis.value" class="font-medium text-primary underline">APIs</RouterLink> page.
-    </p>
+    <i18n-t keypath="project.appClientApiAccess.apisDefinedOn" tag="p" class="text-xs text-text-muted">
+      <template #link><RouterLink :to="lookups.allApis.value" class="font-medium text-primary underline">{{ $t('project.appClientApiAccess.apis') }}</RouterLink></template>
+    </i18n-t>
     <template v-if="newApi">
-      <p v-if="newApi.scopes.length === 0" class="text-xs text-text-muted">This API defines no scopes.</p>
+      <p v-if="newApi.scopes.length === 0" class="text-xs text-text-muted">{{ $t('project.appClientApiAccess.thisApiDefinesNoScopes') }}</p>
       <div v-else class="flex flex-wrap gap-x-6 gap-y-2">
         <BaseCheckbox
           v-for="scope in newApi.scopes"
@@ -152,23 +152,23 @@ onMounted(() => load.run())
         />
       </div>
       <BaseAlert v-if="grant.error.value" variant="danger">{{ grant.error.value.message }}</BaseAlert>
-      <BaseButton label="Give access" class="self-start" :loading="grant.loading.value" @click="grant.run()" />
+      <BaseButton :label="$t('project.appClientApiAccess.giveAccess')" class="self-start" :loading="grant.loading.value" @click="grant.run()" />
     </template>
   </BaseCard>
 
   <ConfirmDialog
     :visible="pendingRevoke !== null"
-    title="Remove access to this API?"
-    confirm-label="Remove access"
+    :title="$t('project.appClientApiAccess.removeAccessToThisApi')"
+    :confirm-label="$t('project.appClientApiAccess.removeAccess')"
     danger
     :loading="revoke.loading.value"
     :error="revoke.error.value"
     @update:visible="(open: boolean) => !open && (pendingRevoke = null)"
     @confirm="pendingRevoke && revoke.run(pendingRevoke)"
   >
-    <p>
-      <strong>{{ client.name }}</strong> can't get new tokens for <strong>{{ pendingRevoke?.api_name }}</strong>. Tokens it already has keep
-      working until they expire.
-    </p>
+    <i18n-t keypath="project.appClientApiAccess.revokeDescription" tag="p">
+      <template #client><strong>{{ client.name }}</strong></template>
+      <template #api><strong>{{ pendingRevoke?.api_name }}</strong></template>
+    </i18n-t>
   </ConfirmDialog>
 </template>

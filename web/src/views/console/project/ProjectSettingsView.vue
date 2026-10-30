@@ -76,51 +76,50 @@ const destroy = useAsyncAction(async () => {
 
 <template>
   <template v-if="project">
-    <BaseCard title="Project">
+    <BaseCard :title="$t('project.projectSettings.project')">
       <dl class="grid gap-2 text-sm sm:grid-cols-[max-content_1fr]">
-        <dt class="font-medium">Project ID</dt>
+        <dt class="font-medium">{{ $t('project.projectSettings.projectId') }}</dt>
         <dd class="font-mono text-xs break-all">{{ project.uid }}</dd>
-        <dt class="font-medium">Issuer and API base URL</dt>
+        <dt class="font-medium">{{ $t('project.projectSettings.issuerAndApiBaseUrl') }}</dt>
         <dd class="font-mono text-xs break-all">{{ project.token_issuer }}</dd>
       </dl>
     </BaseCard>
 
     <form class="flex flex-col gap-6" novalidate @submit.prevent="save.run()">
-      <BaseAlert v-if="saved && !dirty" variant="success">Settings saved.</BaseAlert>
-      <BaseAlert v-if="!access.admin" variant="info">Only project and account admins can change these settings.</BaseAlert>
+      <BaseAlert v-if="saved && !dirty" variant="success">{{ $t('project.projectSettings.settingsSaved') }}</BaseAlert>
+      <BaseAlert v-if="!access.admin" variant="info">{{ $t('project.projectSettings.onlyProjectAndAccountAdmins') }}</BaseAlert>
       <BaseAlert v-if="save.error.value && save.error.value.details.length === 0" variant="danger">{{ save.error.value.message }}</BaseAlert>
 
       <fieldset :disabled="!access.admin" class="contents">
-        <BaseCard title="General">
-          <BaseInput v-model="name" label="Project name" required :error="save.error.value?.fieldError('name')" />
+        <BaseCard :title="$t('project.projectSettings.general')">
+          <BaseInput v-model="name" :label="$t('project.projectSettings.projectName')" required :error="save.error.value?.fieldError('name')" />
           <BaseCheckbox
             v-model="allowSelfSignUp"
-            label="Allow self sign-up"
-            hint="When off, only admins can create end users, and identity providers only create users if set to."
+            :label="$t('project.projectSettings.allowSelfSignUp')"
+            :hint="$t('project.projectSettings.whenOffOnlyAdminsCan')"
           />
         </BaseCard>
 
-        <BaseCard title="Email links" description="Pages in your app that emails link to.">
-          <p class="text-sm text-text-muted">
-            Emails always include a 6-digit code. Add a page in your app to also include a link; use
-            <code class="font-mono">{token}</code> where the link's token goes, e.g.
-            <code class="font-mono">https://shop.example.com/confirm?token={token}</code>.
-          </p>
+        <BaseCard :title="$t('project.projectSettings.emailLinks')" :description="$t('project.projectSettings.pagesInYourAppThat')">
+          <i18n-t keypath="project.projectSettings.emailLinksHelp" tag="p" class="text-sm text-text-muted">
+            <template #placeholder><code class="font-mono">{{ '{token}' }}</code></template>
+            <template #example><code class="font-mono">{{ 'https://shop.example.com/confirm?token={token}' }}</code></template>
+          </i18n-t>
           <BaseInput
             v-model="confirmSignUpUrl"
-            label="Confirm sign-up page"
+            :label="$t('project.projectSettings.confirmSignUpPage')"
             type="url"
             :error="save.error.value?.fieldError('confirm_sign_up_url')"
           />
           <BaseInput
             v-model="resetPasswordUrl"
-            label="Reset password page"
+            :label="$t('project.projectSettings.resetPasswordPage')"
             type="url"
             :error="save.error.value?.fieldError('reset_password_url')"
           />
           <BaseInput
             v-model="acceptInvitationUrl"
-            label="Accept invitation page"
+            :label="$t('project.projectSettings.acceptInvitationPage')"
             type="url"
             :error="save.error.value?.fieldError('accept_invitation_url')"
           />
@@ -128,30 +127,28 @@ const destroy = useAsyncAction(async () => {
       </fieldset>
 
       <div v-if="access.admin" class="flex flex-wrap items-center gap-2">
-        <BaseButton type="submit" label="Save changes" :loading="save.loading.value" :disabled="!dirty" />
-        <BaseButton v-if="dirty" label="Discard changes" variant="secondary" @click="reset(project)" />
-        <span v-if="dirty" class="text-sm text-text-muted" role="status">Unsaved changes</span>
+        <BaseButton type="submit" :label="$t('project.projectSettings.saveChanges')" :loading="save.loading.value" :disabled="!dirty" />
+        <BaseButton v-if="dirty" :label="$t('project.projectSettings.discardChanges')" variant="secondary" @click="reset(project)" />
+        <span v-if="dirty" class="text-sm text-text-muted" role="status">{{ $t('project.projectSettings.unsavedChanges') }}</span>
       </div>
     </form>
 
-    <BaseCard v-if="access.accountAdmin" title="Delete project" description="Deletes the project with all of its end users, applications and settings. Account admins can restore it for 24 hours.">
-      <BaseButton label="Delete project" variant="danger" class="self-start" @click="deleteOpen = true" />
+    <BaseCard v-if="access.accountAdmin" :title="$t('project.projectSettings.deleteProject')" :description="$t('project.projectSettings.deletesTheProjectWithAll')">
+      <BaseButton :label="$t('project.projectSettings.deleteProject')" variant="danger" class="self-start" @click="deleteOpen = true" />
     </BaseCard>
 
     <ConfirmDialog
       v-model:visible="deleteOpen"
-      title="Delete project?"
-      confirm-label="Delete project"
+      :title="$t('project.projectSettings.deleteProject2')"
+      :confirm-label="$t('project.projectSettings.deleteProject')"
       danger
       :loading="destroy.loading.value"
       :error="destroy.error.value"
       @confirm="destroy.run()"
     >
-      <p>
-        <strong>{{ project.name }}</strong> stops working at once: apps using it can't sign anyone in. An account admin can restore
-        it from the Projects page for 24 hours. After that, its end users, groups, applications, identity providers, attributes,
-        signing keys and certificates are permanently deleted.
-      </p>
+      <i18n-t keypath="project.projectSettings.deleteDescription" tag="p">
+        <template #name><strong>{{ project.name }}</strong></template>
+      </i18n-t>
     </ConfirmDialog>
   </template>
 </template>

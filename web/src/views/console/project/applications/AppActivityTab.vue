@@ -24,23 +24,23 @@ const auditLog = (query: Record<string, string>) => ({ name: 'project-audit-log'
 </script>
 
 <template>
-  <BaseAlert v-if="!access.developer" variant="info">Only project admins and developers can read the audit log.</BaseAlert>
+  <BaseAlert v-if="!access.developer" variant="info">{{ $t('project.appActivity.onlyProjectAdminsAndDevelopers') }}</BaseAlert>
 
   <template v-else-if="project">
-    <BaseCard title="Sign-ins and refusals through this app">
+    <BaseCard :title="$t('project.appActivity.signInsAndRefusalsThrough')">
       <AuditEventList
         :fetch-page="fetchPage"
         :filters="appFilter"
-        empty-message="No sign-ins through this app yet."
+        :empty-message="$t('project.appActivity.noSignInsThroughThis')"
         :full-log="auditLog(appFilter)"
       />
     </BaseCard>
 
-    <BaseCard title="Configuration and access changes">
+    <BaseCard :title="$t('project.appActivity.configurationAndAccessChanges')">
       <AuditEventList
         :fetch-page="fetchPage"
         :filters="{ target_uid_eq: application.uid }"
-        empty-message="No changes recorded yet."
+        :empty-message="$t('project.appActivity.noChangesRecordedYet')"
         :full-log="auditLog({ target_uid_eq: application.uid })"
       />
     </BaseCard>

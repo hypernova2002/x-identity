@@ -64,12 +64,12 @@ export const oidcService = {
         }),
       })
     } catch {
-      throw new ApiError('network_error', "We couldn't reach the server. Check your connection and try again.", 0)
+      throw new ApiError('network_error', 0)
     }
 
     const body: unknown = await response.json().catch(() => null)
     if (response.ok && body) return body as TokenSet
-    if (isOauthError(body)) throw new ApiError(body.error, body.error_description ?? body.error, response.status)
-    throw new ApiError('internal_error', 'An unexpected error occurred.', response.status)
+    if (isOauthError(body)) throw new ApiError(body.error, response.status)
+    throw new ApiError('internal_error', response.status)
   },
 }

@@ -2,6 +2,7 @@ import { onBeforeUnmount, onMounted, type Ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 
 import { useConfirmation } from './useConfirmation'
+import { i18n } from '@/i18n'
 
 /**
  * Asks before leaving a page while a form has unsaved changes. Closing or reloading the tab can only
@@ -19,10 +20,10 @@ export function useUnsavedChanges(dirty: Ref<boolean>) {
     async () =>
       !dirty.value ||
       confirmation({
-        title: 'Discard changes?',
-        message: "You have changes on this page that haven't been saved. If you leave, they'll be lost.",
-        confirmLabel: 'Discard changes',
-        cancelLabel: 'Keep editing',
+        title: i18n.global.t('common.unsavedChanges.title'),
+        message: i18n.global.t('common.unsavedChanges.message'),
+        confirmLabel: i18n.global.t('common.unsavedChanges.confirm'),
+        cancelLabel: i18n.global.t('common.unsavedChanges.cancel'),
         danger: true,
       }),
   )

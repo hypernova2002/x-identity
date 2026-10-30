@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n'
 import type { AuthConfiguration } from '@/types/api'
 
 export type AuthSettingsSection = 'sign-in' | 'mfa' | 'policies' | 'tokens' | 'signing'
@@ -45,13 +46,14 @@ export const EMAIL_CODE_FIELDS: readonly AuthSettingsField[] = [
   'email_code_failure_window_seconds',
 ]
 
-export const authSettingsSections: { section: AuthSettingsSection; label: string; description: string }[] = [
-  { section: 'sign-in', label: 'Sign-in methods', description: 'Password sign-in, email verification and the codes sent by email.' },
-  { section: 'mfa', label: 'Multi-factor authentication', description: 'The project-wide MFA policy. Each user\'s own MFA setup is shown on their end user page.' },
-  { section: 'policies', label: 'Security policies', description: 'Password rules, password expiry and lockouts after failed sign-ins.' },
-  { section: 'tokens', label: 'Tokens and sessions', description: 'How long tokens, sessions and the hosted login session last, and limits for app clients.' },
-  { section: 'signing', label: 'Signing keys', description: 'How tokens and SAML messages are signed, and key rotation.' },
-]
+// Labels are read when this module loads: the locale is chosen once, at startup.
+export const authSettingsSections: { section: AuthSettingsSection; label: string; description: string }[] = (
+  ['sign-in', 'mfa', 'policies', 'tokens', 'signing'] as const
+).map((section) => ({
+  section,
+  label: i18n.global.t(`settings.sections.${section}.label`),
+  description: i18n.global.t(`settings.sections.${section}.description`),
+}))
 
 /** Only the given fields of a configuration, for saving one section without touching the rest. */
 export function pickFields(values: Partial<AuthConfiguration>, fields: readonly AuthSettingsField[]): Partial<AuthConfiguration> {

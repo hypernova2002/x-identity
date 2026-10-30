@@ -37,9 +37,9 @@ const save = useAsyncAction(async () => {
 </script>
 
 <template>
-  <BaseCard title="Sign-in, attributes and signing" description="The app's own SAML settings, usually from its metadata.">
-    <BaseAlert v-if="saved && !dirty" variant="success">Configuration saved.</BaseAlert>
-    <BaseAlert v-if="!access.developer" variant="info">Only project admins and developers can change applications.</BaseAlert>
+  <BaseCard :title="$t('project.samlAppConfiguration.signInAttributesAndSigning')" :description="$t('project.samlAppConfiguration.theAppSOwnSaml')">
+    <BaseAlert v-if="saved && !dirty" variant="success">{{ $t('project.samlAppConfiguration.configurationSaved') }}</BaseAlert>
+    <BaseAlert v-if="!access.developer" variant="info">{{ $t('project.samlAppConfiguration.onlyProjectAdminsAndDevelopers') }}</BaseAlert>
     <fieldset :disabled="!access.developer" class="contents">
       <SamlAppForm
         v-model="draft"
@@ -52,9 +52,9 @@ const save = useAsyncAction(async () => {
       />
     </fieldset>
     <div v-if="access.developer" class="flex flex-wrap items-center gap-2">
-      <BaseButton type="submit" form="saml-app-configuration" label="Save changes" :loading="save.loading.value" :disabled="!dirty" />
-      <BaseButton v-if="dirty" label="Discard changes" variant="secondary" @click="draft = samlAppDraftFrom(app)" />
-      <span v-if="dirty" class="text-sm text-text-muted" role="status">Unsaved changes</span>
+      <BaseButton type="submit" form="saml-app-configuration" :label="$t('project.samlAppConfiguration.saveChanges')" :loading="save.loading.value" :disabled="!dirty" />
+      <BaseButton v-if="dirty" :label="$t('project.samlAppConfiguration.discardChanges')" variant="secondary" @click="draft = samlAppDraftFrom(app)" />
+      <span v-if="dirty" class="text-sm text-text-muted" role="status">{{ $t('project.samlAppConfiguration.unsavedChanges') }}</span>
     </div>
   </BaseCard>
 </template>

@@ -1,4 +1,6 @@
 import type { SelectOption } from '@/components/base/types'
+import { i18n } from '@/i18n'
+import type en from '@/locales/en'
 import type {
   AccountRole,
   AppClientType,
@@ -12,67 +14,30 @@ import type {
   UserStatus,
 } from '@/types/api'
 
-export const identityProviderKindOptions: SelectOption<IdentityProviderKind>[] = [
-  { label: 'Google', value: 'google' },
-  { label: 'Apple', value: 'apple' },
-  { label: 'Other OpenID Connect provider', value: 'oidc' },
-  { label: "SAML 2.0 (a company's identity provider)", value: 'saml' },
-]
+// Labels are read when this module loads: the locale is chosen once, at startup.
+function options<T extends string>(group: keyof (typeof en)['options'], values: readonly T[]): SelectOption<T>[] {
+  return values.map((value) => ({ label: i18n.global.t(`options.${group}.${value}`), value }))
+}
 
-export const accountRoleOptions: SelectOption<AccountRole>[] = [
-  { label: 'Owner', value: 'owner' },
-  { label: 'Admin', value: 'admin' },
-  { label: 'Member', value: 'member' },
-]
+export const identityProviderKindOptions = options<IdentityProviderKind>('identityProviderKind', ['google', 'apple', 'oidc', 'saml'])
 
-export const projectRoleOptions: SelectOption<ProjectRole>[] = [
-  { label: 'Admin', value: 'admin' },
-  { label: 'Developer', value: 'developer' },
-  { label: 'Viewer', value: 'viewer' },
-]
+export const accountRoleOptions = options<AccountRole>('accountRole', ['owner', 'admin', 'member'])
 
-export const mfaRequirementOptions: SelectOption<MfaRequirement>[] = [
-  { label: 'Off — never ask for a code', value: 'off' },
-  { label: 'Optional — users choose', value: 'optional' },
-  { label: 'Required — everyone must use MFA', value: 'required' },
-]
+export const projectRoleOptions = options<ProjectRole>('projectRole', ['admin', 'developer', 'viewer'])
 
-export const passkeysOptions: SelectOption<PasskeysSetting>[] = [
-  { label: 'Off', value: 'off' },
-  { label: 'Optional: users can add passkeys', value: 'optional' },
-  { label: 'Required: sign-ins must use a passkey', value: 'required' },
-]
+export const mfaRequirementOptions = options<MfaRequirement>('mfaRequirement', ['off', 'optional', 'required'])
 
-export const signingAlgorithmOptions: SelectOption<SigningAlgorithm>[] = [
-  { label: 'ES256 (ECDSA P-256)', value: 'ES256' },
-  { label: 'RS256 (RSA PKCS#1)', value: 'RS256' },
-  { label: 'PS256 (RSA-PSS)', value: 'PS256' },
-]
+export const passkeysOptions = options<PasskeysSetting>('passkeys', ['off', 'optional', 'required'])
 
-export const appClientTypeOptions: SelectOption<AppClientType>[] = [
-  { label: 'Public — browser or mobile app, no secret', value: 'public' },
-  { label: 'Confidential — server-side app with a secret', value: 'confidential' },
-]
+export const signingAlgorithmOptions = options<SigningAlgorithm>('signingAlgorithm', ['ES256', 'RS256', 'PS256'])
 
-export const attributeDataTypeOptions: SelectOption<AttributeDataType>[] = [
-  { label: 'Text', value: 'string' },
-  { label: 'Number', value: 'number' },
-  { label: 'Yes / no', value: 'boolean' },
-  { label: 'Date', value: 'date' },
-]
+export const appClientTypeOptions = options<AppClientType>('appClientType', ['public', 'confidential'])
 
-export const otpMethodOptions: SelectOption<OtpType>[] = [
-  { label: 'Authenticator app (time-based codes)', value: 'totp' },
-  { label: 'Hardware token (counter-based codes)', value: 'hotp' },
-]
+export const attributeDataTypeOptions = options<AttributeDataType>('attributeDataType', ['string', 'number', 'boolean', 'date'])
 
-export const userStatusOptions: SelectOption<UserStatus>[] = [
-  { label: 'Active', value: 'active' },
-  { label: 'Disabled', value: 'disabled' },
-]
+export const otpMethodOptions = options<OtpType>('otpMethod', ['totp', 'hotp'])
+
+export const userStatusOptions = options<UserStatus>('userStatus', ['active', 'disabled'])
 
 /** For filters on true/false fields, which the API takes as strings. */
-export const yesNoOptions: SelectOption<'true' | 'false'>[] = [
-  { label: 'Yes', value: 'true' },
-  { label: 'No', value: 'false' },
-]
+export const yesNoOptions = options<'true' | 'false'>('yesNo', ['true', 'false'])

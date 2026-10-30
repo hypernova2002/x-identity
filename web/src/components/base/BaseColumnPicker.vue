@@ -31,7 +31,7 @@ const passThrough = {
 </script>
 
 <template>
-  <BaseButton label="Choose columns" variant="secondary" aria-haspopup="dialog" @click="(event: MouseEvent) => popover?.toggle(event)">
+  <BaseButton :label="$t('base.columns.choose')" variant="secondary" aria-haspopup="dialog" @click="(event: MouseEvent) => popover?.toggle(event)">
     <template #icon>
       <svg aria-hidden="true" viewBox="0 0 20 20" class="size-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
         <rect x="3" y="4" width="14" height="12" rx="1.5" />
@@ -41,7 +41,7 @@ const passThrough = {
   </BaseButton>
   <Popover ref="popover" :pt="passThrough">
     <fieldset class="flex min-w-48 flex-col gap-3">
-      <legend class="mb-3 text-sm font-semibold">Columns</legend>
+      <legend class="mb-3 text-sm font-semibold">{{ $t('base.columns.legend') }}</legend>
       <BaseCheckbox
         v-for="column in columns"
         :key="column.key"

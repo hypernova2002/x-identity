@@ -43,12 +43,12 @@ function removeMapping(index: number) {
 <template>
   <form :id="formId" class="flex flex-col gap-4" novalidate @submit.prevent="emit('submit')">
     <fieldset class="flex flex-col gap-3 rounded-md border border-border p-4">
-      <legend class="px-1 text-sm font-semibold">Import from the app's metadata</legend>
+      <legend class="px-1 text-sm font-semibold">{{ $t('project.samlAppForm.importFromTheAppS') }}</legend>
       <BaseAlert v-if="importError" variant="danger">{{ importError.fieldError('metadata') ?? importError.fieldError('metadata_url') ?? importError.message }}</BaseAlert>
-      <BaseInput v-model="metadataUrl" label="Metadata URL" type="url" />
-      <BaseTextarea v-model="metadataXml" label="Or paste the metadata XML" monospace :rows="3" />
+      <BaseInput v-model="metadataUrl" :label="$t('project.samlAppForm.metadataUrl')" type="url" />
+      <BaseTextarea v-model="metadataXml" :label="$t('project.samlAppForm.orPasteTheMetadataXml')" monospace :rows="3" />
       <BaseButton
-        label="Fill in from metadata"
+        :label="$t('project.samlAppForm.fillInFromMetadata')"
         variant="secondary"
         class="self-start"
         :disabled="!metadataUrl.trim() && !metadataXml.trim()"
@@ -58,49 +58,49 @@ function removeMapping(index: number) {
     </fieldset>
 
     <BaseAlert v-if="error && error.details.length === 0" variant="danger">{{ error.message }}</BaseAlert>
-    <BaseInput v-model="draft.name" label="Name" required hint="Shown in the app portal." :error="error?.fieldError('name')" />
-    <BaseInput v-model="draft.entityId" label="Entity ID" required hint="The app's SAML issuer, sometimes called the audience." :error="error?.fieldError('entity_id')" />
+    <BaseInput v-model="draft.name" :label="$t('project.samlAppForm.name')" required :hint="$t('project.samlAppForm.shownInTheAppPortal')" :error="error?.fieldError('name')" />
+    <BaseInput v-model="draft.entityId" :label="$t('project.samlAppForm.entityId')" required :hint="$t('project.samlAppForm.theAppSSamlIssuer')" :error="error?.fieldError('entity_id')" />
     <BaseInput
       v-model="draft.acsUrls"
-      label="Assertion consumer service URLs"
+      :label="$t('project.samlAppForm.assertionConsumerServiceUrls')"
       required
-      hint="Where the app receives sign-ins (HTTP-POST). The first is used when the app is opened from the portal. Separate several with commas."
+      :hint="$t('project.samlAppForm.whereTheAppReceivesSign')"
       :error="error?.fieldError('acs_urls')"
     />
-    <BaseInput v-model="draft.sloUrl" label="Single logout URL" type="url" hint="Optional. Used to log users out of the app (HTTP-Redirect)." :error="error?.fieldError('slo_url')" />
-    <BaseSelect v-model="draft.nameIdFormat" label="NameID" :options="nameIdFormatOptions" :error="error?.fieldError('name_id_format')" />
+    <BaseInput v-model="draft.sloUrl" :label="$t('project.samlAppForm.singleLogoutUrl')" type="url" :hint="$t('project.samlAppForm.optionalUsedToLogUsers')" :error="error?.fieldError('slo_url')" />
+    <BaseSelect v-model="draft.nameIdFormat" :label="$t('project.samlAppForm.nameid')" :options="nameIdFormatOptions" :error="error?.fieldError('name_id_format')" />
 
     <fieldset class="flex flex-col gap-3">
-      <legend class="mb-1 text-sm font-semibold">Attributes</legend>
+      <legend class="mb-1 text-sm font-semibold">{{ $t('project.samlAppForm.attributes') }}</legend>
       <div v-for="(mapping, index) in draft.attributeMappings" :key="index" class="flex flex-wrap items-end gap-2">
-        <div class="min-w-36 flex-1"><BaseInput v-model="mapping.name" :label="`Attribute ${index + 1} name`" /></div>
-        <div class="min-w-36 flex-1"><BaseSelect v-model="mapping.source" label="Value" :options="attributeSourceOptions" /></div>
-        <div v-if="mapping.source === 'custom'" class="min-w-28 flex-1"><BaseInput v-model="mapping.customKey" label="Attribute key" /></div>
-        <BaseButton label="Remove" variant="ghost" size="sm" @click="removeMapping(index)" />
+        <div class="min-w-36 flex-1"><BaseInput v-model="mapping.name" :label="$t('project.samlAppForm.attributeName', { index: index + 1 })" /></div>
+        <div class="min-w-36 flex-1"><BaseSelect v-model="mapping.source" :label="$t('project.samlAppForm.value')" :options="attributeSourceOptions" /></div>
+        <div v-if="mapping.source === 'custom'" class="min-w-28 flex-1"><BaseInput v-model="mapping.customKey" :label="$t('project.samlAppForm.attributeKey')" /></div>
+        <BaseButton :label="$t('project.samlAppForm.remove')" variant="ghost" size="sm" @click="removeMapping(index)" />
       </div>
-      <p v-if="error?.fieldError('attribute_mappings')" class="text-xs font-medium text-danger">Error: {{ error.fieldError('attribute_mappings') }}</p>
-      <BaseButton label="Add attribute" variant="secondary" size="sm" class="self-start" @click="addMapping" />
+      <p v-if="error?.fieldError('attribute_mappings')" class="text-xs font-medium text-danger">{{ $t('base.field.error', { message: error.fieldError('attribute_mappings') }) }}</p>
+      <BaseButton :label="$t('project.samlAppForm.addAttribute')" variant="secondary" size="sm" class="self-start" @click="addMapping" />
     </fieldset>
 
     <fieldset class="flex flex-col gap-3">
-      <legend class="mb-1 text-sm font-semibold">Signing</legend>
-      <BaseCheckbox v-model="draft.signAssertion" label="Sign the assertion" hint="What most apps expect." />
-      <BaseCheckbox v-model="draft.signResponse" label="Sign the whole response" />
-      <BaseCheckbox v-model="draft.requireSignedRequests" label="Require signed requests from the app" hint="Needs the app's certificate below." />
+      <legend class="mb-1 text-sm font-semibold">{{ $t('project.samlAppForm.signing') }}</legend>
+      <BaseCheckbox v-model="draft.signAssertion" :label="$t('project.samlAppForm.signTheAssertion')" :hint="$t('project.samlAppForm.whatMostAppsExpect')" />
+      <BaseCheckbox v-model="draft.signResponse" :label="$t('project.samlAppForm.signTheWholeResponse')" />
+      <BaseCheckbox v-model="draft.requireSignedRequests" :label="$t('project.samlAppForm.requireSignedRequestsFromThe')" :hint="$t('project.samlAppForm.needsTheAppSCertificate')" />
       <BaseTextarea
         v-model="draft.spCertificate"
-        label="App's signing certificate"
+        :label="$t('project.samlAppForm.appSSigningCertificate')"
         monospace
         :rows="4"
-        hint="Optional. PEM. Used to check the app's signed sign-in and logout requests."
+        :hint="$t('project.samlAppForm.optionalPemUsedToCheck')"
         :error="error?.fieldError('sp_certificate') ?? error?.fieldError('require_signed_requests')"
       />
     </fieldset>
 
     <BaseInput
       v-model="draft.defaultRelayState"
-      label="Default relay state"
-      hint="Optional. Sent when the app is opened from the portal, e.g. the page to show first."
+      :label="$t('project.samlAppForm.defaultRelayState')"
+      :hint="$t('project.samlAppForm.optionalSentWhenTheApp')"
       :error="error?.fieldError('default_relay_state')"
     />
   </form>

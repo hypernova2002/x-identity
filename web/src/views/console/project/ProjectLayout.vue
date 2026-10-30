@@ -21,15 +21,15 @@ watch(projectUid, (uid) => loading.run(uid), { immediate: true })
 </script>
 
 <template>
-  <BaseAlert v-if="loading.error.value?.code === 'not_found'" variant="danger" title="Project not found">
-    It may have been deleted, or you don't have access to it.
-    <RouterLink :to="{ name: 'projects' }" class="font-medium text-primary underline">See all projects</RouterLink>
+  <BaseAlert v-if="loading.error.value?.code === 'not_found'" variant="danger" :title="$t('shell.projectLayout.notFound')">
+    {{ $t('shell.projectLayout.notFoundDescription') }}
+    <RouterLink :to="{ name: 'projects' }" class="font-medium text-primary underline">{{ $t('shell.projectLayout.allProjects') }}</RouterLink>
   </BaseAlert>
   <BaseAlert v-else-if="loading.error.value" variant="danger">{{ loading.error.value.message }}</BaseAlert>
-  <p v-else-if="!loaded" class="text-sm text-text-muted" role="status">Loading project…</p>
+  <p v-else-if="!loaded" class="text-sm text-text-muted" role="status">{{ $t('shell.projectLayout.loading') }}</p>
 
   <template v-if="loaded && project">
-    <PageHeader v-if="!route.meta.ownHeader" :title="route.meta.title ?? project.name" :description="route.meta.description" />
+    <PageHeader v-if="!route.meta.ownHeader" :title="route.meta.title ? $t(route.meta.title) : project.name" :description="route.meta.description && $t(route.meta.description)" />
     <RouterView :key="project.uid" />
   </template>
 </template>

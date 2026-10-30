@@ -1,35 +1,72 @@
 import { z } from 'zod'
 
+import { formatList, i18n } from '@/i18n'
 import { apiBaseUrl } from '@/utils/customDomain'
+
+export type ErrorParams = Record<string, unknown>
 
 export interface ApiErrorDetail {
   field: string
-  message: string
+  code: string
+  params?: ErrorParams
 }
 
 interface ApiErrorBody {
   error: {
     code: string
-    message: string
-    details: ApiErrorDetail[]
+    reason?: string | null
+    params?: ErrorParams
+    details?: ApiErrorDetail[]
   }
+}
+
+interface ApiErrorOptions {
+  reason?: string | null
+  params?: ErrorParams
+  details?: ApiErrorDetail[]
+}
+
+/** Params as messages use them: lists read as the current language writes them. */
+function messageParams(params: ErrorParams = {}): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(params).map(([name, value]) => [name, Array.isArray(value) ? formatList(value.map(String)) : value]))
+}
+
+/** The message for an error's code, or for its reason when we have one; the API's own message isn't used. */
+export function errorMessage(code: string, reason?: string | null, params?: ErrorParams): string {
+  const { t, te } = i18n.global
+  if (reason && te(`errors.reasons.${reason}`)) return t(`errors.reasons.${reason}`, messageParams(params))
+  return te(`errors.codes.${code}`) ? t(`errors.codes.${code}`) : t('errors.codes.unknown')
+}
+
+/** The message for a field-level problem, from its code. */
+export function detailMessage(detail: ApiErrorDetail): string {
+  const { t, te } = i18n.global
+  const params = messageParams(detail.params)
+  const count = typeof detail.params?.count === 'number' ? detail.params.count : undefined
+  if (!te(`errors.details.${detail.code}`)) return t('errors.details.invalid')
+  return count === undefined ? t(`errors.details.${detail.code}`, params) : t(`errors.details.${detail.code}`, params, count)
 }
 
 export class ApiError extends Error {
   readonly code: string
   readonly status: number
+  readonly reason: string | null
+  readonly params: ErrorParams
   readonly details: ApiErrorDetail[]
 
-  constructor(code: string, message: string, status: number, details: ApiErrorDetail[] = []) {
-    super(message)
+  constructor(code: string, status: number, { reason = null, params = {}, details = [] }: ApiErrorOptions = {}) {
+    super(errorMessage(code, reason, params))
     this.name = 'ApiError'
     this.code = code
     this.status = status
+    this.reason = reason
+    this.params = params
     this.details = details
   }
 
   fieldError(field: string): string | undefined {
-    return this.details.find((detail) => detail.field === field)?.message
+    const detail = this.details.find((candidate) => candidate.field === field)
+    return detail && detailMessage(detail)
   }
 }
 
@@ -69,8 +106,7 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
   return (
     typeof error === 'object' &&
     error !== null &&
-    typeof (error as { code?: unknown }).code === 'string' &&
-    typeof (error as { message?: unknown }).message === 'string'
+    typeof (error as { code?: unknown }).code === 'string'
   )
 }
 
@@ -112,11 +148,7 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
     })
   } catch {
-    throw new ApiError(
-      'network_error',
-      "We couldn't reach the server. Check your connection and try again.",
-      0,
-    )
+    throw new ApiError('network_error', 0)
   }
 }
 
@@ -132,9 +164,9 @@ async function sendWithRefresh(path: string, options: RequestOptions): Promise<{
 
   if (!response.ok) {
     if (isApiErrorBody(body)) {
-      throw new ApiError(body.error.code, body.error.message, response.status, body.error.details ?? [])
+      throw new ApiError(body.error.code, response.status, { reason: body.error.reason, params: body.error.params, details: body.error.details })
     }
-    throw new ApiError('internal_error', 'An unexpected error occurred.', response.status)
+    throw new ApiError('internal_error', response.status)
   }
 
   return { response, body }
@@ -149,7 +181,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 export async function apiPage<T>(path: string, schema: z.ZodType<T>, options: RequestOptions = {}): Promise<Page<T>> {
   const { response, body } = await sendWithRefresh(path, options)
   const parsed = z.array(schema).safeParse(body ?? [])
-  if (!parsed.success) throw new ApiError('invalid_response', 'The server sent a list we couldn\'t read. Try again, or reload the page.', response.status)
+  if (!parsed.success) throw new ApiError('invalid_response', response.status)
   const items = parsed.data
 
   return {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -21,6 +22,7 @@ import type { AccountRole, Invitation, User } from '@/types/api'
 import { formatDateTime } from '@/utils/format'
 import { accountRoleOptions, userStatusOptions } from '@/utils/options'
 
+const { t } = useI18n()
 const { account, me } = storeToRefs(useSessionStore())
 
 const inviteEmail = ref('')
@@ -33,24 +35,24 @@ const grantableRoles = computed(() =>
 )
 
 const userColumns: DataTableColumn[] = [
-  { key: 'name', label: 'Name', sortKey: 'name' },
-  { key: 'role', label: 'Role', sortKey: 'role' },
-  { key: 'status', label: 'Status' },
-  { key: 'last_sign_in_at', label: 'Last sign-in', sortKey: 'last_sign_in_at' },
-  { key: 'actions', label: 'Actions', srOnly: true },
+  { key: 'name', label: t('console.users.columns.name'), sortKey: 'name' },
+  { key: 'role', label: t('console.users.columns.role'), sortKey: 'role' },
+  { key: 'status', label: t('console.users.columns.status') },
+  { key: 'last_sign_in_at', label: t('console.users.columns.lastSignIn'), sortKey: 'last_sign_in_at' },
+  { key: 'actions', label: t('console.users.columns.actions'), srOnly: true },
 ]
 const userFilters: DataTableFilter[] = [
-  { type: 'select', key: 'role_eq', label: 'Role', options: accountRoleOptions },
-  { type: 'select', key: 'status_eq', label: 'Status', options: userStatusOptions },
+  { type: 'select', key: 'role_eq', label: t('console.users.filters.role'), options: accountRoleOptions },
+  { type: 'select', key: 'status_eq', label: t('console.users.filters.status'), options: userStatusOptions },
 ]
 
 const invitationColumns: DataTableColumn[] = [
-  { key: 'email', label: 'Email', sortKey: 'email' },
-  { key: 'role', label: 'Role', sortKey: 'role' },
-  { key: 'expires_at', label: 'Expires', sortKey: 'expires_at' },
-  { key: 'actions', label: 'Actions', srOnly: true },
+  { key: 'email', label: t('console.users.columns.email'), sortKey: 'email' },
+  { key: 'role', label: t('console.users.columns.role'), sortKey: 'role' },
+  { key: 'expires_at', label: t('console.users.columns.expires'), sortKey: 'expires_at' },
+  { key: 'actions', label: t('console.users.columns.actions'), srOnly: true },
 ]
-const invitationFilters: DataTableFilter[] = [{ type: 'select', key: 'role_eq', label: 'Role', options: accountRoleOptions }]
+const invitationFilters: DataTableFilter[] = [{ type: 'select', key: 'role_eq', label: t('console.users.filters.role'), options: accountRoleOptions }]
 
 const users = useListView((params) => userService.list(account.value!.uid, params), {
   defaultSort: 'created_at',
@@ -69,10 +71,10 @@ const invitationsState = invitations.state
 
 const stats = useAsync(() => userService.stats(account.value!.uid))
 const statCards = computed(() => [
-  { label: 'Console users', value: stats.data.value?.total },
-  { label: 'Owners and admins', value: stats.data.value?.admins },
+  { label: t('console.users.stats.users'), value: stats.data.value?.total },
+  { label: t('console.users.stats.admins'), value: stats.data.value?.admins },
   // Only account admins can see invitations; the API sends null to everyone else.
-  ...(stats.data.value?.pending_invitations === null ? [] : [{ label: 'Pending invitations', value: stats.data.value?.pending_invitations }]),
+  ...(stats.data.value?.pending_invitations === null ? [] : [{ label: t('console.users.stats.invitations'), value: stats.data.value?.pending_invitations }]),
 ])
 
 function reloadUsers() {
@@ -120,18 +122,18 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <PageHeader title="Console users" description="People who manage this account in the console, and their account roles. Project end users are managed in each project's Directory." />
+  <PageHeader :title="t('console.users.title')" :description="t('console.users.description')" />
 
-  <StatCards label="Console user counts" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
+  <StatCards :label="t('console.users.stats.label')" :cards="statCards" :loading="stats.loading.value" :error="stats.error.value" @retry="stats.reload" />
 
   <BaseAlert v-if="userAction.error.value" variant="danger">{{ userAction.error.value.message }}</BaseAlert>
 
   <BaseDataTable
     storage-key="console-users"
     v-model:state="usersState"
-    caption="Console users"
-    search-placeholder="Search console users…"
-    search-label="Search by name or email"
+    :caption="t('console.users.caption')"
+    :search-placeholder="t('console.users.searchPlaceholder')"
+    :search-label="t('console.users.searchLabel')"
     :columns="userColumns"
     :filters="userFilters"
     :rows="users.rows.value"
@@ -140,43 +142,43 @@ async function confirmDelete() {
     :per-page="users.perPage.value"
     :loading="users.loading.value"
     :error="users.error.value"
-    empty-message="No users yet."
+    :empty-message="t('console.users.empty')"
     @reload="reloadUsers"
   >
     <template #cell-name="{ row }">
       <span class="font-medium">{{ row.name }}</span>
       <span class="block text-text-muted">{{ row.email }}</span>
-      <span v-if="row.mfa_enabled" class="text-xs text-success">MFA on</span>
+      <span v-if="row.mfa_enabled" class="text-xs text-success">{{ t('console.users.mfaOn') }}</span>
     </template>
     <template #cell-role="{ row }">
       <BaseSelect
         v-if="canManage(row)"
         :model-value="row.role"
-        :label="`Role for ${row.name}`"
+        :label="t('console.users.roleFor', { name: row.name })"
         hide-label
         :options="grantableRoles"
         :disabled="userAction.loading.value"
         @update:model-value="(role: AccountRole) => userAction.run(row, { role })"
       />
-      <span v-else class="capitalize">{{ row.role }}</span>
+      <span v-else>{{ t(`options.accountRole.${row.role}`) }}</span>
     </template>
     <template #cell-status="{ row }">
       <span :class="row.status === 'active' ? 'text-success' : 'text-text-muted'" class="font-medium capitalize">
-        {{ row.status === 'active' ? '● Active' : '○ Disabled' }}
+        {{ row.status === 'active' ? `● ${t('console.users.active')}` : `○ ${t('console.users.disabled')}` }}
       </span>
     </template>
     <template #cell-last_sign_in_at="{ row }">{{ formatDateTime(row.last_sign_in_at) }}</template>
     <template #cell-actions="{ row }">
       <div v-if="canManage(row)" class="flex justify-end gap-2">
         <BaseButton
-          :label="row.status === 'active' ? 'Disable' : 'Enable'"
+          :label="row.status === 'active' ? t('common.actions.disable') : t('common.actions.enable')"
           variant="secondary"
           size="sm"
           :disabled="userAction.loading.value"
           @click="userAction.run(row, { status: row.status === 'active' ? 'disabled' : 'active' })"
         />
         <BaseButton
-          label="Delete"
+          :label="t('common.actions.delete')"
           variant="ghost"
           size="sm"
           :disabled="userAction.loading.value"
@@ -186,37 +188,36 @@ async function confirmDelete() {
     </template>
   </BaseDataTable>
 
-  <BaseDialog :visible="pendingDelete !== null" title="Delete user?" @update:visible="(open: boolean) => !open && (pendingDelete = null)">
-    <p class="text-sm">
-      This permanently deletes <strong>{{ pendingDelete?.email }}</strong> and signs them out everywhere. To keep their history
-      but stop them signing in, disable them instead.
-    </p>
+  <BaseDialog :visible="pendingDelete !== null" :title="t('console.users.deleteTitle')" @update:visible="(open: boolean) => !open && (pendingDelete = null)">
+    <i18n-t keypath="console.users.deleteDescription" tag="p" class="text-sm">
+      <template #email><strong>{{ pendingDelete?.email }}</strong></template>
+    </i18n-t>
     <template #footer>
-      <BaseButton label="Cancel" variant="secondary" @click="pendingDelete = null" />
-      <BaseButton label="Delete user" variant="danger" :loading="userAction.loading.value" @click="confirmDelete" />
+      <BaseButton :label="t('common.actions.cancel')" variant="secondary" @click="pendingDelete = null" />
+      <BaseButton :label="t('console.users.deleteConfirm')" variant="danger" :loading="userAction.loading.value" @click="confirmDelete" />
     </template>
   </BaseDialog>
 
-  <BaseCard title="Invitations" description="Invited people get an email with a link to create their user. Links expire after 7 days.">
+  <BaseCard :title="t('console.users.invitationsTitle')" :description="t('console.users.invitationsDescription')">
     <form class="flex flex-col gap-4" novalidate @submit.prevent="invite.run()">
-      <BaseAlert v-if="invited" variant="success">Invitation sent to {{ invited }}.</BaseAlert>
+      <BaseAlert v-if="invited" variant="success">{{ t('console.users.invited', { email: invited }) }}</BaseAlert>
       <BaseAlert v-if="invite.error.value && invite.error.value.details.length === 0" variant="danger">
         {{ invite.error.value.message }}
       </BaseAlert>
       <div class="grid gap-4 sm:grid-cols-2">
-        <BaseInput v-model="inviteEmail" label="Email" type="email" required :error="invite.error.value?.fieldError('email')" />
-        <BaseSelect v-model="inviteRole" label="Role" :options="grantableRoles" />
+        <BaseInput v-model="inviteEmail" :label="t('console.users.email')" type="email" required :error="invite.error.value?.fieldError('email')" />
+        <BaseSelect v-model="inviteRole" :label="t('console.users.role')" :options="grantableRoles" />
       </div>
-      <BaseButton type="submit" label="Send invitation" :loading="invite.loading.value" class="self-start" />
+      <BaseButton type="submit" :label="t('console.users.sendInvitation')" :loading="invite.loading.value" class="self-start" />
     </form>
 
     <BaseAlert v-if="revoke.error.value" variant="danger">{{ revoke.error.value.message }}</BaseAlert>
     <BaseDataTable
       storage-key="invitations"
       v-model:state="invitationsState"
-      caption="Pending invitations"
-      search-placeholder="Search invitations…"
-      search-label="Search by email"
+      :caption="t('console.users.invitationsCaption')"
+      :search-placeholder="t('console.users.invitationsSearchPlaceholder')"
+      :search-label="t('console.users.invitationsSearchLabel')"
       :columns="invitationColumns"
       :filters="invitationFilters"
       :rows="invitations.rows.value"
@@ -225,13 +226,13 @@ async function confirmDelete() {
       :per-page="invitations.perPage.value"
       :loading="invitations.loading.value"
       :error="invitations.error.value"
-      empty-message="No pending invitations."
+      :empty-message="t('console.users.invitationsEmpty')"
       @reload="reloadInvitations"
     >
-      <template #cell-role="{ row }"><span class="capitalize">{{ row.role }}</span></template>
+      <template #cell-role="{ row }">{{ t(`options.accountRole.${row.role}`) }}</template>
       <template #cell-expires_at="{ row }">{{ formatDateTime(row.expires_at) }}</template>
       <template #cell-actions="{ row }">
-        <BaseButton label="Revoke" variant="ghost" size="sm" :disabled="revoke.loading.value" @click="revoke.run(row)" />
+        <BaseButton :label="t('console.users.revoke')" variant="ghost" size="sm" :disabled="revoke.loading.value" @click="revoke.run(row)" />
       </template>
     </BaseDataTable>
   </BaseCard>

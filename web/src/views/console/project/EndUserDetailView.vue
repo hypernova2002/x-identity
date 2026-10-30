@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AuditEventList from '@/components/audit/AuditEventList.vue'
@@ -25,6 +26,8 @@ import { projectAdminService } from '@/services/project'
 import type { AttributeDefinition, DeviceSession, EndUser, EndUserAppAccess, EndUserIdentity, Passkey } from '@/types/api'
 import { type AttributeDraft, toCustomAttributes } from '@/utils/customAttributes'
 import { formatDateTime } from '@/utils/format'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -154,7 +157,7 @@ const saveProfile = useAsyncAction(async () => {
     custom_attributes: toCustomAttributes(definitions.value, editAttributes.value, { clearEmpty: true }),
   })
   editOpen.value = false
-  notice.value = 'Profile saved.'
+  notice.value = t('project.endUserDetail.profileSaved')
 })
 
 function fetchAudit(params: ListParams) {
@@ -172,53 +175,53 @@ watch(endUserUid, () => load.run(), { immediate: true })
 <template>
   <PageBreadcrumbs
     :items="[
-      { label: 'End users', to: { name: 'project-end-users', params: { projectUid: project?.uid } } },
-      { label: endUser?.email ?? 'End user' },
+      { label: $t('project.endUserDetail.endUsers'), to: { name: 'project-end-users', params: { projectUid: project?.uid } } },
+      { label: endUser?.email ?? $t('project.endUserDetail.endUser') },
     ]"
   />
 
-  <BaseAlert v-if="load.error.value?.code === 'not_found'" variant="danger" title="End user not found">They may have been deleted.</BaseAlert>
+  <BaseAlert v-if="load.error.value?.code === 'not_found'" variant="danger" :title="$t('project.endUserDetail.endUserNotFound')">{{ $t('project.endUserDetail.theyMayHaveBeenDeleted') }}</BaseAlert>
   <BaseAlert v-else-if="load.error.value" variant="danger">{{ load.error.value.message }}</BaseAlert>
-  <p v-else-if="!endUser" class="text-sm text-text-muted" role="status">Loading end user…</p>
+  <p v-else-if="!endUser" class="text-sm text-text-muted" role="status">{{ $t('project.endUserDetail.loadingEndUser') }}</p>
 
   <template v-if="endUser && project">
     <PageHeader :title="endUser.email" :description="endUser.name ?? undefined">
       <template #actions>
-        <StatusBadge :tone="endUser.status === 'active' ? 'success' : 'danger'" :label="endUser.status === 'active' ? 'Active' : 'Disabled'" />
-        <StatusBadge v-if="endUser.invitation_pending" tone="info" label="Invitation pending" />
-        <StatusBadge :tone="endUser.mfa_enabled ? 'success' : 'neutral'" :label="endUser.mfa_enabled ? 'MFA on' : 'MFA off'" />
+        <StatusBadge :tone="endUser.status === 'active' ? 'success' : 'danger'" :label="endUser.status === 'active' ? $t('project.endUserDetail.active') : $t('project.endUserDetail.disabled')" />
+        <StatusBadge v-if="endUser.invitation_pending" tone="info" :label="$t('project.endUserDetail.invitationPending')" />
+        <StatusBadge :tone="endUser.mfa_enabled ? 'success' : 'neutral'" :label="endUser.mfa_enabled ? $t('project.endUserDetail.mfaOn') : $t('project.endUserDetail.mfaOff')" />
       </template>
     </PageHeader>
 
     <BaseAlert v-if="notice" variant="success">{{ notice }}</BaseAlert>
     <BaseAlert v-if="actions.perform.error.value && !actions.pending.value" variant="danger">{{ actions.perform.error.value.message }}</BaseAlert>
 
-    <BaseCard title="Identity">
+    <BaseCard :title="$t('project.endUserDetail.identity')">
       <dl class="grid gap-2 text-sm sm:grid-cols-[max-content_1fr]">
-        <dt class="font-medium">Email</dt>
+        <dt class="font-medium">{{ $t('project.endUserDetail.email') }}</dt>
         <dd class="flex flex-wrap items-center gap-2">
           {{ endUser.email }}
-          <StatusBadge :tone="endUser.email_verified ? 'success' : 'warning'" :label="endUser.email_verified ? 'Verified' : 'Not verified'" />
+          <StatusBadge :tone="endUser.email_verified ? 'success' : 'warning'" :label="endUser.email_verified ? $t('project.endUserDetail.verified') : $t('project.endUserDetail.notVerified')" />
         </dd>
-        <dt class="font-medium">Name</dt>
+        <dt class="font-medium">{{ $t('project.endUserDetail.name') }}</dt>
         <dd>{{ endUser.name ?? '—' }}</dd>
-        <dt class="font-medium">User ID (sub)</dt>
+        <dt class="font-medium">{{ $t('project.endUserDetail.userIdSub') }}</dt>
         <dd class="font-mono text-xs break-all">{{ endUser.uid }}</dd>
-        <dt class="font-medium">Created</dt>
+        <dt class="font-medium">{{ $t('project.endUserDetail.created') }}</dt>
         <dd>{{ formatDateTime(endUser.created_at) }}</dd>
-        <dt class="font-medium">Last sign-in</dt>
-        <dd>{{ endUser.last_sign_in_at ? formatDateTime(endUser.last_sign_in_at) : 'Never' }}</dd>
+        <dt class="font-medium">{{ $t('project.endUserDetail.lastSignIn') }}</dt>
+        <dd>{{ endUser.last_sign_in_at ? formatDateTime(endUser.last_sign_in_at) : $t('project.endUserDetail.never') }}</dd>
         <template v-for="definition in definitions" :key="definition.uid">
           <dt class="font-medium">{{ definition.label }}</dt>
           <dd>{{ attributeValue(definition.key) }}</dd>
         </template>
       </dl>
-      <BaseButton v-if="access.developer" label="Edit profile" variant="secondary" class="self-start" @click="startEditing" />
+      <BaseButton v-if="access.developer" :label="$t('project.endUserDetail.editProfile')" variant="secondary" class="self-start" @click="startEditing" />
 
       <section class="flex flex-col gap-2 border-t border-border pt-4" aria-labelledby="identities-heading">
-        <h3 id="identities-heading" class="text-sm font-semibold">Linked identity providers</h3>
+        <h3 id="identities-heading" class="text-sm font-semibold">{{ $t('project.endUserDetail.linkedIdentityProviders') }}</h3>
         <BaseAlert v-if="unlink.error.value" variant="danger">{{ unlink.error.value.message }}</BaseAlert>
-        <p v-if="identities.length === 0" class="text-sm text-text-muted">None. This user signs in with email and password.</p>
+        <p v-if="identities.length === 0" class="text-sm text-text-muted">{{ $t('project.endUserDetail.noneThisUserSignsIn') }}</p>
         <ul v-else class="flex flex-col divide-y divide-border">
           <li v-for="identity in identities" :key="identity.uid" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
             <span class="flex flex-col">
@@ -228,111 +231,118 @@ watch(endUserUid, () => load.run(), { immediate: true })
               >
                 {{ identity.identity_provider_name }}
               </RouterLink>
-              <span class="text-xs text-text-muted">{{ identity.email ?? 'No email shared' }} · ID {{ identity.subject }} · last used {{ formatDateTime(identity.last_sign_in_at) }}</span>
+              <span class="text-xs text-text-muted">
+              {{
+                $t('project.endUserDetail.identityDetails', {
+                  email: identity.email ?? $t('project.endUserDetail.noEmailShared'),
+                  subject: identity.subject,
+                  date: formatDateTime(identity.last_sign_in_at),
+                })
+              }}
             </span>
-            <BaseButton v-if="access.developer" label="Unlink" variant="ghost" size="sm" :loading="unlink.loading.value" @click="unlink.run(identity)" />
+            </span>
+            <BaseButton v-if="access.developer" :label="$t('project.endUserDetail.unlink')" variant="ghost" size="sm" :loading="unlink.loading.value" @click="unlink.run(identity)" />
           </li>
         </ul>
       </section>
     </BaseCard>
 
-    <BaseCard title="Access" description="Applications are assignment-only: this user can sign in to an app assigned to them directly or to one of their groups.">
+    <BaseCard :title="$t('project.endUserDetail.access')" :description="$t('project.endUserDetail.applicationsAreAssignmentOnlyThis')">
       <BaseAlert v-if="membership.error.value" variant="danger">{{ membership.error.value.message }}</BaseAlert>
       <section class="flex flex-col gap-2" aria-labelledby="groups-heading">
-        <h3 id="groups-heading" class="text-sm font-semibold">Groups</h3>
-        <p v-if="endUser.groups.length === 0" class="text-sm text-text-muted">Not in any group.</p>
+        <h3 id="groups-heading" class="text-sm font-semibold">{{ $t('project.endUserDetail.groups') }}</h3>
+        <p v-if="endUser.groups.length === 0" class="text-sm text-text-muted">{{ $t('project.endUserDetail.notInAnyGroup') }}</p>
         <ul v-else class="flex flex-col divide-y divide-border">
           <li v-for="group in endUser.groups" :key="group.uid" class="flex items-center justify-between gap-2 py-2 text-sm">
             <RouterLink :to="{ name: 'project-groups', params: { projectUid: project.uid }, query: { group: group.uid } }" class="font-medium text-primary underline-offset-2 hover:underline">
               {{ group.name }}
             </RouterLink>
-            <BaseButton v-if="access.developer" label="Remove" variant="ghost" size="sm" :loading="membership.loading.value" @click="membership.run('remove', group.uid)" />
+            <BaseButton v-if="access.developer" :label="$t('project.endUserDetail.remove')" variant="ghost" size="sm" :loading="membership.loading.value" @click="membership.run('remove', group.uid)" />
           </li>
         </ul>
         <div v-if="access.developer" class="flex flex-wrap items-end gap-2">
           <div class="min-w-48 flex-1">
-            <BaseSearchSelect v-model="groupToAdd" label="Add to group" :search="searchGroupsToJoin" :see-all="lookups.allGroups.value" />
+            <BaseSearchSelect v-model="groupToAdd" :label="$t('project.endUserDetail.addToGroup')" :search="searchGroupsToJoin" :see-all="lookups.allGroups.value" />
           </div>
-          <BaseButton label="Add" variant="secondary" :disabled="!groupToAdd" :loading="membership.loading.value" @click="membership.run('add', groupToAdd)" />
+          <BaseButton :label="$t('project.endUserDetail.add')" variant="secondary" :disabled="!groupToAdd" :loading="membership.loading.value" @click="membership.run('add', groupToAdd)" />
         </div>
       </section>
 
       <section class="flex flex-col gap-2 border-t border-border pt-4" aria-labelledby="apps-heading">
-        <h3 id="apps-heading" class="text-sm font-semibold">Applications</h3>
-        <p v-if="appAccess.length === 0" class="text-sm text-text-muted">No applications: this user can't sign in to any app yet.</p>
+        <h3 id="apps-heading" class="text-sm font-semibold">{{ $t('project.endUserDetail.applications') }}</h3>
+        <p v-if="appAccess.length === 0" class="text-sm text-text-muted">{{ $t('project.endUserDetail.noApplicationsThisUserCan') }}</p>
         <ul v-else class="flex flex-col divide-y divide-border">
           <li v-for="app in appAccess" :key="app.uid" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
             <span class="flex items-center gap-2">
               <RouterLink :to="appLink(app)" class="font-medium text-primary underline-offset-2 hover:underline">{{ app.name }}</RouterLink>
-              <StatusBadge tone="info" :label="app.app_type === 'saml_app' ? 'SAML' : 'OpenID Connect / API'" />
-              <StatusBadge v-if="!app.enabled" tone="neutral" label="App disabled" />
+              <StatusBadge tone="info" :label="app.app_type === 'saml_app' ? $t('project.endUserDetail.saml') : $t('project.endUserDetail.openidConnectApi')" />
+              <StatusBadge v-if="!app.enabled" tone="neutral" :label="$t('project.endUserDetail.appDisabled')" />
             </span>
             <span class="text-xs text-text-muted">
-              {{ app.via.map((via) => (via.type === 'direct' ? 'Assigned directly' : `Through ${via.group_name}`)).join(' · ') }}
+              {{ app.via.map((via) => (via.type === 'direct' ? $t('project.endUserDetail.assignedDirectly') : $t('project.endUserDetail.through', { groupName: via.group_name }))).join(' · ') }}
             </span>
           </li>
         </ul>
       </section>
     </BaseCard>
 
-    <BaseCard title="Authentication">
+    <BaseCard :title="$t('project.endUserDetail.authentication')">
       <dl class="grid gap-2 text-sm sm:grid-cols-[max-content_1fr]">
-        <dt class="font-medium">Account status</dt>
-        <dd>{{ endUser.status === 'active' ? 'Active: can sign in' : 'Disabled: can\'t sign in' }}</dd>
-        <dt class="font-medium">Password</dt>
-        <dd>{{ endUser.invitation_pending ? 'Not set yet: invitation pending' : 'Set, or signs in with an identity provider' }}</dd>
-        <dt class="font-medium">Multi-factor authentication</dt>
-        <dd>{{ endUser.mfa_enabled ? 'Authenticator app set up' : 'No authenticator app' }}{{ passkeys.length > 0 ? `, ${passkeys.length} passkey${passkeys.length === 1 ? '' : 's'}` : '' }}</dd>
+        <dt class="font-medium">{{ $t('project.endUserDetail.accountStatus') }}</dt>
+        <dd>{{ endUser.status === 'active' ? $t('project.endUserDetail.activeCanSignIn') : $t('project.endUserDetail.disabledCanTSignIn') }}</dd>
+        <dt class="font-medium">{{ $t('project.endUserDetail.password') }}</dt>
+        <dd>{{ endUser.invitation_pending ? $t('project.endUserDetail.notSetYetInvitationPending') : $t('project.endUserDetail.setOrSignsInWith') }}</dd>
+        <dt class="font-medium">{{ $t('project.endUserDetail.multiFactorAuthentication') }}</dt>
+        <dd>{{ endUser.mfa_enabled ? $t('project.endUserDetail.authenticatorAppSetUp') : $t('project.endUserDetail.noAuthenticatorApp') }}{{ passkeys.length > 0 ? $t('project.endUserDetail.passkeyCount', passkeys.length) : '' }}</dd>
       </dl>
       <section v-if="passkeys.length > 0" class="flex flex-col gap-2" aria-labelledby="passkeys-heading">
-        <h3 id="passkeys-heading" class="text-sm font-semibold">Passkeys</h3>
+        <h3 id="passkeys-heading" class="text-sm font-semibold">{{ $t('project.endUserDetail.passkeys') }}</h3>
         <ul class="flex flex-col divide-y divide-border">
           <li v-for="passkey in passkeys" :key="passkey.uid" class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
             <span class="flex flex-col">
               <span class="font-medium break-all">{{ passkey.name }}</span>
               <span class="text-xs text-text-muted">
-                {{ passkey.domain }} · {{ passkey.synced ? 'Synced' : 'One device or key' }} ·
-                {{ passkey.last_used_at ? `Last used ${formatDateTime(passkey.last_used_at)}` : 'Not used yet' }}
+                {{ passkey.domain }} · {{ passkey.synced ? $t('project.endUserDetail.synced') : $t('project.endUserDetail.oneDeviceOrKey') }} ·
+                {{ passkey.last_used_at ? $t('project.endUserDetail.lastUsed', { lastUsedAt: formatDateTime(passkey.last_used_at) }) : $t('project.endUserDetail.notUsedYet') }}
               </span>
             </span>
-            <BaseButton v-if="access.developer" label="Remove" variant="ghost" size="sm" :aria-label="`Remove passkey ${passkey.name}`" @click="removingPasskey = passkey" />
+            <BaseButton v-if="access.developer" :label="$t('project.endUserDetail.remove')" variant="ghost" size="sm" :aria-label="$t('project.endUserDetail.removePasskey2', { name: passkey.name })" @click="removingPasskey = passkey" />
           </li>
         </ul>
       </section>
-      <p class="text-xs text-text-muted">
-        Whether MFA is required is a project-wide policy, in
-        <RouterLink :to="{ name: 'project-auth-mfa', params: { projectUid: project.uid } }" class="text-primary underline">Authentication › Multi-factor authentication</RouterLink>.
-      </p>
+      <i18n-t keypath="project.endUserDetail.mfaPolicyNote" tag="p" class="text-xs text-text-muted">
+        <template #link><RouterLink :to="{ name: 'project-auth-mfa', params: { projectUid: project.uid } }" class="text-primary underline">{{ $t('project.endUserDetail.authenticationMultiFactorAuthentication') }}</RouterLink></template>
+      </i18n-t>
       <div v-if="access.developer" class="flex flex-wrap gap-2">
-        <BaseButton v-if="endUser.invitation_pending" label="Resend invitation" variant="secondary" :loading="actions.perform.loading.value" @click="actions.request('resend_invitation', endUser)" />
-        <BaseButton v-if="endUser.mfa_enabled || passkeys.length > 0" label="Reset MFA" variant="secondary" @click="actions.request('reset_mfa', endUser)" />
-        <BaseButton v-if="endUser.status === 'active'" label="Disable" variant="secondary" @click="actions.request('disable', endUser)" />
-        <BaseButton v-else label="Enable" variant="secondary" :loading="actions.perform.loading.value" @click="actions.request('enable', endUser)" />
+        <BaseButton v-if="endUser.invitation_pending" :label="$t('project.endUserDetail.resendInvitation')" variant="secondary" :loading="actions.perform.loading.value" @click="actions.request('resend_invitation', endUser)" />
+        <BaseButton v-if="endUser.mfa_enabled || passkeys.length > 0" :label="$t('project.endUserDetail.resetMfa')" variant="secondary" @click="actions.request('reset_mfa', endUser)" />
+        <BaseButton v-if="endUser.status === 'active'" :label="$t('project.endUserDetail.disable')" variant="secondary" @click="actions.request('disable', endUser)" />
+        <BaseButton v-else :label="$t('project.endUserDetail.enable')" variant="secondary" :loading="actions.perform.loading.value" @click="actions.request('enable', endUser)" />
       </div>
     </BaseCard>
 
-    <BaseCard title="Sessions" description="The devices this user is signed in on.">
+    <BaseCard :title="$t('project.endUserDetail.sessions')" :description="$t('project.endUserDetail.theDevicesThisUserIs')">
       <template v-if="access.developer">
         <DeviceSessionTable ref="sessions" :fetch-page="fetchSessions" :sign-out="signOutSession" :owner="endUser.email" />
         <p class="text-sm text-text-muted">
-          Signing out everywhere also stops access tokens already issued from working, and ends every hosted login session.
+          {{ $t('project.endUserDetail.signingOutEverywhereAlsoStops') }}
         </p>
-        <BaseButton label="Sign out everywhere" variant="secondary" class="self-start" @click="actions.request('sign_out', endUser)" />
+        <BaseButton :label="$t('project.endUserDetail.signOutEverywhere')" variant="secondary" class="self-start" @click="actions.request('sign_out', endUser)" />
       </template>
-      <p v-else class="text-sm text-text-muted">Only project admins and developers can see this user's devices.</p>
+      <p v-else class="text-sm text-text-muted">{{ $t('project.endUserDetail.onlyProjectAdminsAndDevelopers') }}</p>
     </BaseCard>
 
-    <BaseCard v-if="access.developer" title="Activity">
+    <BaseCard v-if="access.developer" :title="$t('project.endUserDetail.activity')">
       <AuditEventList
         :fetch-page="fetchAudit"
         :filters="{ target_uid_eq: endUser.uid }"
-        empty-message="No activity recorded yet."
+        :empty-message="$t('project.endUserDetail.noActivityRecordedYet')"
         :full-log="{ name: 'project-audit-log', params: { projectUid: project.uid }, query: { target_uid_eq: endUser.uid } }"
       />
     </BaseCard>
 
-    <BaseCard v-if="access.developer" title="Delete end user" description="Permanently deletes the user and everything attached to them.">
-      <BaseButton label="Delete end user" variant="danger" class="self-start" @click="actions.request('delete', endUser)" />
+    <BaseCard v-if="access.developer" :title="$t('project.endUserDetail.deleteEndUser')" :description="$t('project.endUserDetail.permanentlyDeletesTheUserAnd')">
+      <BaseButton :label="$t('project.endUserDetail.deleteEndUser')" variant="danger" class="self-start" @click="actions.request('delete', endUser)" />
     </BaseCard>
 
     <EndUserActionDialog
@@ -343,28 +353,28 @@ watch(endUserUid, () => load.run(), { immediate: true })
       @cancel="actions.pending.value = null"
     />
 
-    <BaseDialog v-model:visible="editOpen" title="Edit profile">
+    <BaseDialog v-model:visible="editOpen" :title="$t('project.endUserDetail.editProfile')">
       <form id="edit-end-user" class="flex flex-col gap-4" novalidate @submit.prevent="saveProfile.run()">
         <BaseAlert v-if="saveProfile.error.value && saveProfile.error.value.details.length === 0" variant="danger">{{ saveProfile.error.value.message }}</BaseAlert>
-        <BaseInput v-model="editName" label="Name" :error="saveProfile.error.value?.fieldError('name')" />
+        <BaseInput v-model="editName" :label="$t('project.endUserDetail.name')" :error="saveProfile.error.value?.fieldError('name')" />
         <CustomAttributeFields v-model="editAttributes" :definitions="definitions" :error="saveProfile.error.value" />
       </form>
       <template #footer>
-        <BaseButton label="Cancel" variant="secondary" @click="editOpen = false" />
-        <BaseButton label="Save" type="submit" form="edit-end-user" :loading="saveProfile.loading.value" />
+        <BaseButton :label="$t('project.endUserDetail.cancel')" variant="secondary" @click="editOpen = false" />
+        <BaseButton :label="$t('project.endUserDetail.save')" type="submit" form="edit-end-user" :loading="saveProfile.loading.value" />
       </template>
     </BaseDialog>
   </template>
   <ConfirmDialog
     :visible="removingPasskey !== null"
-    :title="`Remove ${removingPasskey?.name ?? 'the passkey'}?`"
-    confirm-label="Remove passkey"
+    :title="$t('project.endUserDetail.remove2', { passkey: removingPasskey?.name ?? $t('project.endUserDetail.thePasskey') })"
+    :confirm-label="$t('project.endUserDetail.removePasskey')"
     danger
     :loading="removePasskey.loading.value"
     :error="removePasskey.error.value"
     @update:visible="(open: boolean) => !open && (removingPasskey = null)"
     @confirm="removePasskey.run()"
   >
-    <p>The user can no longer sign in with it. They can add a new one from the app portal.</p>
+    <p>{{ $t('project.endUserDetail.theUserCanNoLonger') }}</p>
   </ConfirmDialog>
 </template>

@@ -22,9 +22,9 @@ const tabs = computed<RouteTab[]>(() =>
 
 <template>
   <PageHeader
-    title="Authentication settings"
-    :description="`How end users of ${project?.name ?? 'this project'} sign in. These policies apply to the whole project; changes apply from each user's next sign-in or token refresh.`"
+    :title="$t('project.authentication.authenticationSettings')"
+    :description="$t('project.authentication.howEndUsersOfSign', { project: project?.name ?? $t('project.authentication.thisProject') })"
   />
-  <RouteTabs label="Authentication settings" :tabs="tabs" />
+  <RouteTabs :label="$t('project.authentication.authenticationSettings')" :tabs="tabs" />
   <RouterView />
 </template>

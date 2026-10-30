@@ -30,7 +30,7 @@ export function useHostedProject() {
       account.value = { uid: domain.account_uid, name: domain.account_name, slug: domain.account_slug }
     })
     .catch((caught: unknown) => {
-      error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 'Something unexpected happened.', 0)
+      error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 0)
     })
     .finally(() => {
       loading.value = false

@@ -125,3 +125,47 @@ describe('apiPage', () => {
     expect(query.getAll('q[kind_in][]')).toEqual(['google', 'apple'])
   })
 })
+
+describe('ApiError', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("shows our message for the code, not the API's", async () => {
+    stubFetch().mockResolvedValue(jsonResponse({ error: { code: 'forbidden', reason: null, message: 'Server text.', params: {}, details: [] } }, 403))
+
+    const error = await apiRequest('/x').catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).message).toBe("You don't have permission to do this.")
+  })
+
+  it("uses the reason's message, with its params", () => {
+    const error = new ApiError('conflict', 409, { reason: 'already_group_member', params: { email: 'dana@acme.test', group: 'Support' } })
+
+    expect(error.message).toBe('dana@acme.test is already in Support.')
+  })
+
+  it('falls back to the code when the reason is new to us', () => {
+    expect(new ApiError('conflict', 409, { reason: 'made_up' }).message).toBe('This conflicts with a change made in the meantime. Reload and try again.')
+  })
+
+  it('has a message for codes it has never seen', () => {
+    expect(new ApiError('made_up', 400).message).toBe('Something went wrong. Try again.')
+  })
+
+  it('describes field problems from their codes and params', () => {
+    const error = new ApiError('validation_failed', 422, {
+      details: [
+        { field: 'name', code: 'too_long', params: { count: 100 } },
+        { field: 'role', code: 'inclusion', params: { values: ['admin', 'member'] } },
+        { field: 'key', code: 'made_up', params: {} },
+      ],
+    })
+
+    expect([error.fieldError('name'), error.fieldError('role'), error.fieldError('key'), error.fieldError('email')]).toEqual([
+      'Use at most 100 characters.',
+      'Choose one of: admin and member.',
+      'Enter a valid value.',
+      undefined,
+    ])
+  })
+})

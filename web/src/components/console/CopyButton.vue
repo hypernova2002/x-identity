@@ -34,6 +34,12 @@ onBeforeUnmount(() => clearTimeout(reset))
 </script>
 
 <template>
-  <BaseButton :label="copied ? 'Copied' : failed ? 'Copy failed' : 'Copy'" variant="ghost" size="sm" :aria-label="`Copy ${label}`" @click="copy" />
-  <span class="sr-only" role="status">{{ copied ? `${label} copied` : failed ? `Couldn't copy ${label}; select it and copy it yourself.` : '' }}</span>
+  <BaseButton
+    :label="copied ? $t('common.copy.copied') : failed ? $t('common.copy.failed') : $t('common.copy.copy')"
+    variant="ghost"
+    size="sm"
+    :aria-label="$t('common.copy.label', { what: label })"
+    @click="copy"
+  />
+  <span class="sr-only" role="status">{{ copied ? $t('common.copy.copiedStatus', { what: label }) : failed ? $t('common.copy.failedStatus', { what: label }) : '' }}</span>
 </template>

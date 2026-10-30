@@ -1,4 +1,5 @@
 import { useConfirm } from 'openvue/useconfirm'
+import { i18n } from '@/i18n'
 
 export interface ConfirmationRequest {
   title: string
@@ -28,7 +29,7 @@ export function useConfirmation() {
         header: request.title,
         message: request.message,
         acceptLabel: request.confirmLabel,
-        rejectLabel: request.cancelLabel ?? 'Cancel',
+        rejectLabel: request.cancelLabel ?? i18n.global.t('common.actions.cancel'),
         acceptProps: { danger: request.danger ?? false },
         accept: () => answer(true),
         reject: () => answer(false),

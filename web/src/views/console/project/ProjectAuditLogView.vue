@@ -12,6 +12,6 @@ function fetchPage(params: ListParams) {
 </script>
 
 <template>
-  <p class="text-sm text-text-muted">End-user activity and changes to this project, newest first. Try filtering by end_user. or app_client.</p>
+  <p class="text-sm text-text-muted">{{ $t('project.projectAuditLog.endUserActivityAndChanges') }}</p>
   <AuditLogPanel v-if="project" :fetch-page="fetchPage" show-app-client />
 </template>

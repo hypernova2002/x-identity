@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import ConfirmDialog from '@/components/console/ConfirmDialog.vue'
 import type { EndUserAction } from '@/composables/useEndUserActions'
 import type { ApiError } from '@/services/http'
 import type { EndUser } from '@/types/api'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   pending: { action: EndUserAction; endUser: EndUser } | null
@@ -19,24 +22,24 @@ const emit = defineEmits<{
 
 const copy: Partial<Record<EndUserAction, { title: string; confirm: string; body: string }>> = {
   disable: {
-    title: 'Disable this end user?',
-    confirm: 'Disable',
-    body: 'They can\'t sign in, and every session is ended: refresh tokens are revoked, access tokens stop working and hosted login sessions end. Enable them again at any time.',
+    title: t('project.endUserActionDialog.disableThisEndUser'),
+    confirm: t('project.endUserActionDialog.disable'),
+    body: t('project.endUserActionDialog.theyCanTSignIn'),
   },
   reset_mfa: {
-    title: 'Reset MFA?',
-    confirm: 'Reset MFA',
-    body: 'Turns off their MFA: their authenticator, recovery codes and passkeys are deleted. Their sessions and password aren\'t changed. If the project requires MFA, they set it up again at their next sign-in.',
+    title: t('project.endUserActionDialog.resetMfa'),
+    confirm: t('project.endUserActionDialog.resetMfa2'),
+    body: t('project.endUserActionDialog.turnsOffTheirMfaTheir'),
   },
   sign_out: {
-    title: 'Sign out everywhere?',
-    confirm: 'Sign out everywhere',
-    body: 'Revokes every refresh token, stops their current access tokens working and ends their hosted login sessions. Their account and credentials aren\'t changed; they can sign in again.',
+    title: t('project.endUserActionDialog.signOutEverywhere'),
+    confirm: t('project.endUserActionDialog.signOutEverywhere2'),
+    body: t('project.endUserActionDialog.revokesEveryRefreshTokenStops'),
   },
   delete: {
-    title: 'Delete this end user?',
-    confirm: 'Delete end user',
-    body: 'Permanently deletes the user, their sessions, MFA, linked identity providers, group memberships and app assignments. This can\'t be undone. To stop them signing in but keep the user, disable them instead.',
+    title: t('project.endUserActionDialog.deleteThisEndUser'),
+    confirm: t('project.endUserActionDialog.deleteEndUser'),
+    body: t('project.endUserActionDialog.permanentlyDeletesTheUserTheir'),
   },
 }
 

@@ -26,37 +26,37 @@ const { loading, error, run } = useAsyncAction(async () => {
 </script>
 
 <template>
-  <BaseCard title="Choose a new password">
+  <BaseCard :title="$t('auth.resetPassword.title')">
     <AccountLookupState :loading="accountLoading" :error="accountError" />
 
     <template v-if="account">
-      <BaseAlert v-if="done" variant="success" title="Password changed">
-        You've been signed out everywhere. Sign in with your new password.
+      <BaseAlert v-if="done" variant="success" :title="$t('auth.resetPassword.doneTitle')">
+        {{ $t('auth.resetPassword.done') }}
       </BaseAlert>
-      <BaseAlert v-else-if="error?.code === 'invalid_token'" variant="danger" title="This link doesn't work">
-        It may have expired or already been used.
+      <BaseAlert v-else-if="error?.code === 'invalid_token'" variant="danger" :title="$t('auth.linkInvalid')">
+        {{ $t('auth.linkExpired') }}
         <RouterLink :to="{ name: 'forgot-password', params: { slug } }" class="font-medium text-primary underline">
-          Request a new link
+          {{ $t('auth.resetPassword.requestNewLink') }}
         </RouterLink>.
       </BaseAlert>
 
       <form v-if="!done" class="flex flex-col gap-4" novalidate @submit.prevent="run()">
         <BaseInput
           v-model="password"
-          label="New password"
+          :label="$t('auth.fields.newPassword')"
           type="password"
           autocomplete="new-password"
           required
           :error="error?.fieldError('password')"
         />
-        <BaseButton type="submit" label="Change password" :loading="loading" />
+        <BaseButton type="submit" :label="$t('auth.resetPassword.submit')" :loading="loading" />
       </form>
 
       <RouterLink
         :to="{ name: 'sign-in', params: { slug } }"
         class="text-sm font-medium text-primary underline hover:text-primary-hover"
       >
-        Go to sign in
+        {{ $t('auth.goToSignIn') }}
       </RouterLink>
     </template>
   </BaseCard>

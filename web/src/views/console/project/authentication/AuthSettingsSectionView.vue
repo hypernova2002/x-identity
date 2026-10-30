@@ -34,27 +34,27 @@ function save(changes: Partial<AuthConfiguration>) {
 <template>
   <p class="text-sm text-text-muted">{{ description }}</p>
 
-  <BaseCard v-if="section === 'sign-in' && project" title="How end users sign in">
+  <BaseCard v-if="section === 'sign-in' && project" :title="$t('project.authSettingsSection.howEndUsersSignIn')">
     <ul class="flex list-disc flex-col gap-1 pl-5 text-sm">
-      <li>Email and password, always available.</li>
+      <li>{{ $t('project.authSettingsSection.emailAndPasswordAlwaysAvailable') }}</li>
       <li>
-        Social, OpenID Connect and company SAML sign-in, configured under
+        {{ $t('project.authSettingsSection.socialOpenidConnectAndCompany') }}
         <RouterLink :to="{ name: 'project-identity-providers', params: { projectUid: project.uid } }" class="font-medium text-primary underline">
-          Identity providers
+          {{ $t('project.authSettingsSection.identityProviders') }}
         </RouterLink>.
       </li>
-      <li>
-        Self sign-up is <strong>{{ project.allow_self_sign_up ? 'on' : 'off' }}</strong>; change it, and the email link pages, in
-        <RouterLink :to="{ name: 'project-settings', params: { projectUid: project.uid } }" class="font-medium text-primary underline">
-          project settings</RouterLink>.
-      </li>
+      <i18n-t keypath="project.authSettingsSection.selfSignUpNote" tag="li">
+        <template #state><strong>{{ project.allow_self_sign_up ? $t('project.authSettingsSection.on') : $t('project.authSettingsSection.off') }}</strong></template>
+        <template #link><RouterLink :to="{ name: 'project-settings', params: { projectUid: project.uid } }" class="font-medium text-primary underline">
+          {{ $t('project.authSettingsSection.projectSettings') }}</RouterLink></template>
+      </i18n-t>
     </ul>
   </BaseCard>
 
-  <BaseCard v-if="section === 'mfa' && project" title="Individual users">
+  <BaseCard v-if="section === 'mfa' && project" :title="$t('project.authSettingsSection.individualUsers')">
     <p class="text-sm">
-      Whether a user has set up MFA, and resetting it, is on each user's page under
-      <RouterLink :to="{ name: 'project-end-users', params: { projectUid: project.uid } }" class="font-medium text-primary underline">End users</RouterLink>.
+      {{ $t('project.authSettingsSection.whetherAUserHasSet') }}
+      <RouterLink :to="{ name: 'project-end-users', params: { projectUid: project.uid } }" class="font-medium text-primary underline">{{ $t('project.authSettingsSection.endUsers') }}</RouterLink>.
     </p>
   </BaseCard>
 
@@ -69,18 +69,17 @@ function save(changes: Partial<AuthConfiguration>) {
     show-email-code-limits
     for-project
     :custom-domain="customDomain"
-    email-verification-hint="On by default for projects. When off, end users can sign in before confirming their email."
+    :email-verification-hint="$t('project.authSettingsSection.onByDefaultForProjects')"
   />
 
   <template v-if="section === 'signing' && project">
-    <BaseCard title="Token signing keys" description="The project's current public keys, for apps verifying tokens.">
+    <BaseCard :title="$t('project.authSettingsSection.tokenSigningKeys')" :description="$t('project.authSettingsSection.theProjectSCurrentPublic')">
       <dl class="grid gap-2 text-sm sm:grid-cols-[max-content_1fr]">
-        <dt class="font-medium">JWKS</dt>
-        <dd class="font-mono text-xs break-all">{{ project.token_issuer }}/.well-known/jwks.json</dd>
+        <dt class="font-medium">{{ $t('project.authSettingsSection.jwks') }}</dt>
+        <dd class="font-mono text-xs break-all">{{ `${project.token_issuer}/.well-known/jwks.json` }}</dd>
       </dl>
       <p class="text-xs text-text-muted">
-        Keys rotate automatically on the schedule above; retired keys stay published until every token they signed has expired.
-        Private keys are never shown.
+        {{ $t('project.authSettingsSection.keysRotateAutomaticallyOnThe') }}
       </p>
     </BaseCard>
     <SamlCertificatesPanel :account-uid="accountUid" :project-uid="project.uid" :project-name="project.name" :can-manage="access.admin" />

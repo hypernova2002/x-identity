@@ -63,60 +63,60 @@ const save = useAsyncAction(async () => {
 
 <template>
   <form class="flex flex-col gap-6" novalidate @submit.prevent="save.run()">
-    <BaseAlert v-if="saved && !dirty" variant="success">Sign-in settings saved.</BaseAlert>
-    <BaseAlert v-if="!access.developer" variant="info">Only project admins and developers can change applications.</BaseAlert>
+    <BaseAlert v-if="saved && !dirty" variant="success">{{ $t('project.appClientSignIn.signInSettingsSaved') }}</BaseAlert>
+    <BaseAlert v-if="!access.developer" variant="info">{{ $t('project.appClientSignIn.onlyProjectAdminsAndDevelopers') }}</BaseAlert>
     <BaseAlert v-if="save.error.value && save.error.value.details.length === 0" variant="danger">{{ save.error.value.message }}</BaseAlert>
 
     <fieldset :disabled="!access.developer" class="contents">
-      <BaseCard title="Name">
-        <BaseInput v-model="name" label="Name" required hint="Shown in the app portal and the audit log." :error="save.error.value?.fieldError('name')" />
+      <BaseCard :title="$t('project.appClientSignIn.name')">
+        <BaseInput v-model="name" :label="$t('project.appClientSignIn.name')" required :hint="$t('project.appClientSignIn.shownInTheAppPortal')" :error="save.error.value?.fieldError('name')" />
       </BaseCard>
 
-      <BaseCard title="Redirects" description="Matched exactly. https URLs, http://localhost URLs, or app schemes like com.example.shop:/callback. One per line.">
+      <BaseCard :title="$t('project.appClientSignIn.redirects')" :description="$t('project.appClientSignIn.matchedExactlyHttpsUrlsHttp')">
         <BaseTextarea
           v-model="redirectUris"
-          label="Redirect URIs"
+          :label="$t('project.appClientSignIn.redirectUris')"
           monospace
           :rows="3"
-          hint="Where users return after signing in through hosted login or an identity provider."
+          :hint="$t('project.appClientSignIn.whereUsersReturnAfterSigning')"
           :error="save.error.value?.fieldError('redirect_uris')"
         />
         <BaseTextarea
           v-model="postLogoutUris"
-          label="Post-logout redirect URIs"
+          :label="$t('project.appClientSignIn.postLogoutRedirectUris')"
           monospace
           :rows="2"
-          hint="Where the app may send users after logging out of hosted login."
+          :hint="$t('project.appClientSignIn.whereTheAppMaySend')"
           :error="save.error.value?.fieldError('post_logout_redirect_uris')"
         />
       </BaseCard>
 
-      <BaseCard title="Browser access">
+      <BaseCard :title="$t('project.appClientSignIn.browserAccess')">
         <BaseTextarea
           v-model="origins"
-          label="Allowed origins"
+          :label="$t('project.appClientSignIn.allowedOrigins')"
           monospace
           :rows="2"
-          hint="Browser apps only: origins that may call the API, e.g. https://shop.example.com, without a path. One per line. With passkeys on and a custom domain, your sign-in screen on these origins can also use the project's passkeys (in Chrome, Edge and Safari)."
+          :hint="$t('project.appClientSignIn.browserAppsOnlyOriginsThat')"
           :error="save.error.value?.fieldError('allowed_origins')"
         />
       </BaseCard>
 
-      <BaseCard title="App portal">
+      <BaseCard :title="$t('project.appClientSignIn.appPortal')">
         <BaseInput
           v-model="launchUrl"
-          label="Launch URL"
+          :label="$t('project.appClientSignIn.launchUrl')"
           type="url"
-          hint="Optional. Where the app portal opens this app. Apps without one aren't listed in the portal."
+          :hint="$t('project.appClientSignIn.optionalWhereTheAppPortal')"
           :error="save.error.value?.fieldError('launch_url')"
         />
       </BaseCard>
     </fieldset>
 
     <div v-if="access.developer" class="flex flex-wrap items-center gap-2">
-      <BaseButton type="submit" label="Save changes" :loading="save.loading.value" :disabled="!dirty" />
-      <BaseButton v-if="dirty" label="Discard changes" variant="secondary" @click="reset" />
-      <span v-if="dirty" class="text-sm text-text-muted" role="status">Unsaved changes</span>
+      <BaseButton type="submit" :label="$t('project.appClientSignIn.saveChanges')" :loading="save.loading.value" :disabled="!dirty" />
+      <BaseButton v-if="dirty" :label="$t('project.appClientSignIn.discardChanges')" variant="secondary" @click="reset" />
+      <span v-if="dirty" class="text-sm text-text-muted" role="status">{{ $t('project.appClientSignIn.unsavedChanges') }}</span>
     </div>
   </form>
 </template>

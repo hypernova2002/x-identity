@@ -21,11 +21,11 @@ function openProject(project: Project) {
 </script>
 
 <template>
-  <PageHeader :title="`Welcome, ${me?.name ?? ''}`" description="Your account is ready. Create your first project to get started." />
+  <PageHeader :title="$t('console.welcome.title', { name: me?.name ?? '' })" :description="$t('console.welcome.description')" />
   <BaseCard
     v-if="account"
-    title="Create your first project"
-    description="Each project has its own users and settings. Most teams create one per environment."
+    :title="$t('console.welcome.createTitle')"
+    :description="$t('console.welcome.createDescription')"
   >
     <CreateProjectForm :account-uid="account.uid" @created="openProject" />
   </BaseCard>

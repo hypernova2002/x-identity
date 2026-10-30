@@ -7,6 +7,6 @@ import { RouterView } from 'vue-router'
     <main class="w-full max-w-md">
       <RouterView />
     </main>
-    <p class="text-xs text-text-muted">Secured by x-identity</p>
+    <p class="text-xs text-text-muted">{{ $t('shell.securedBy') }}</p>
   </div>
 </template>

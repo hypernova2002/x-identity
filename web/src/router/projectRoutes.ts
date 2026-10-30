@@ -21,7 +21,7 @@ export const projectRoutes: RouteRecordRaw[] = [
     path: '',
     name: 'project',
     component: () => import('../views/console/project/ProjectOverviewView.vue'),
-    meta: { title: 'Overview', navItem: 'overview', ownHeader: true },
+    meta: { title: 'pages.overview.title', navItem: 'overview', ownHeader: true },
   },
 
   {
@@ -29,10 +29,10 @@ export const projectRoutes: RouteRecordRaw[] = [
     name: 'project-applications',
     component: () => import('../views/console/project/applications/ApplicationsView.vue'),
     meta: {
-      title: 'Applications',
+      title: 'pages.applications.title',
       navItem: 'applications',
       ownHeader: true,
-      description: 'The apps that sign this project\'s end users in: OpenID Connect and API clients, and SAML applications.',
+      description: 'pages.applications.description',
     },
   },
   {
@@ -64,10 +64,10 @@ export const projectRoutes: RouteRecordRaw[] = [
     name: 'project-apis',
     component: () => import('../views/console/project/applications/ApisView.vue'),
     meta: {
-      title: 'APIs',
+      title: 'pages.apis.title',
       navItem: 'apis',
       ownHeader: true,
-      description: 'Your own APIs that machine-to-machine apps get access tokens for, and the scopes they define.',
+      description: 'pages.apis.description',
     },
   },
   { path: 'app-clients', redirect: withQuery('project-applications', { kind_eq: 'oidc' }) },
@@ -77,23 +77,23 @@ export const projectRoutes: RouteRecordRaw[] = [
     path: 'end-users',
     name: 'project-end-users',
     component: () => import('../views/console/project/ProjectEndUsersView.vue'),
-    meta: { title: 'End users', navItem: 'end-users', ownHeader: true, description: 'The people who sign in to this project\'s apps. Console users are managed separately, under Account.' },
+    meta: { title: 'pages.endUsers.title', navItem: 'end-users', ownHeader: true, description: 'pages.endUsers.description' },
   },
   {
     path: 'end-users/:endUserUid',
     name: 'project-end-user',
     component: () => import('../views/console/project/EndUserDetailView.vue'),
-    meta: { title: 'End user', navItem: 'end-users', ownHeader: true },
+    meta: { title: 'pages.endUser.title', navItem: 'end-users', ownHeader: true },
   },
   {
     path: 'groups',
     name: 'project-groups',
     component: () => import('../views/console/project/ProjectGroupsView.vue'),
     meta: {
-      title: 'Groups',
+      title: 'pages.groups.title',
       navItem: 'groups',
       ownHeader: true,
-      description: 'Sets of end users. Assign apps to groups, and send group names to apps as the groups claim or a SAML attribute.',
+      description: 'pages.groups.description',
     },
   },
   {
@@ -101,10 +101,10 @@ export const projectRoutes: RouteRecordRaw[] = [
     name: 'project-attributes',
     component: () => import('../views/console/project/ProjectAttributesView.vue'),
     meta: {
-      title: 'Attributes',
+      title: 'pages.attributes.title',
       navItem: 'attributes',
       ownHeader: true,
-      description: 'Extra profile fields for this project\'s end users, optionally required, user-editable or included in ID tokens. Values are checked on sign-up, profile updates and admin changes.',
+      description: 'pages.attributes.description',
     },
   },
 
@@ -125,7 +125,7 @@ export const projectRoutes: RouteRecordRaw[] = [
         path,
         name,
         component: () => import('../views/console/project/authentication/AuthSettingsSectionView.vue'),
-        meta: { title: 'Authentication settings', navItem: 'authentication', ownHeader: true, authSection: section },
+        meta: { title: 'pages.authentication.title', navItem: 'authentication', ownHeader: true, authSection: section },
       })),
     ],
   },
@@ -134,17 +134,17 @@ export const projectRoutes: RouteRecordRaw[] = [
     name: 'project-identity-providers',
     component: () => import('../views/console/project/ProjectIdentityProvidersView.vue'),
     meta: {
-      title: 'Identity providers',
+      title: 'pages.identityProviders.title',
       ownHeader: true,
       navItem: 'identity-providers',
-      description: 'External systems end users can sign in with: social providers, OpenID Connect providers and companies\' SAML identity providers.',
+      description: 'pages.identityProviders.description',
     },
   },
   {
     path: 'identity-providers/:providerUid',
     name: 'project-identity-provider',
     component: () => import('../views/console/project/IdentityProviderDetailView.vue'),
-    meta: { title: 'Identity provider', navItem: 'identity-providers', ownHeader: true },
+    meta: { title: 'pages.identityProvider.title', navItem: 'identity-providers', ownHeader: true },
   },
   { path: 'sign-in-providers', redirect: withQuery('project-identity-providers') },
 
@@ -153,32 +153,32 @@ export const projectRoutes: RouteRecordRaw[] = [
     name: 'project-test-sign-in',
     component: () => import('../views/console/project/ProjectTestSignInView.vue'),
     meta: {
-      title: 'Test sign-in',
+      title: 'pages.testSignIn.title',
       navItem: 'test-sign-in',
-      description: 'Sign an end user in the way an app would, step through challenges, and inspect the tokens.',
+      description: 'pages.testSignIn.description',
     },
   },
   {
     path: 'audit-log',
     name: 'project-audit-log',
     component: () => import('../views/console/project/ProjectAuditLogView.vue'),
-    meta: { title: 'Audit log', navItem: 'audit-log', description: 'Sign-ins, failures and configuration changes in this project.' },
+    meta: { title: 'pages.auditLog.title', navItem: 'audit-log', description: 'pages.auditLog.description' },
   },
 
   {
     path: 'settings',
     name: 'project-settings',
     component: () => import('../views/console/project/ProjectSettingsView.vue'),
-    meta: { title: 'General settings', navItem: 'settings', description: 'The project\'s name, sign-up and email links.' },
+    meta: { title: 'pages.settings.title', navItem: 'settings', description: 'pages.settings.description' },
   },
   {
     path: 'domain',
     name: 'project-domain',
     component: () => import('../views/console/project/ProjectDomainView.vue'),
     meta: {
-      title: 'Custom domain',
+      title: 'pages.domain.title',
       navItem: 'domain',
-      description: 'Serve this project\'s hosted login and endpoints on your own domain, such as login.example.com.',
+      description: 'pages.domain.description',
     },
   },
   {
@@ -186,9 +186,9 @@ export const projectRoutes: RouteRecordRaw[] = [
     name: 'project-members',
     component: () => import('../views/console/project/ProjectMembersView.vue'),
     meta: {
-      title: 'Members',
+      title: 'pages.members.title',
       navItem: 'members',
-      description: 'Console users who work on this project, and their project roles. End users are under Directory.',
+      description: 'pages.members.description',
     },
   },
 ]

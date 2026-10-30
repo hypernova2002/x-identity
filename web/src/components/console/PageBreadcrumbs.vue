@@ -12,7 +12,7 @@ defineProps<{
 </script>
 
 <template>
-  <nav aria-label="Breadcrumb">
+  <nav :aria-label="$t('shell.breadcrumb')">
     <ol class="flex flex-wrap items-center gap-1 text-sm text-text-muted">
       <li v-for="(item, index) in items" :key="index" class="flex items-center gap-1">
         <span v-if="index > 0" aria-hidden="true">/</span>

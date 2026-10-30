@@ -130,7 +130,9 @@ export interface ProjectDomain {
   verified_at: string | null
   last_checked_at: string | null
   /** What the last DNS check found wrong. */
+  /** What the last DNS check found wrong, as a code such as `missing_cname`. */
   check_error: string | null
+  check_error_params: Record<string, string>
   /** Since when a verified domain's DNS records have been missing. */
   dns_missing_since: string | null
   /** external: TLS certificates are issued outside x-identity. */

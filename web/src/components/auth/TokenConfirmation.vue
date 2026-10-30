@@ -40,16 +40,16 @@ watch(
 
     <template v-if="account">
       <BaseAlert v-if="done" variant="success" :title="successTitle">{{ successMessage }}</BaseAlert>
-      <BaseAlert v-else-if="error" variant="danger" title="This link doesn't work">
-        {{ error.code === 'invalid_token' ? 'It may have expired or already been used.' : error.message }}
+      <BaseAlert v-else-if="error" variant="danger" :title="$t('auth.linkInvalid')">
+        {{ error.code === 'invalid_token' ? $t('auth.linkExpired') : error.message }}
       </BaseAlert>
-      <p v-else class="text-sm text-text-muted" role="status">Confirming…</p>
+      <p v-else class="text-sm text-text-muted" role="status">{{ $t('auth.confirming') }}</p>
 
       <RouterLink
         :to="{ name: 'sign-in', params: { slug } }"
         class="text-sm font-medium text-primary underline hover:text-primary-hover"
       >
-        Go to sign in
+        {{ $t('auth.goToSignIn') }}
       </RouterLink>
     </template>
   </BaseCard>

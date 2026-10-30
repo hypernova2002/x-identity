@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n'
 import { ref, watch } from 'vue'
 
 import { useAsyncAction } from './useAsyncAction'
@@ -101,7 +102,7 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
     try {
       await passkeySignIn(true)
     } catch (caught) {
-      signInWithPasskey.error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 'Something unexpected happened. Try again.', 0)
+      signInWithPasskey.error.value = caught instanceof ApiError ? caught : new ApiError('internal_error', 0)
     }
   }
 
@@ -177,7 +178,7 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
   const resendConfirmation = useAsyncAction(async () => {
     if (!target.value) return
     await hostedLoginService.resendConfirmation(target.value, email.value)
-    notice.value = `If ${email.value} is waiting for confirmation, a new code is on its way.`
+    notice.value = i18n.global.t('hosted.login.codeResent', { email: email.value })
   })
 
   const forgotPassword = useAsyncAction(async () => {
@@ -190,7 +191,7 @@ export function useHostedLogin(options: HostedLoginOptions = {}) {
     if (!target.value) return
     await hostedLoginService.confirmForgotPassword(target.value, email.value, input.code, input.password)
     go('sign-in')
-    notice.value = 'Your password was changed. Sign in with the new one.'
+    notice.value = i18n.global.t('hosted.login.passwordChanged')
   })
 
   function providerUrl(providerUid: string) {
