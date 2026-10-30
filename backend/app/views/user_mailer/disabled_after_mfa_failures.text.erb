@@ -1,5 +1,5 @@
-Hi <%= @user.name %>,
+<%= greeting(@user.name) %>
 
-Your user <%= @user.email %> in the <%= @user.account.name %> account on x-identity has been disabled after too many wrong verification codes in a row. Someone may know your password.
+<%= t(".disabled", email: @user.email, account: @user.account.name) %>
 
-Ask an administrator of <%= @user.account.name %> to re-enable you, then change your password.
+<%= t(".next_step", account: @user.account.name) %>

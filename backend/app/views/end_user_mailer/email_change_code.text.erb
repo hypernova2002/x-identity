@@ -1,7 +1,7 @@
-Hi<%= " #{@end_user.name}" if @end_user.name.present? %>,
+<%= greeting(@end_user.name) %>
 
-To use this address for your <%= @project.name %> account, enter this code:
+<%= t(".code_intro", project: @project.name) %>
 
     <%= @code %>
 
-The code expires in 1 hour. Until you confirm, you'll keep signing in with your current email address.
+<%= t(".expiry") %>

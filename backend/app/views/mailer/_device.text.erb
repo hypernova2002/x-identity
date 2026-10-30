@@ -1,0 +1,8 @@
+<%= t("mailer.new_device.device", device: device.device_name) %>
+<% if device.location_label -%>
+<%= t("mailer.new_device.location", location: device.location_label) %>
+<% end -%>
+<% if device.created_ip -%>
+<%= t("mailer.new_device.ip", ip: device.created_ip) %>
+<% end -%>
+<%= t("mailer.new_device.time", time: l(device.created_at.utc, format: :email)) -%>

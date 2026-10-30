@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { formatList, i18n } from '@/i18n'
+import { currentLocale, formatList, i18n } from '@/i18n'
 import { apiBaseUrl } from '@/utils/customDomain'
 
 export type ErrorParams = Record<string, unknown>
@@ -135,7 +135,8 @@ function buildUrl(path: string, query: RequestOptions['query']): string {
 }
 
 async function send(path: string, options: RequestOptions): Promise<Response> {
-  const headers = new Headers({ Accept: 'application/json' })
+  // The API sends emails in the language on screen, for users who haven't chosen one.
+  const headers = new Headers({ Accept: 'application/json', 'Accept-Language': currentLocale() })
   if (options.body !== undefined) headers.set('Content-Type', 'application/json')
 
   const accessToken = options.accessToken ?? (options.authenticated ? authHandlers?.getAccessToken() : null)

@@ -1,17 +1,14 @@
-Hi<%= " #{@end_user.name}" if @end_user.name.present? %>,
+<%= greeting(@end_user.name) %>
 
-Your <%= @project.name %> account was just signed in to from a device we haven't seen you use recently:
+<%= t(".intro", project: @project.name) %>
 
-  Device:   <%= @device.device_name %>
-<% if @device.location_label %>  Location: approximately <%= @device.location_label %>
-<% end %><% if @device.created_ip %>  IP:       <%= @device.created_ip %>
-<% end %>  Time:     <%= @device.created_at.utc.strftime("%-d %B %Y at %H:%M UTC") %>
+<%= render "mailer/device", device: @device %>
 
-If this was you, there's nothing to do.
+<%= t("mailer.new_device.if_you") %>
 
-If it wasn't, sign that device out under "Your devices" and change your password:
+<%= t(".if_not_you") %>
 <%= @link %>
 <% if @device.location_label -%>
 
-IP geolocation by DB-IP (https://db-ip.com).
+<%= t("mailer.new_device.geolocation") %>
 <% end -%>

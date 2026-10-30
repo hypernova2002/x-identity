@@ -1,0 +1,96 @@
+# Emails, in the recipient's language (see ApplicationMailer#localized_mail). Every key here needs a
+# translation in mailers.ja.yml.
+en:
+  date:
+    formats:
+      email: "%-d %B %Y"
+  time:
+    formats:
+      email: "%-d %B %Y at %H:%M UTC"
+
+  mailer:
+    greeting: "Hi %{name},"
+    greeting_without_name: "Hi,"
+    roles:
+      owner: "owner"
+      admin: "admin"
+      member: "member"
+    new_device:
+      device: "  Device:   %{device}"
+      location: "  Location: approximately %{location}"
+      ip: "  IP:       %{ip}"
+      time: "  Time:     %{time}"
+      if_you: "If this was you, there's nothing to do."
+      geolocation: "IP geolocation by DB-IP (https://db-ip.com)."
+
+  end_user_mailer:
+    confirmation:
+      subject: "Your %{project} verification code"
+      code_intro: "Your %{project} verification code is:"
+      link_intro: "Or confirm your email address by opening:"
+      expiry: "The code expires in 24 hours. If you didn't sign up for %{project}, you can ignore this email."
+    password_reset:
+      subject: "Reset your %{project} password"
+      code_intro: "Someone asked to reset the password for %{email} on %{project}. Your code is:"
+      link_intro: "Or choose a new password by opening:"
+      expiry: "The code expires in 1 hour. If you didn't ask for this, you can ignore this email and your password won't change."
+    invitation:
+      subject: "You've been invited to %{project}"
+      code_intro: "An account has been created for you on %{project} with this email address. To set your password, use this code:"
+      link_intro: "Or open:"
+      expiry: "The invitation expires in 7 days."
+    existing_account:
+      subject: "You already have a %{project} account"
+      attempt: "Someone tried to sign up for %{project} with %{email}, but you already have an account."
+      if_you: "If it was you, sign in instead. If you've forgotten your password, you can reset it from the sign-in page."
+      if_not_you: "If it wasn't you, you can ignore this email. Your account hasn't changed."
+    email_change_code:
+      subject: "Confirm your new %{project} email address"
+      code_intro: "To use this address for your %{project} account, enter this code:"
+      expiry: "The code expires in 1 hour. Until you confirm, you'll keep signing in with your current email address."
+    disabled_after_mfa_failures:
+      subject: "Your %{project} account has been disabled"
+      disabled: "Your %{project} account %{email} has been disabled after too many wrong verification codes in a row. Someone may know your password."
+      next_step: "Contact %{project} support to have it re-enabled, then change your password."
+    new_device_sign_in:
+      subject: "New sign-in to your %{project} account"
+      intro: "Your %{project} account was just signed in to from a device we haven't seen you use recently:"
+      if_not_you: "If it wasn't, sign that device out under \"Your devices\" and change your password:"
+    email_change_notice:
+      subject: "Your %{project} email address is being changed"
+      requested: "Someone asked to change the email address for your %{project} account to %{new_email}. The change only happens once the new address is confirmed."
+      if_not_you: "If this wasn't you, change your password now."
+
+  user_mailer:
+    email_verification:
+      subject: "Verify your email address"
+      confirm: "Confirm that %{email} is your email address for the %{account} account on x-identity:"
+      expiry: "This link expires in 24 hours. If you didn't create this account, you can ignore this email."
+    password_reset:
+      subject: "Reset your password"
+      intro: "Someone asked to reset the password for %{email} in the %{account} account on x-identity. To choose a new password, open:"
+      expiry: "This link expires in 1 hour. If you didn't ask for this, you can ignore this email and your password won't change."
+    email_change_confirmation:
+      subject: "Confirm your new email address"
+      confirm: "Confirm that you want to use this address for your %{account} account on x-identity:"
+      expiry: "This link expires in 1 hour. Until you confirm, you'll keep signing in with your current email address."
+    disabled_after_mfa_failures:
+      subject: "Your x-identity user has been disabled"
+      disabled: "Your user %{email} in the %{account} account on x-identity has been disabled after too many wrong verification codes in a row. Someone may know your password."
+      next_step: "Ask an administrator of %{account} to re-enable you, then change your password."
+    new_device_sign_in:
+      subject: "New sign-in to your %{account} account"
+      intro: "Your %{account} account on x-identity was just signed in to from a device we haven't seen you use recently:"
+      if_not_you: "If it wasn't, sign that device out under \"Where you're signed in\" and change your password:"
+    email_change_notice:
+      subject: "Your email address is being changed"
+      requested: "Someone asked to change the email address for your %{account} account on x-identity to %{new_email}. The change only happens once the new address is confirmed."
+      if_not_you: "If this wasn't you, change your password now and turn on multi-factor authentication."
+
+  invitation_mailer:
+    invitation:
+      subject: "You've been invited to %{account} on x-identity"
+      invited: "%{inviter} invited you to join the %{account} account on x-identity with the %{role} role."
+      an_administrator: "An administrator"
+      accept: "To accept, open:"
+      expiry: "This invitation expires on %{date} (UTC)."

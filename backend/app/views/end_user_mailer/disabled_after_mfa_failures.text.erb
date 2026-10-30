@@ -1,5 +1,5 @@
-Hi<%= " #{@end_user.name}" if @end_user.name.present? %>,
+<%= greeting(@end_user.name) %>
 
-Your <%= @project.name %> account <%= @end_user.email %> has been disabled after too many wrong verification codes in a row. Someone may know your password.
+<%= t(".disabled", project: @project.name, email: @end_user.email) %>
 
-Contact <%= @project.name %> support to have it re-enabled, then change your password.
+<%= t(".next_step", project: @project.name) %>

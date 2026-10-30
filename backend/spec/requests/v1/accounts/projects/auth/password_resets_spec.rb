@@ -27,6 +27,16 @@ RSpec.describe "End-user password reset", type: :openapi do
       expect { assert_api_response :post, 202, body: { client_id: app_client.uid, email: "nobody@shop.test" }, path_params: path_params }
         .to have_enqueued_job(EndUserLookupEmailJob).with(hash_including(kind: "password_reset", email: "nobody@shop.test"))
     end
+
+    it "emails end users who haven't chosen a language in the language of the request" do
+      ActionMailer::Base.deliveries.clear
+      perform_enqueued_jobs do
+        assert_api_response :post, 202, headers: { "Accept-Language" => "fr-FR, ja;q=0.9, en;q=0.8" },
+          body: { client_id: app_client.uid, email: end_user.email }, path_params: path_params
+      end
+
+      expect(ActionMailer::Base.deliveries.last.subject).to eq("#{project.name} のパスワードのリセット")
+    end
   end
 
   describe "setting the new password" do

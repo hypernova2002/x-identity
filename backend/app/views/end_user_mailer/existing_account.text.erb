@@ -1,7 +1,7 @@
-Hi<%= " #{@end_user.name}" if @end_user.name.present? %>,
+<%= greeting(@end_user.name) %>
 
-Someone tried to sign up for <%= @project.name %> with <%= @end_user.email %>, but you already have an account.
+<%= t(".attempt", project: @project.name, email: @end_user.email) %>
 
-If it was you, sign in instead. If you've forgotten your password, you can reset it from the sign-in page.
+<%= t(".if_you") %>
 
-If it wasn't you, you can ignore this email. Your account hasn't changed.
+<%= t(".if_not_you") %>

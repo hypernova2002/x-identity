@@ -1,7 +1,7 @@
-Hi <%= @user.name %>,
+<%= greeting(@user.name) %>
 
-Confirm that you want to use this address for your <%= @user.account.name %> account on x-identity:
+<%= t(".confirm", account: @user.account.name) %>
 
 <%= @url %>
 
-This link expires in 1 hour. Until you confirm, you'll keep signing in with your current email address.
+<%= t(".expiry") %>

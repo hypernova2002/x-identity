@@ -23,7 +23,7 @@ module ErrorDetail
   # @param params [Hash]
   # @return [String]
   def self.message(code, params)
-    I18n.t(code, scope: "errors.messages", **interpolations(params), raise: true)
+    I18n.t(code, scope: "errors.messages", **interpolations(params), locale: :en, raise: true)
   end
 
   # Lists read as "a, b" in messages, and stay arrays in `params`.

@@ -1,4 +1,6 @@
 class ApplicationController < ActionController::API
+  around_action :use_request_locale
+
   rescue_from ActiveRecord::RecordNotFound do
     render_error(:not_found)
   end
@@ -49,6 +51,21 @@ class ApplicationController < ActionController::API
   # @return [Hash{Symbol => String, nil}]
   def client_info
     { ip: request.remote_ip, user_agent: request.user_agent }
+  end
+
+  # Emails sent while handling the request go out in the caller's language, unless the recipient
+  # chose one; jobs keep the locale they were enqueued with.
+  def use_request_locale(&)
+    I18n.with_locale(request_locale, &)
+  end
+
+  # @return [Symbol] the first supported language in `Accept-Language`, by preference
+  def request_locale
+    languages = request.headers["Accept-Language"].to_s.split(",").filter_map.with_index do |entry, index|
+      tag, quality = entry.strip.split(";q=")
+      [ tag.split("-").first.downcase, -(quality || 1).to_f, index ] if tag.present?
+    end
+    languages.sort_by { |_, quality, index| [ quality, index ] }.map(&:first).find { HasLocale::LOCALES.include?(it) } || I18n.default_locale
   end
 
   def render_error(code, reason: nil, params: {}, details: [])

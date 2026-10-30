@@ -15,7 +15,7 @@ class ErrorResponse
   def self.message_for(code, reason: nil, params: {})
     return ErrorCodes.fetch(code)[:default_message] unless reason
 
-    I18n.t(reason, scope: "errors.reasons", **params.transform_values { |value| value.is_a?(Array) ? value.join(", ") : value }, raise: true)
+    I18n.t(reason, scope: "errors.reasons", **params.transform_values { |value| value.is_a?(Array) ? value.join(", ") : value }, locale: :en, raise: true)
   end
 
   # @param code [Symbol] a key of {ErrorCodes::REGISTRY}

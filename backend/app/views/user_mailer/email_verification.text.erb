@@ -1,7 +1,7 @@
-Hi <%= @user.name %>,
+<%= greeting(@user.name) %>
 
-Confirm that <%= @user.email %> is your email address for the <%= @user.account.name %> account on x-identity:
+<%= t(".confirm", email: @user.email, account: @user.account.name) %>
 
 <%= @url %>
 
-This link expires in 24 hours. If you didn't create this account, you can ignore this email.
+<%= t(".expiry") %>

@@ -140,6 +140,12 @@ changes.
   language switcher; signed out, the choice is kept in `localStorage`. A user with no `locale` sees
   the browser's language, falling back to English. To add a language, add its messages and flag
   (`LanguageFlag.vue`), list it in `SUPPORTED_LOCALES` (`web/src/i18n/index.ts`) and in
-  `HasLocale::LOCALES` on the backend. `ApiError` builds its message from the error's
+  `config.i18n.available_locales` on the backend (`HasLocale::LOCALES` follows it).
+- Emails are translated with Rails' I18n, in `backend/config/locales/mailers.<locale>.yml` (every
+  key in each language; a spec checks). They're in the recipient's `locale`, otherwise the language
+  of the request that sent them (the frontend sends `Accept-Language` with the language on screen),
+  otherwise English; invitations use the inviter's. The request's language is set once per request
+  and carried into jobs by ActiveJob, so services never take a locale. API error messages are always
+  English. `ApiError` builds its message from the error's
   code, reason and details (`errors` messages), never from the API's English. ESLint's
   `vue/no-bare-strings-in-template` rejects untranslated text in templates.

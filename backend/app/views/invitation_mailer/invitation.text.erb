@@ -1,9 +1,9 @@
-Hi,
+<%= greeting(nil) %>
 
-<%= @invitation.invited_by&.name || "An administrator" %> invited you to join the <%= @invitation.account.name %> account on x-identity with the <%= @invitation.role %> role.
+<%= t(".invited", inviter: @invitation.invited_by&.name || t(".an_administrator"), account: @invitation.account.name, role: t("mailer.roles.#{@invitation.role}")) %>
 
-To accept, open:
+<%= t(".accept") %>
 
 <%= @url %>
 
-This invitation expires on <%= @invitation.expires_at.utc.strftime("%-d %B %Y") %> (UTC).
+<%= t(".expiry", date: l(@invitation.expires_at.utc.to_date, format: :email)) %>

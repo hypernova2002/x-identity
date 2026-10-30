@@ -15,6 +15,18 @@ RSpec.describe ErrorResponse do
         }
       )
     end
+
+    it "keeps messages in English whatever the current language" do
+      I18n.backend.store_translations(:ja, errors: { messages: { invalid: "が正しくありません" }, reasons: { only_working_secret: "唯一のシークレットです" } })
+      response = I18n.with_locale(:ja) do
+        described_class.new(code: :conflict, reason: :only_working_secret, details: [ ErrorDetail.build(:email, :invalid) ])
+      end
+
+      expect(response.body[:error]).to include(message: "This is the client's only working secret. Rotate the secret first.")
+      expect(response.body[:error][:details].first).to include(message: "is invalid")
+    ensure
+      I18n.reload!
+    end
   end
 
   describe ".details_for" do

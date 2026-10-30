@@ -1,0 +1,95 @@
+# メール (mailers.en.yml の翻訳)。キーは mailers.en.yml と一致させること。
+ja:
+  date:
+    formats:
+      email: "%Y年%-m月%-d日"
+  time:
+    formats:
+      email: "%Y年%-m月%-d日 %H:%M UTC"
+
+  mailer:
+    greeting: "%{name} 様"
+    greeting_without_name: "こんにちは。"
+    roles:
+      owner: "オーナー"
+      admin: "管理者"
+      member: "メンバー"
+    new_device:
+      device: "  デバイス: %{device}"
+      location: "  場所: %{location} 付近"
+      ip: "  IP: %{ip}"
+      time: "  日時: %{time}"
+      if_you: "ご本人による操作であれば、対応は不要です。"
+      geolocation: "IP による位置情報: DB-IP (https://db-ip.com)"
+
+  end_user_mailer:
+    confirmation:
+      subject: "%{project} の確認コード"
+      code_intro: "%{project} の確認コードは次のとおりです:"
+      link_intro: "または、次のリンクを開いてメールアドレスを確認してください:"
+      expiry: "コードの有効期限は 24 時間です。%{project} に登録した覚えがない場合は、このメールを無視してください。"
+    password_reset:
+      subject: "%{project} のパスワードのリセット"
+      code_intro: "%{project} の %{email} のパスワードのリセットがリクエストされました。コードは次のとおりです:"
+      link_intro: "または、次のリンクを開いて新しいパスワードを設定してください:"
+      expiry: "コードの有効期限は 1 時間です。心当たりがない場合は、このメールを無視してください。パスワードは変更されません。"
+    invitation:
+      subject: "%{project} に招待されました"
+      code_intro: "このメールアドレスで %{project} のアカウントが作成されました。パスワードを設定するには、次のコードを使用してください:"
+      link_intro: "または、次のリンクを開いてください:"
+      expiry: "招待の有効期限は 7 日間です。"
+    existing_account:
+      subject: "%{project} のアカウントはすでに存在します"
+      attempt: "%{email} で %{project} への登録が試みられましたが、このアドレスのアカウントはすでに存在します。"
+      if_you: "ご本人の場合は、サインインしてください。パスワードを忘れた場合は、サインインページからリセットできます。"
+      if_not_you: "心当たりがない場合は、このメールを無視してください。アカウントは変更されていません。"
+    email_change_code:
+      subject: "%{project} の新しいメールアドレスの確認"
+      code_intro: "このアドレスを %{project} のアカウントで使用するには、次のコードを入力してください:"
+      expiry: "コードの有効期限は 1 時間です。確認が完了するまでは、現在のメールアドレスでサインインします。"
+    disabled_after_mfa_failures:
+      subject: "%{project} のアカウントが無効になりました"
+      disabled: "確認コードの誤りが続いたため、%{project} のアカウント %{email} を無効にしました。パスワードが第三者に知られている可能性があります。"
+      next_step: "%{project} のサポートに連絡して再度有効にしてもらい、その後パスワードを変更してください。"
+    new_device_sign_in:
+      subject: "%{project} のアカウントへの新しいサインイン"
+      intro: "最近使用されていないデバイスから、%{project} のアカウントにサインインがありました:"
+      if_not_you: "心当たりがない場合は、「あなたのデバイス」でそのデバイスをサインアウトさせ、パスワードを変更してください:"
+    email_change_notice:
+      subject: "%{project} のメールアドレスの変更"
+      requested: "%{project} のアカウントのメールアドレスを %{new_email} に変更するリクエストがありました。新しいアドレスが確認されるまで、変更は行われません。"
+      if_not_you: "心当たりがない場合は、すぐにパスワードを変更してください。"
+
+  user_mailer:
+    email_verification:
+      subject: "メールアドレスの確認"
+      confirm: "x-identity の %{account} アカウントで %{email} を使用することを確認してください:"
+      expiry: "リンクの有効期限は 24 時間です。このアカウントを作成した覚えがない場合は、このメールを無視してください。"
+    password_reset:
+      subject: "パスワードのリセット"
+      intro: "x-identity の %{account} アカウントの %{email} のパスワードのリセットがリクエストされました。新しいパスワードを設定するには、次のリンクを開いてください:"
+      expiry: "リンクの有効期限は 1 時間です。心当たりがない場合は、このメールを無視してください。パスワードは変更されません。"
+    email_change_confirmation:
+      subject: "新しいメールアドレスの確認"
+      confirm: "このアドレスを x-identity の %{account} アカウントで使用することを確認してください:"
+      expiry: "リンクの有効期限は 1 時間です。確認が完了するまでは、現在のメールアドレスでサインインします。"
+    disabled_after_mfa_failures:
+      subject: "x-identity のユーザーが無効になりました"
+      disabled: "確認コードの誤りが続いたため、x-identity の %{account} アカウントのユーザー %{email} を無効にしました。パスワードが第三者に知られている可能性があります。"
+      next_step: "%{account} の管理者に再度有効にしてもらい、その後パスワードを変更してください。"
+    new_device_sign_in:
+      subject: "%{account} アカウントへの新しいサインイン"
+      intro: "最近使用されていないデバイスから、x-identity の %{account} アカウントにサインインがありました:"
+      if_not_you: "心当たりがない場合は、「サインイン中の場所」でそのデバイスをサインアウトさせ、パスワードを変更してください:"
+    email_change_notice:
+      subject: "メールアドレスの変更"
+      requested: "x-identity の %{account} アカウントのメールアドレスを %{new_email} に変更するリクエストがありました。新しいアドレスが確認されるまで、変更は行われません。"
+      if_not_you: "心当たりがない場合は、すぐにパスワードを変更し、多要素認証をオンにしてください。"
+
+  invitation_mailer:
+    invitation:
+      subject: "x-identity の %{account} に招待されました"
+      invited: "%{inviter} から、x-identity の %{account} アカウントに %{role}の役割で招待されました。"
+      an_administrator: "管理者"
+      accept: "招待を承諾するには、次のリンクを開いてください:"
+      expiry: "招待の有効期限は %{date} (UTC) です。"

@@ -36,6 +36,10 @@ module XIdentity
     config.time_zone = "UTC"
     config.active_record.default_timezone = :utc
 
+    config.i18n.available_locales = %i[en ja]
+    config.i18n.default_locale = :en
+    config.i18n.fallbacks = [ :en ]
+
     # Only loads a smaller set of middleware suitable for API only apps.
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.

@@ -2,44 +2,44 @@
 class EndUserMailer < ApplicationMailer
   def confirmation(end_user, code, link)
     assign(end_user, code: code, link: link)
-    mail(to: end_user.email, subject: "Your #{@project.name} verification code")
+    send_to(end_user)
   end
 
   def password_reset(end_user, code, link)
     assign(end_user, code: code, link: link)
-    mail(to: end_user.email, subject: "Reset your #{@project.name} password")
+    send_to(end_user)
   end
 
   def invitation(end_user, code, link)
     assign(end_user, code: code, link: link)
-    mail(to: end_user.email, subject: "You've been invited to #{@project.name}")
+    send_to(end_user)
   end
 
   def existing_account(end_user)
     assign(end_user)
-    mail(to: end_user.email, subject: "You already have a #{@project.name} account")
+    send_to(end_user)
   end
 
   def email_change_code(end_user, new_email, code)
     assign(end_user, code: code)
-    mail(to: new_email, subject: "Confirm your new #{@project.name} email address")
+    send_to(end_user, to: new_email)
   end
 
   def disabled_after_mfa_failures(end_user)
     assign(end_user)
-    mail(to: end_user.email, subject: "Your #{@project.name} account has been disabled")
+    send_to(end_user)
   end
 
   def new_device_sign_in(end_user, device)
     assign(end_user, link: ProjectEndpoints.preferred(end_user.project).hosted_page("apps"))
     @device = device
-    mail(to: end_user.email, subject: "New sign-in to your #{@project.name} account")
+    send_to(end_user)
   end
 
   def email_change_notice(end_user, new_email)
     assign(end_user)
     @new_email = new_email
-    mail(to: end_user.email, subject: "Your #{@project.name} email address is being changed")
+    send_to(end_user)
   end
 
   private
@@ -49,5 +49,9 @@ class EndUserMailer < ApplicationMailer
     @project = end_user.project
     @code = code
     @link = link
+  end
+
+  def send_to(end_user, to: end_user.email)
+    localized_mail(end_user.locale, to: to, project: @project.name)
   end
 end

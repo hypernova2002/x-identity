@@ -47,6 +47,15 @@ RSpec.describe "Invitations", type: :openapi do
         .to have_enqueued_mail(InvitationMailer, :invitation)
     end
 
+    it "sends the invitation in the inviter's language" do
+      perform_enqueued_jobs do
+        assert_api_response :post, 201, headers: auth_headers_for(admin).merge("Accept-Language" => "ja"),
+          body: { email: "new@acme.test", role: "member" }, path_params: path_params
+      end
+
+      expect(ActionMailer::Base.deliveries.last.subject).to eq("x-identity の #{account.name} に招待されました")
+    end
+
     it "replaces an earlier pending invitation for the same email" do
       2.times { assert_api_response :post, 201, headers: auth_headers_for(admin), body: { email: "new@acme.test", role: "member" }, path_params: path_params }
 
