@@ -21,6 +21,10 @@ RSpec.describe ApplicationRequestModel do
     expect(request_class.new(email: "dana@acme.test", role: "admin", age: nil).to_h).to include(age: nil)
   end
 
+  it "rejects input that isn't an object" do
+    expect { request_class.new("dana@acme.test") }.to raise_error(Dry::Struct::Error)
+  end
+
   it "rejects unknown keys" do
     expect { request_class.new(email: "dana@acme.test", role: "admin", admin: true) }.to raise_error(Dry::Struct::Error)
   end

@@ -7,6 +7,14 @@ class ApplicationRequestModel < Dry::Struct
   transform_keys(&:to_sym)
   schema schema.strict
 
+  # json_model_rb 0.1.30 calls `transform_keys` on the input, so a nested model given a string or
+  # array (e.g. `"scopes": ["orders:read"]`) would raise NoMethodError instead of failing validation.
+  def self.new(attributes = default_attributes, safe = false, &block)
+    raise Dry::Struct::Error, "#{name} must be an object" unless attributes.is_a?(Hash)
+
+    super
+  end
+
   # Field-level problems with a request body, all at once rather than only the first one.
   # @param input [Hash]
   # @return [Array<Hash{Symbol => String}>]
