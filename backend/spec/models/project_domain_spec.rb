@@ -31,4 +31,21 @@ RSpec.describe ProjectDomain do
     allow(Rails.env).to receive(:production?).and_return(true)
     expect(project.domains.new(hostname: "login.acme.localhost")).not_to be_valid
   end
+
+  it "serves .localhost domains over http, on the edge proxy's port when there is one" do
+    domain = project.domains.new(hostname: "login.acme.localhost")
+    configured = Rails.configuration.x.custom_domain_local_port
+
+    Rails.configuration.x.custom_domain_local_port = "8080"
+    expect(domain.base_url).to eq("http://login.acme.localhost:8080")
+    Rails.configuration.x.custom_domain_local_port = nil
+    expect(domain.base_url).to eq("http://login.acme.localhost")
+    expect(project.domains.new(hostname: "login.acme.com").base_url).to eq("https://login.acme.com")
+  ensure
+    Rails.configuration.x.custom_domain_local_port = configured
+  end
+
+  it "skips the reserved-host checks for a missing hostname" do
+    expect(error_codes(project.domains.new(hostname: ""), :hostname)).to contain_exactly(:blank, :invalid)
+  end
 end
