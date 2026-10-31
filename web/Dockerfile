@@ -14,6 +14,17 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
 
 
+# Browser tests (Playwright), run by docker compose's e2e service. The source is bind-mounted at
+# runtime. The image's version must match @playwright/test in package.json.
+FROM mcr.microsoft.com/playwright:v1.64.1-noble AS e2e
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+CMD ["npx", "playwright", "test"]
+
+
 FROM base AS build
 
 COPY package.json package-lock.json ./

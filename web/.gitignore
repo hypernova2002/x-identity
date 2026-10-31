@@ -32,6 +32,13 @@ coverage
 /cypress/videos/
 /cypress/screenshots/
 
+# Playwright
+/dist-e2e/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Vitest
 __screenshots__/
 

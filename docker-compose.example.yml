@@ -61,6 +61,18 @@ services:
     ports:
       - "5173:5173"
 
+  # Browser tests against a mocked API, run on demand: docker compose run --rm --no-deps e2e
+  e2e:
+    build:
+      context: ./web
+      target: e2e
+    image: x-identity-web:e2e
+    profiles: ["e2e"]
+    ipc: host
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+
   # Development only: serves *.localhost custom domains (e.g. http://login.acme.localhost:8080),
   # sending each project's endpoints to the backend and its hosted pages to the web app.
   edge:

@@ -47,6 +47,7 @@ docker compose run --rm --no-deps web npm run test
 docker compose run --rm --no-deps web npm run check-lint
 docker compose run --rm --no-deps web npm run type-check
 docker compose run --rm --no-deps web npm run build-only
+docker compose run --rm --no-deps e2e                     # browser tests
 ```
 
 Device locations come from an offline GeoIP database (DB-IP Lite, CC BY 4.0) at
@@ -67,6 +68,27 @@ After changing `Gemfile` or `package.json`, rebuild the image (`docker compose b
 
 The pre-commit hook runs RuboCop on staged Ruby files, the backend specs, and the frontend lint,
 type check and tests.
+
+## Browser tests
+
+The browser tests in `web/e2e/` use Playwright (Chromium). They build the app and serve it, with
+its API mocked: no backend is involved. They run on demand with the `e2e` service and in CI, not in
+the pre-commit hook.
+- **Writing a test:**
+  - Import `test` from `e2e/support/test.ts`, and register the endpoints it needs with
+    `api.on(method, path, reply)`. `:name` segments match any value, and a reply can be a function of
+    the request.
+  - Any request without a handler fails the test, so a page that starts calling something new needs a
+    mock.
+  - `signIn()` starts the console signed in, with the calls every console page makes already mocked.
+  - Fixtures in `e2e/support/fixtures.ts` are typed with `web/src/types/api.ts`, so a change to the
+    API types breaks them at type check.
+- **Checking requests:** `api.lastCall(method, path)` waits for a request and returns its body, query
+  and headers, so tests check what the frontend sends as well as what it shows.
+- **Upgrading Playwright:** `@playwright/test` is pinned to the version of the Playwright image in
+  `web/Dockerfile` and the CI job; change all three together.
+- **Failures:** each one keeps a trace in `web/test-results/`. Open it with
+  `npx playwright show-trace <path>`, or at https://trace.playwright.dev.
 
 ## API reference
 
