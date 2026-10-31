@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 import { ApiError, apiPage, apiRequest, configureAuth } from '../http'
+import { i18n } from '@/i18n'
 
 function jsonResponse(body: unknown, status: number, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
@@ -65,6 +66,18 @@ describe('apiRequest', () => {
 
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as Headers
     expect(headers.get('Authorization')).toBe('Bearer token-1')
+  })
+
+  it('sends the language on screen, so the API can email in it', async () => {
+    const fetchMock = stubFetch().mockImplementation(async () => jsonResponse({}, 200))
+
+    await apiRequest('/v1/sign-up', { method: 'POST', body: {} })
+    i18n.global.locale.value = 'ja'
+    await apiRequest('/v1/sign-up', { method: 'POST', body: {} })
+    i18n.global.locale.value = 'en'
+
+    const languages = fetchMock.mock.calls.map((call) => new Headers(call[1]?.headers).get('Accept-Language'))
+    expect(languages).toEqual(['en', 'ja'])
   })
 
   it('refreshes once and retries when the access token is rejected', async () => {
