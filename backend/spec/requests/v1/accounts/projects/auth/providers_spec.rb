@@ -208,6 +208,12 @@ RSpec.describe "End-user sign-in with identity providers", type: :openapi do
       return_from_provider(400, state: state, code: "provider-code") { expect(error_code).to eq("invalid_state") }
     end
 
+    it "refuses a return without a state, or with one it didn't issue" do
+      return_from_provider(400, code: "provider-code") { expect(error_code).to eq("invalid_state") }
+      return_from_provider(400, state: "", code: "provider-code") { expect(error_code).to eq("invalid_state") }
+      return_from_provider(400, state: "forged", code: "provider-code") { expect(error_code).to eq("invalid_state") }
+    end
+
     it "tells the app when the user cancels at the provider" do
       authorize
       return_from_provider(state: query_of(response.location)["state"], error: "access_denied")

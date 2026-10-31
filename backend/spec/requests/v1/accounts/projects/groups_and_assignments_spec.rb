@@ -261,6 +261,10 @@ RSpec.describe "Groups and app assignments", type: :openapi do
         response 200, "assignments" do
           schema type: :array, items: Schemas::AppAssignment
         end
+
+        response 404, "no such app client in the project" do
+          schema Schemas::Error
+        end
       end
 
       post "Give an end user or group access to an app client" do
@@ -338,6 +342,23 @@ RSpec.describe "Groups and app assignments", type: :openapi do
         params: { client_id: app_client.uid, refresh_token: tokens.refresh_token }, as: :json
 
       expect(error_code).to eq("app_access_denied")
+    end
+
+    it "lists who can use the app client" do
+      group = create(:group, project: project, name: "Staff")
+      AppAssignment.create!(project: project, app: app_client, principal: end_user)
+      AppAssignment.create!(project: project, app: app_client, principal: group)
+
+      assert_api_response(:get, 200, headers: auth_headers_for(admin), path_params: project_path_params(project, app_client_uid: app_client.uid)) do
+        expect(parsed_body.map { |assignment| assignment.values_at("principal_type", "principal_label") })
+          .to contain_exactly([ "end_user", "casey@shop.test" ], [ "group", "Staff" ])
+      end
+    end
+
+    it "doesn't list another project's app client" do
+      other = create(:app_client, project: create(:project, account: project.account))
+
+      assert_api_response :get, 404, headers: auth_headers_for(admin), path_params: project_path_params(project, app_client_uid: other.uid)
     end
 
     it "removes an assignment" do

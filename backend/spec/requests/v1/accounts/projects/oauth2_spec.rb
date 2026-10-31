@@ -387,6 +387,51 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
       expect(response.parsed_body["redirect_to"]).to include("/oauth2/authorize/resume?ticket=")
     end
 
+    it "sets up MFA on the hosted page when the project requires it" do
+      project.auth_configuration!.update!(mfa_requirement: "required")
+      interaction = query_of(authorize)["interaction"]
+      post oauth_path("interactions/#{interaction}/sign-in"), params: { email: "casey@shop.test", password: "correct horse battery staple" }, as: :json
+      challenge = response.parsed_body
+      expect(challenge["challenge"]).to eq("mfa_setup")
+
+      post oauth_path("interactions/#{interaction}/mfa-setup"), params: { session: challenge["session"] }, as: :json
+      enrollment = response.parsed_body
+      expect(enrollment).to include("otp_type" => "totp", "digits" => 6)
+
+      post oauth_path("interactions/#{interaction}/respond-to-challenge"),
+        params: { challenge: "mfa_setup", session: challenge["session"], code: ROTP::TOTP.new(enrollment["secret"]).now }, as: :json
+      expect(response.parsed_body).to include("recovery_codes")
+      expect(response.parsed_body["redirect_to"]).to include("/oauth2/authorize/resume?ticket=")
+    end
+
+    it "only starts MFA setup for a sign-in waiting for it" do
+      interaction = query_of(authorize)["interaction"]
+
+      post oauth_path("interactions/#{interaction}/mfa-setup"), params: { session: "not-a-session" }, as: :json
+
+      expect(error_code).to eq("invalid_challenge")
+    end
+
+    it "refuses passkey sign-in while the project's passkeys are off" do
+      interaction = query_of(authorize)["interaction"]
+      credential = { id: "cred", rawId: "cred", type: "public-key", response: { clientDataJSON: "e30", authenticatorData: "AA", signature: "AA" } }
+
+      post oauth_path("interactions/#{interaction}/passkey/options"), as: :json
+      expect([ response.status, error_code ]).to eq([ 409, "passkeys_unavailable" ])
+
+      post oauth_path("interactions/#{interaction}/passkey"), params: { authentication_id: "auth_1", credential: credential }, as: :json
+      expect([ response.status, error_code ]).to eq([ 409, "passkeys_unavailable" ])
+    end
+
+    it "answers passkey challenge steps only for a sign-in waiting on them" do
+      interaction = query_of(authorize)["interaction"]
+
+      %w[respond-to-challenge/passkey-options passkey-setup].each do |step|
+        post oauth_path("interactions/#{interaction}/#{step}"), params: { session: "not-a-session" }, as: :json
+        expect([ step, response.status, error_code ]).to eq([ step, 401, "invalid_challenge" ])
+      end
+    end
+
     it "reports wrong passwords to the page" do
       result = sign_in_on_hosted_page(password: "wrong")
 
@@ -408,6 +453,16 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
     it "shows unknown clients and unregistered redirect URIs on the hosted error page" do
       expect(authorize(client_id: "cl_unknown")).to start_with("#{hosted_base}/error?")
       expect(authorize(redirect_uri: "https://evil.example.com/callback")).to start_with("#{hosted_base}/error?")
+    end
+
+    it "shows a missing or unknown resume ticket on the hosted error page" do
+      [ nil, "", "unknown-ticket" ].each do |ticket|
+        get oauth_path("authorize/resume"), params: { ticket: ticket }.compact
+
+        expect(response).to have_http_status(:found)
+        expect(response.location).to start_with("#{hosted_base}/error?")
+        expect(query_of(response.location)).to include("error" => "invalid_request")
+      end
     end
 
     it "sends other errors back to the app" do
@@ -560,6 +615,32 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
       expect do
         post oauth_path("interactions/#{interaction}/sign-up"), params: { email: "new@shop.test", password: "correct horse battery staple" }, as: :json
       end.to have_enqueued_job(EndUserSignUpJob).with(hash_including(email: "new@shop.test", app_client_id: app_client.id))
+      expect(response).to have_http_status(:accepted)
+    end
+
+    it "confirms the sign-up with the emailed code, sending a new code when asked" do
+      perform_enqueued_jobs do
+        post oauth_path("interactions/#{interaction}/sign-up"), params: { email: "new@shop.test", password: "correct horse battery staple" }, as: :json
+      end
+      first_code = last_code_sent_to("new@shop.test")
+
+      perform_enqueued_jobs do
+        post oauth_path("interactions/#{interaction}/resend-confirmation"), params: { email: "new@shop.test" }, as: :json
+      end
+      expect(response).to have_http_status(:accepted)
+      expect(last_code_sent_to("new@shop.test")).not_to eq(first_code)
+
+      post oauth_path("interactions/#{interaction}/confirm-sign-up"), params: { email: "new@shop.test", code: "000000" }, as: :json
+      expect(error_code).to eq("invalid_code")
+
+      post oauth_path("interactions/#{interaction}/confirm-sign-up"), params: { email: "new@shop.test", code: last_code_sent_to("new@shop.test") }, as: :json
+      expect(response).to have_http_status(:no_content)
+      expect(project.end_users.find_by!(email: "new@shop.test")).to be_email_verified
+    end
+
+    it "accepts a resend request for any address, so it doesn't reveal which are waiting" do
+      post oauth_path("interactions/#{interaction}/resend-confirmation"), params: { email: "nobody@shop.test" }, as: :json
+
       expect(response).to have_http_status(:accepted)
     end
 

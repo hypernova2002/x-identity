@@ -2627,6 +2627,12 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ApiResource"
+        '404':
+          description: no such API in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
     patch:
@@ -3012,6 +3018,12 @@ paths:
                 type: array
                 items:
                   "$ref": "#/components/schemas/AppAssignment"
+        '404':
+          description: no such app client in the project
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
         '400':
           "$ref": "#/components/responses/SchemaValidationError"
     post:

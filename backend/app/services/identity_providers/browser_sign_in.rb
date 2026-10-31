@@ -61,7 +61,7 @@ module IdentityProviders
     #   `error`, `error_description` and `state`), or a hosted login page
     # @raise [ApiError] `invalid_state` when there's nowhere to send the user back to
     def callback(state:, code:, error: nil, apple_user: nil)
-      record = state.present? && OneTimeToken.find_usable(state, purpose: :provider_authorization)
+      record = state.presence && OneTimeToken.find_usable(state, purpose: :provider_authorization)
       raise ApiError.new(:invalid_state) unless record&.consume! && record.subject.project_id == @project.id
 
       provider = record.subject

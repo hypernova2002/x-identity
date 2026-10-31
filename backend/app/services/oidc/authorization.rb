@@ -82,7 +82,7 @@ module Oidc
     # @return [Outcome] with the new session's cookie token
     # @raise [Error] when the ticket or its interaction is no longer usable
     def resume(ticket)
-      record = ticket.present? && OneTimeToken.find_usable(ticket, purpose: :oidc_login_ticket)
+      record = ticket.presence && OneTimeToken.find_usable(ticket, purpose: :oidc_login_ticket)
       raise Error.new("invalid_request", EXPIRED) unless record&.consume!
 
       interaction = OneTimeToken.usable.find_by(id: record.data["interaction_id"], purpose: "oidc_interaction")

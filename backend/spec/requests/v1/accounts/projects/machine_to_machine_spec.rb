@@ -273,6 +273,10 @@ RSpec.describe "Machine-to-machine apps", type: :openapi do
         response 200, "the API" do
           schema Schemas::ApiResource
         end
+
+        response 404, "no such API in the project" do
+          schema Schemas::Error
+        end
       end
 
       patch "Change an API's name, scopes or token lifetime" do
@@ -302,6 +306,21 @@ RSpec.describe "Machine-to-machine apps", type: :openapi do
       assert_api_response :patch, 200, headers: auth_headers_for(developer), body: { scopes: [ { name: "orders:read" } ] }, path_params: path_params
 
       expect(grant.reload.scopes).to eq([ "orders:read" ])
+    end
+
+    it "shows an API, with how many apps may use it, to viewers too" do
+      billing.api_grants.create!(api_resource: orders, scopes: [ "orders:read" ])
+
+      assert_api_response(:get, 200, headers: auth_headers_for(viewer), path_params: path_params) do
+        expect(parsed_body).to include("uid" => orders.uid, "identifier" => "https://orders.example.com", "app_count" => 1)
+        expect(parsed_body["scopes"].pluck("name")).to eq(%w[orders:read orders:write orders:delete])
+      end
+    end
+
+    it "doesn't show another project's API" do
+      other = create(:project, account: project.account).api_resources.create!(name: "Other", identifier: "https://other.example.com", scopes: [])
+
+      assert_api_response :get, 404, headers: auth_headers_for(developer), path_params: project_path_params(project, uid: other.uid)
     end
 
     it "deletes the API and its grants" do

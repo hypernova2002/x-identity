@@ -69,6 +69,13 @@ After changing `Gemfile` or `package.json`, rebuild the image (`docker compose b
 The pre-commit hook runs RuboCop on staged Ruby files, the backend specs, and the frontend lint,
 type check and tests.
 
+The backend suite measures line and branch coverage with SimpleCov (`backend/coverage/index.html`).
+When the whole suite runs, as pre-commit and CI do, it fails if coverage drops below the
+thresholds in `spec/support/full_run.rb`, or if any route isn't reached by a request spec
+(`spec/support/route_coverage.rb`). Custom-domain routes are checked by
+`spec/requests/custom_domains_routing_spec.rb`; their behaviour is specced through the `/v1` routes
+they share actions with. Running a single file checks neither.
+
 ## Browser tests
 
 The browser tests in `web/e2e/` use Playwright (Chromium). They build the app and serve it, with
