@@ -201,6 +201,23 @@ RSpec.describe "SAML identity provider", type: :openapi do
       expect(saml_response.response.to_s).to include("NoPassive")
     end
 
+    it "signs in to the app through an identity provider on the hosted page" do
+      provider = create(:identity_provider, project: project)
+      request_id = start_sign_in
+      interaction = query_of(response.location)["interaction"]
+      get issuer_path("oauth2/interactions/#{interaction}/providers/#{provider.uid}")
+      provider_query = query_of(response.location)
+      stub_provider_jwks(provider)
+      stub_provider_token(provider, provider_id_token(provider, nonce: provider_query["nonce"], email: "casey@shop.test"))
+
+      get issuer_path("auth/providers/callback"), params: { state: provider_query["state"], code: "google-code" }
+      raw = follow_to_app(response.location)
+
+      saml_response = OneLogin::RubySaml::Response.new(raw, settings: sp_settings, matches_request_id: request_id)
+      expect(saml_response.is_valid?).to be(true), saml_response.errors.join(", ")
+      expect(saml_response.nameid).to eq("casey@shop.test")
+    end
+
     it "shows unknown apps and unregistered ACS URLs on the hosted error page" do
       unknown = sp_settings.tap { |settings| settings.sp_entity_id = "https://unknown.example.com" }
       start_sign_in(settings: unknown)

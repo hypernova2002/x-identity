@@ -66,6 +66,10 @@ RSpec.describe "End-user sign-in with identity providers", type: :openapi do
         response 401, "unknown or disabled app client" do
           schema Schemas::Error
         end
+
+        response 422, "the code challenge isn't a base64url SHA-256" do
+          schema Schemas::Error
+        end
       end
     end
 
@@ -236,6 +240,54 @@ RSpec.describe "End-user sign-in with identity providers", type: :openapi do
       expect(query_of(response.location)).to have_key("code")
       expect(project.end_users.sole.name).to eq("Casey Apple")
       expect(token_stub.with { |request| claims(Rack::Utils.parse_query(request.body)["client_secret"])["iss"] == "TEAM123456" }).to have_been_requested
+    end
+
+    it "refuses a code challenge that isn't a base64url SHA-256" do
+      authorize(422, code_challenge: "!" * 43) { expect(parsed_body.dig("error", "details", 0)).to include("field" => "code_challenge", "code" => "invalid_code_challenge") }
+    end
+
+    it "refuses the return when the app client was disabled meanwhile" do
+      authorize
+      state = query_of(response.location)["state"]
+      app_client.update!(enabled: false)
+
+      return_from_provider(400, state: state, code: "provider-code") { expect(error_code).to eq("invalid_state") }
+    end
+
+    it "tells the app when the provider was disabled meanwhile" do
+      authorize
+      state = query_of(response.location)["state"]
+      provider.update!(enabled: false)
+
+      return_from_provider(state: state, code: "provider-code")
+
+      expect(query_of(response.location)).to include("error" => "invalid_state", "state" => "app-state-1")
+    end
+
+    it "doesn't redeem a code for a user disabled since" do
+      sign_in_through_provider
+      project.end_users.sole.update!(status: "disabled")
+
+      post "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/auth/providers/token",
+        params: { client_id: app_client.uid, code: @app_code, code_verifier: code_verifier, redirect_uri: redirect_uri }, as: :json
+
+      expect([ response.status, error_code ]).to eq([ 403, "user_disabled" ])
+    end
+
+    it "ignores an Apple user parameter it can't read a name from" do
+      apple = create(:identity_provider, :apple, project: project)
+      [ "not json", { name: "Casey" }.to_json ].each_with_index do |user, index|
+        get "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/auth/providers/#{apple.uid}/authorize",
+          params: { client_id: app_client.uid, redirect_uri: redirect_uri, state: "s", code_challenge: code_challenge, code_challenge_method: "S256" }
+        provider_query = query_of(response.location)
+        stub_provider_jwks(apple)
+        stub_provider_token(apple, provider_id_token(apple, nonce: provider_query["nonce"], sub: "apple-#{index}", email: "apple#{index}@shop.test", name: nil))
+
+        post "/v1/accounts/#{project.account.uid}/projects/#{project.uid}/auth/providers/callback", params: { state: provider_query["state"], code: "apple-code", user: user }
+
+        expect(query_of(response.location)).to have_key("code")
+      end
+      expect(project.end_users.pluck(:name)).to eq([ nil, nil ])
     end
 
     it "needs the matching code verifier" do

@@ -4899,6 +4899,12 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
+        '422':
+          description: the code challenge isn't a base64url SHA-256
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
   "/v1/accounts/{account_uid}/projects/{project_uid}/auth/providers/{uid}/id-token":
     parameters:
     - name: account_uid

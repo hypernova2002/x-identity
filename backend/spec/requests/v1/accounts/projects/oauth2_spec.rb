@@ -683,5 +683,17 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
       expect(query_of(follow(response.location))).to have_key("code")
       expect(BrowserSession.sole.amr).to eq([ "fed" ])
     end
+
+    it "shows the hosted error page when the sign-in can't continue after the provider, such as the app being disabled" do
+      interaction = query_of(authorize)["interaction"]
+      get oauth_path("interactions/#{interaction}/providers/#{provider.uid}")
+      state = query_of(response.location)["state"]
+      app_client.update!(enabled: false)
+
+      get "#{URI.parse(project.token_issuer).path}/auth/providers/callback", params: { state: state, code: "google-code" }
+
+      expect(response.location).to start_with("#{hosted_base}/error?")
+      expect(query_of(response.location)).to include("error" => "invalid_request")
+    end
   end
 end

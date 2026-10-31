@@ -12,8 +12,8 @@ RSpec.configure do |config|
     next unless FullRun.active?
 
     SimpleCov.configure do
-      coverage :line, minimum: 97.8
-      coverage :branch, minimum: 79.7
+      coverage :line, minimum: 99.0
+      coverage :branch, minimum: 86.9
     end
   end
 end

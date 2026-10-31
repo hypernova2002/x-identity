@@ -142,6 +142,37 @@ RSpec.describe "SAML upstream identity providers", type: :openapi do
       expect(BrowserSession.sole).to have_attributes(identity_provider: provider, upstream_name_id: "jane@acme.com", upstream_session_index: "_idp-session-1")
     end
 
+    it "returns to the hosted page with the error when the provider was disabled meanwhile" do
+      request = start_hosted_sign_in
+      provider.update!(enabled: false)
+
+      location = post_to_acs(idp_response(in_response_to: request[:id]), request[:relay_state])
+
+      expect(location).to start_with("#{hosted_base}/login?")
+      expect(query_of(location)).to include("error" => "invalid_state")
+    end
+
+    it "shows the hosted error page when the sign-in ended while the user was at the provider" do
+      request = start_hosted_sign_in
+      OneTimeToken.find_by!(purpose: "oidc_interaction").consume!
+
+      location = post_to_acs(idp_response(in_response_to: request[:id]), request[:relay_state])
+
+      expect(location).to start_with("#{hosted_base}/error?")
+    end
+
+    it "refuses a response whose request was answered at the same moment by another" do
+      request = start_hosted_sign_in
+      allow(OneTimeToken).to receive(:find_usable).and_wrap_original do |original, *args, **options|
+        original.call(*args, **options).tap { |record| allow(record).to receive(:consume!).and_return(false) if record }
+      end
+
+      location = post_to_acs(idp_response(in_response_to: request[:id]), request[:relay_state])
+
+      expect(query_of(location)).to include("error" => "invalid_state")
+      expect(project.end_users.where(email: "jane@acme.com")).to be_empty
+    end
+
     it "only trusts emails at the provider's domains" do
       outsider = create(:end_user, project: idp_project, email: "mallory@elsewhere.com")
       request = start_hosted_sign_in

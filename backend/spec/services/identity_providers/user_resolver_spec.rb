@@ -83,4 +83,36 @@ RSpec.describe IdentityProviders::UserResolver do
 
     expect { resolver.resolve(claims) }.to raise_error(ApiError) { |error| expect(error.code).to eq(:identity_conflict) }
   end
+
+  it "looks again when a concurrent sign-in created the user first, but only once" do
+    calls = 0
+    allow(project.end_users).to receive(:find_by).and_wrap_original do |original, *args|
+      calls += 1
+      raise ActiveRecord::RecordNotUnique if calls == 1
+
+      original.call(*args)
+    end
+    allow(provider).to receive(:project).and_return(project)
+
+    expect(described_class.new(provider: provider).resolve(claims).end_user.email).to eq("casey@shop.test")
+    expect(calls).to eq(2)
+
+    allow(provider.identities).to receive(:includes).and_raise(ActiveRecord::RecordNotUnique)
+    expect { described_class.new(provider: provider).resolve(claims.merge("sub" => "google-456")) }.to raise_error(ActiveRecord::RecordNotUnique)
+  end
+
+  it "follows the provider's groups for mapped groups only, recording a change only when there is one" do
+    staff = create(:group, project: project, name: "Staff")
+    provider.group_mappings.create!(value: "staff", group: staff)
+
+    user = resolver.resolve(claims.merge("groups" => [ "staff" ])).end_user
+    expect(user.groups).to include(staff)
+    expect(AuditEvent.where(action: "end_user.groups_synced").count).to eq(1)
+
+    expect { resolver.resolve(claims.merge("groups" => [ "staff", "unmapped" ])) }.not_to change { AuditEvent.where(action: "end_user.groups_synced").count }
+
+    resolver.resolve(claims.merge("groups" => []))
+    expect(user.groups.reload).not_to include(staff)
+    expect(AuditEvent.where(action: "end_user.groups_synced").count).to eq(2)
+  end
 end
