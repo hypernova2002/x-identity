@@ -344,6 +344,37 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
       expect(response.parsed_body).to include("error" => "invalid_grant")
     end
 
+    it "refuses grants it doesn't support, and a missing or malformed code verifier" do
+      post oauth_path("token"), params: { grant_type: "password", client_id: app_client.uid }
+      expect(response.parsed_body["error"]).to eq("unsupported_grant_type")
+
+      code = code_for_app
+      [ nil, "too-short" ].each do |verifier|
+        exchange(code, code_verifier: verifier)
+        expect(response.parsed_body["error"]).to eq("invalid_request")
+      end
+    end
+
+    it "doesn't redeem a code for a user disabled since" do
+      code = code_for_app
+      end_user.update!(status: "disabled")
+
+      exchange(code)
+
+      expect(response.parsed_body).to include("error" => "invalid_grant", "error_description" => "The user can no longer sign in.")
+    end
+
+    it "takes client credentials in one place only, and only well-formed Basic credentials" do
+      confidential = create(:app_client, :confidential, project: project, redirect_uris: [ redirect_uri ])
+      basic = "Basic #{Base64.strict_encode64("#{confidential.uid}:client-secret-for-specs")}"
+
+      post oauth_path("token"), params: { grant_type: "refresh_token", refresh_token: "x", client_secret: "client-secret-for-specs" }, headers: { "Authorization" => basic }
+      expect(response.parsed_body["error"]).to eq("invalid_request")
+
+      post oauth_path("token"), params: { grant_type: "refresh_token", refresh_token: "x" }, headers: { "Authorization" => "Basic not-base64!" }
+      expect(response.parsed_body["error"]).to eq("invalid_client")
+    end
+
     it "needs the right code verifier, and each code only once" do
       code = code_for_app
 
@@ -455,6 +486,33 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
       expect(authorize(redirect_uri: "https://evil.example.com/callback")).to start_with("#{hosted_base}/error?")
     end
 
+    it "shows the hosted error page when the sign-in finished elsewhere before the browser came back" do
+      ticket = query_of(sign_in_on_hosted_page["redirect_to"])["ticket"]
+      OneTimeToken.find_by!(purpose: "oidc_interaction").consume!
+
+      get oauth_path("authorize/resume"), params: { ticket: ticket }
+
+      expect(response.location).to start_with("#{hosted_base}/error?")
+    end
+
+    it "signs in again through the session even after its device was pruned" do
+      code_for_app
+      BrowserSession.update_all(device_session_id: nil)
+
+      exchange(query_of(authorize)["code"])
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "finds no company provider for an address without a domain" do
+      interaction = query_of(authorize)["interaction"]
+
+      [ "casey@", "casey" ].each do |email|
+        post oauth_path("interactions/#{interaction}/discover"), params: { email: email }, as: :json
+        expect(response.parsed_body).to eq("identity_provider_uid" => nil)
+      end
+    end
+
     it "shows a missing or unknown resume ticket on the hosted error page" do
       [ nil, "", "unknown-ticket" ].each do |ticket|
         get oauth_path("authorize/resume"), params: { ticket: ticket }.compact
@@ -463,6 +521,13 @@ RSpec.describe "OpenID Connect provider", type: :openapi do
         expect(response.location).to start_with("#{hosted_base}/error?")
         expect(query_of(response.location)).to include("error" => "invalid_request")
       end
+    end
+
+    it "sends malformed prompts, max_age and over-long parameters back to the app" do
+      expect(query_of(authorize(prompt: "none login"))).to include("error" => "invalid_request", "state" => "app-state")
+      expect(query_of(authorize(max_age: "an hour"))).to include("error" => "invalid_request")
+      expect(query_of(authorize(nonce: "n" * 513))).to include("error" => "invalid_request")
+      expect(query_of(authorize(login_hint: "#{'a' * 250}@shop.test"))).to include("error" => "invalid_request")
     end
 
     it "sends other errors back to the app" do

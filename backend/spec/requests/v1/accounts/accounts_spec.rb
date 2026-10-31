@@ -58,7 +58,15 @@ RSpec.describe "Accounts", type: :openapi do
     assert_api_response :patch, 403, headers: auth_headers_for(member), body: { name: "Acme Inc" }, path_params: path_params
   end
 
-  it "refuses an invalid name" do
+  it "refuses an invalid name, including one that's only spaces" do
     assert_api_response :patch, 422, headers: auth_headers_for(admin), body: { name: "" }, path_params: path_params
+    assert_api_response(:patch, 422, headers: auth_headers_for(admin), body: { name: "   " }, path_params: path_params) do
+      expect(parsed_body.dig("error", "details", 0)).to include("field" => "name", "code" => "blank")
+    end
+  end
+
+  it "records nothing when the name doesn't change" do
+    expect { assert_api_response :patch, 200, headers: auth_headers_for(admin), body: { name: "Acme" }, path_params: path_params }
+      .not_to change(AuditEvent, :count)
   end
 end

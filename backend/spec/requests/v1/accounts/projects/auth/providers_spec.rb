@@ -167,6 +167,12 @@ RSpec.describe "End-user sign-in with identity providers", type: :openapi do
       end
     end
 
+    it "refuses unknown or disabled app clients" do
+      authorize(401, client_id: "app_unknown") { expect(error_code).to eq("invalid_client") }
+      app_client.update!(enabled: false)
+      authorize(401) { expect(error_code).to eq("invalid_client") }
+    end
+
     it "refuses redirect URIs the app client hasn't registered" do
       authorize(400, redirect_uri: "https://evil.example.com/callback") { expect(error_code).to eq("invalid_redirect_uri") }
     end

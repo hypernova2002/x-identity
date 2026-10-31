@@ -2,49 +2,51 @@ require "rails_helper"
 
 RSpec.describe ApplicationController, type: :controller do
   controller do
-    def index
-      case params[:failure]
-      when "api_error"
-        raise ApiError.new(:conflict, reason: :already_group_member, params: { email: "dana@acme.test", group: "Support" })
-      when "not_found"
-        raise ActiveRecord::RecordNotFound
-      when "parameter_missing"
-        params.require(:project)
-      end
+    def invalid
+      raise ActiveRecord::RecordInvalid, Project.new.tap(&:validate)
+    end
+
+    def duplicate
+      raise ActiveRecord::RecordNotUnique
+    end
+
+    def missing
+      params.require(:name)
     end
   end
 
-  it "renders an ApiError with its code, reason and the reason's params" do
-    get :index, params: { failure: "api_error" }
-
-    expect([ response.status, response.parsed_body ]).to eq(
-      [
-        409,
-        {
-          "error" => {
-            "code" => "conflict",
-            "reason" => "already_group_member",
-            "message" => "dana@acme.test is already in Support.",
-            "params" => { "email" => "dana@acme.test", "group" => "Support" },
-            "details" => []
-          }
-        }
-      ]
-    )
+  before do
+    routes.draw do
+      get "invalid" => "anonymous#invalid"
+      get "duplicate" => "anonymous#duplicate"
+      get "missing" => "anonymous#missing"
+    end
   end
 
-  it "renders missing records as not_found" do
-    get :index, params: { failure: "not_found" }
+  it "answers a record that failed validation with its field errors" do
+    get :invalid
 
-    expect(response.parsed_body.dig("error", "code")).to eq("not_found")
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig("error", "code")).to eq("validation_failed")
+    expect(response.parsed_body.dig("error", "details").pluck("field")).to include("name")
   end
 
-  it "renders missing parameters as a field-level validation error" do
-    get :index, params: { failure: "parameter_missing" }
+  it "answers a unique index violation as a conflict" do
+    get :duplicate
 
-    expect(response.parsed_body["error"]).to include(
-      "code" => "validation_failed",
-      "details" => [ { "field" => "project", "code" => "required", "message" => "is required", "params" => {} } ]
-    )
+    expect(response).to have_http_status(:conflict)
+    expect(response.parsed_body.dig("error", "code")).to eq("conflict")
+  end
+
+  it "answers a missing parameter as a required field" do
+    get :missing
+
+    expect(response.parsed_body.dig("error", "details", 0)).to include("field" => "name", "code" => "required")
+  end
+
+  it "skips empty entries in Accept-Language" do
+    request.headers["Accept-Language"] = ", ja;q=0.5"
+
+    expect(controller.send(:request_locale)).to eq("ja")
   end
 end

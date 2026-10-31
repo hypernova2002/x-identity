@@ -49,6 +49,21 @@ RSpec.describe ApplicationRequestModel do
       )
     end
 
+    it "reports rules without a limit, and types it has no name for, as invalid" do
+      rules_class = Class.new(described_class) do
+        attribute :code, JsonModel::Types::String.constrained(format: /\A\d+\z/)
+        attribute :at, JsonModel::Types::Strict::Date
+
+        def self.name
+          "ExampleRulesRequest"
+        end
+      end
+
+      details = rules_class.error_details(code: "abc", at: "tomorrow")
+
+      expect(details.map { |detail| detail.slice(:field, :code) }).to eq([ { field: "code", code: "invalid" }, { field: "at", code: "invalid" } ])
+    end
+
     it "reports a broken rule of a list's item as invalid" do
       list_class = Class.new(described_class) do
         attribute :tags, JsonModel::Types::Array.of(JsonModel::Types::String.constrained(max_size: 3)).constrained(max_size: 2)
@@ -71,6 +86,23 @@ RSpec.describe ApplicationRequestModel do
     it "includes each field's description" do
       expect(request_class.as_schema[:properties]).to include(role: include(description: "The member's role."))
       expect(request_class.as_schema[:properties][:email]).not_to have_key(:description)
+    end
+
+    it "describes a shared type made optional or given a constructor, and leaves undescribed types without one" do
+      described = JsonModel::Types::String.meta(description: "A shared field.")
+      described_class_with_wrappers = Class.new(described_class) do
+        attribute? :optional_note, described.optional
+        attribute? :coerced_note, described.constructor(&:to_s)
+        attribute? :plain, JsonModel::Types::String
+
+        def self.name
+          "ExampleDescribedRequest"
+        end
+      end
+      properties = described_class_with_wrappers.as_schema[:properties]
+
+      expect(properties.values_at(:optional_note, :coerced_note).map { |property| property[:description] }).to eq([ "A shared field.", "A shared field." ])
+      expect(properties[:plain]).not_to have_key(:description)
     end
 
     it "documents that unknown keys are rejected" do

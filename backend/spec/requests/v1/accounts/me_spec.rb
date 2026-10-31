@@ -41,6 +41,12 @@ RSpec.describe "Me", type: :openapi do
       end
     end
 
+    it "refuses a name that's only spaces" do
+      assert_api_response(:patch, 422, headers: auth_headers_for(user), body: { name: "   " }, path_params: path_params) do
+        expect(parsed_body.dig("error", "details", 0)).to include("field" => "name", "code" => "blank")
+      end
+    end
+
     it "returns the signed-in user" do
       assert_api_response :get, 200, headers: auth_headers_for(user), path_params: path_params do
         expect([ parsed_body["uid"], parsed_body.dig("account", "uid") ]).to eq([ user.uid, account.uid ])
